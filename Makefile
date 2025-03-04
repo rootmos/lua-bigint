@@ -7,5 +7,5 @@ run: deps
 deps:
 	$(MAKE) -C deps
 
-.PHONY: test
+.PHONY: test run
 .PHONY: deps
