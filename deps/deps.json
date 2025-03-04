@@ -1,0 +1,8 @@
+[
+    {
+        "sha256": "b35dd8fadeb6e796aa961c736db5f0a780cd5f94e456460c6e27c2e6b3f98e55",
+        "target": "luaunit.tar.gz",
+        "timestamp": "2025-03-04T06:40:05+01:00",
+        "url": "https://github.com/bluebird75/luaunit/releases/download/LUAUNIT_V3_4/luaunit-3.4.tar.gz"
+    }
+]
