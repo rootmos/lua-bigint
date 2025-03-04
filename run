@@ -1,0 +1,64 @@
+#!/bin/bash
+
+set -o nounset -o pipefail -o errexit
+
+SCRIPT_DIR=$(readlink -f "$0" | xargs dirname)
+SRC=$SCRIPT_DIR/src
+DEPS=$SCRIPT_DIR/deps
+
+LUA=${LUA-lua5.4}
+LUA=$(command -v "$LUA")
+
+RUN_TESTS=
+TIMEOUT=
+while getopts "tT:h-" OPT; do
+    case $OPT in
+        t) RUN_TESTS=1 ;;
+        T) TIMEOUT=1 ;;
+        -) break ;;
+        h) usage ;;
+        ?) usage 2 ;;
+    esac
+done
+shift $((OPTIND-1))
+
+TMP=$(mktemp -d)
+trap 'rm -rf $TMP' EXIT
+
+
+if [ -n "$TIMEOUT" ]; then
+    CMD=("timeout" "$TIMEOUT" "env")
+else
+    CMD=("env")
+fi
+
+if [ -n "${RUN_TESTS-}" ]; then
+    find "$SRC" -name "*test.lua" > "$TMP/tests"
+    mapfile -t TESTS < "$TMP/tests"
+
+    EC=0
+    for t in "${TESTS[@]}"; do
+        ROOT=$(dirname "$(readlink -f "$t")")
+        if [ "$(basename "$t")" = "test.lua" ]; then
+            echo "# $(basename "$ROOT") tests ($LUA)"
+        else
+            echo "# $(basename --suffix=".test.lua" "$t") tests ($LUA)"
+        fi
+
+        LUA_PATH="$DEPS/luaunit/?.lua"
+        LUA_PATH="$ROOT/?.lua;$ROOT/?/init.lua;$LUA_PATH"
+
+        set +o errexit
+        "${CMD[@]}" LUA_PATH="$LUA_PATH" "$LUA" "$t" -v \
+            | sed 's/^/  /'
+        ec=$?
+        if [ "$ec" != 0 ]; then
+            EC=$ec
+        fi
+        set -o errexit
+    done
+    exit "$EC"
+fi
+
+LUA_PATH="$SRC/?.lua;$SRC/?/init.lua"
+"${CMD[@]}" LUA_PATH="$LUA_PATH" "$LUA" -W "$SRC/main.lua" "$@"
