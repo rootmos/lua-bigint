@@ -2,6 +2,8 @@ local a = {1, 2, 3, o=0, n=3}
 local b = {4, nil, 5, o=1, n=3, v="y"}
 local c = {7, o=8, n=1, v="z"}
 
+local space = " "
+
 local function tostring(p)
     local s = ""
     local v = p.v or "x"
@@ -9,7 +11,7 @@ local function tostring(p)
         local k = p[i]
         if k and k ~= 0 then
             if s ~= "" then
-                s = s .. " + "
+                s = s .. string.format("%s+%s", space, space)
             end
 
             local n = (p.o or 0) + i - 1
@@ -24,7 +26,7 @@ local function tostring(p)
         end
     end
 
-    return s
+    return string.format("[%s]%s", v, space) .. s
 end
 
 local function add(a, b)
@@ -54,11 +56,11 @@ local function add(a, b)
     return sum
 end
 
-print(string.format("a := %s", tostring(a)))
-print(string.format("b := %s", tostring(b)))
-print(string.format("c := %s", tostring(c)))
+print(string.format("a%s:=%s%s", space, space, tostring(a)))
+print(string.format("b%s:=%s%s", space, space, tostring(b)))
+print(string.format("c%s:=%s%s", space, space, tostring(c)))
 
-print(string.format("a + b = %s", tostring(add(a, b))))
-print(string.format("b + a = %s", tostring(add(b, a))))
-print(string.format("b + c = %s", tostring(add(b, c))))
-print(string.format("c + b = %s", tostring(add(c, b))))
+print(string.format("a%s+%sb%s=%s%s", space, space, space, space, tostring(add(a, b))))
+print(string.format("b%s+%sa%s=%s%s", space, space, space, space, tostring(add(b, a))))
+print(string.format("b%s+%sc%s=%s%s", space, space, space, space, tostring(add(b, c))))
+print(string.format("c%s+%sb%s=%s%s", space, space, space, space, tostring(add(c, b))))
