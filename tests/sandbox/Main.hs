@@ -2,6 +2,7 @@ module Main where
 
 import HsLua
 
+import Control.Monad ( unless )
 import Data.List ( intercalate )
 import System.Exit ( exitFailure )
 import System.FilePath ( (</>) )
@@ -32,7 +33,8 @@ extendLuaPath :: LuaError e => FilePath -> LuaE e ()
 extendLuaPath dir = stackNeutral $ do
   openpackage
 
-  TypeString <- getfield top "path"
+  t <- getfield top "path"
+  unless (t == TypeString) $ throwTypeMismatchError "string" top
   path <- BSUTF8.toString <$> tostring' top
   pop 2
 
@@ -44,15 +46,17 @@ extendLuaPath dir = stackNeutral $ do
 
 main :: IO ()
 main = do
-  p <- Paths_lua_bigint.getDataFileName "lua"
-  putStrLn p
+  luaSrc <- Paths_lua_bigint.getDataFileName "lua"
 
-  st <- HsLua.run @HsLua.Exception $ do
+  res <- HsLua.runEither @HsLua.Exception $ do
     openlibs
-    extendLuaPath p
-    dostring "require'sandbox'"
-  case st of
-    OK -> return ()
-    _ -> do
-      hPutStr stderr $ "lua error: " ++ show st ++ "\n"
+    extendLuaPath luaSrc
+    dostring "require'sandbox'" >>= \case
+      OK -> return ()
+      _ -> throwErrorAsException
+    return ()
+  case res of
+    Right () -> return ()
+    Left e -> do
+      hPutStr stderr $ "lua error: " ++ show e ++ "\n"
       exitFailure

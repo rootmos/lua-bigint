@@ -45,6 +45,7 @@ executable lua-bigint
 executable sandbox
   main-is: Main.hs
   other-modules:
+      Utils
       Paths_lua_bigint
   hs-source-dirs:
       sandbox
