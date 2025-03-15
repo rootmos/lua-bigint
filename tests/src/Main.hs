@@ -1,5 +1,8 @@
 module Main where
 
+import Test.Hspec
+
+import qualified MySpec
+
 main :: IO ()
-main = do
-  putStrLn "hello world"
+main = hspec MySpec.spec

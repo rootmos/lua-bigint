@@ -3,6 +3,8 @@ version: 0.1.0.0
 
 dependencies:
   - base >= 4.19 && < 5
+  - hspec >= 2.11.11 && < 3
+  - QuickCheck >= 2.14.3 && < 3
 
 ghc-options: -Wall -Werror
 
@@ -12,6 +14,7 @@ default-extensions:
   - OverloadedStrings
   - FlexibleContexts
   - GADTs
+  - ScopedTypeVariables
 
 executables:
   lua-bigint:
