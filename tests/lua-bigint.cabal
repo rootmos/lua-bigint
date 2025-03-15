@@ -31,7 +31,7 @@ executable lua-bigint
       OverloadedStrings
       ScopedTypeVariables
       TypeApplications
-  ghc-options: -Wall -Werror
+  ghc-options: -Wall -Werror -fno-warn-name-shadowing
   build-depends:
       QuickCheck >=2.14.3 && <3
     , base >=4.19 && <5
@@ -57,7 +57,7 @@ executable sandbox
       OverloadedStrings
       ScopedTypeVariables
       TypeApplications
-  ghc-options: -Wall -Werror
+  ghc-options: -Wall -Werror -fno-warn-name-shadowing
   build-depends:
       QuickCheck >=2.14.3 && <3
     , base >=4.19 && <5

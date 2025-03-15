@@ -1,3 +1,4 @@
 go() {
-    ./run -e polynomial
+    #./run -e polynomial
+    cd tests && stack run sandbox
 }

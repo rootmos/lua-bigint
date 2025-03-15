@@ -10,7 +10,7 @@ dependencies:
   - hslua >= 2.3.1 && < 3
   - filepath >= 1.4.301.0 && < 2
 
-ghc-options: -Wall -Werror
+ghc-options: -Wall -Werror -fno-warn-name-shadowing
 
 default-extensions:
   - DuplicateRecordFields
