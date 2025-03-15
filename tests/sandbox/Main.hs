@@ -88,11 +88,6 @@ main = do
     rotate top 2
     call 1 1
 
-    t <- getfield p "tostring"
-    unless (t == TypeFunction) $ throwTypeMismatchError "function" top
-    rotate top 2
-    call 1 1
-
     s <- BSUTF8.toString <$> tostring' top
 
     liftIO $ putStrLn s

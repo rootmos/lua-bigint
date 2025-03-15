@@ -2,18 +2,6 @@ local M = {
     space = " ",
 }
 
-function M.make(p)
-    local q = {
-        o = p.o or 0,
-        n = p.n or #p,
-        v = p.v
-    }
-    for i = 1,q.n do
-        q[i] = p[i]
-    end
-    return q
-end
-
 function M.tostring(p)
     local s = ""
     local v <const> = p.v or "x"
@@ -64,6 +52,28 @@ function M.add(a, b)
     end
 
     return sum
+end
+
+local __mt <const> = {
+    __tostring = M.tostring,
+}
+
+function M.make(p)
+    local q = {
+        o = p.o or 0,
+        n = p.n or #p,
+        v = p.v
+    }
+
+    for i = 1,q.n do
+        q[i] = p[i]
+    end
+
+    return setmetatable(q, __mt)
+end
+
+function M.is_polynomial(x)
+    return getmetatable(x) == __mt
 end
 
 return M
