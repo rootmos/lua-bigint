@@ -20,3 +20,7 @@ executables:
   lua-bigint:
     source-dirs: src
     main: Main.hs
+
+tests:
+  spec:
+    defaults: hspec/hspec@main
