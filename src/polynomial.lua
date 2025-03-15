@@ -56,6 +56,7 @@ end
 
 local __mt <const> = {
     __tostring = M.tostring,
+    __add = M.add,
 }
 
 function M.make(p)

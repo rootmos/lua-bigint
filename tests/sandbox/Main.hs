@@ -61,6 +61,22 @@ extendLuaPath dir = stackNeutral $ do
   setfield (nth 2) "path"
   pop 1
 
+makePolynomial :: (LuaError e, Integral i) => [i] -> LuaE e ()
+makePolynomial coeff = ensureStackDiff 1 $ do
+  polynomial <- require "polynomial"
+  t <- getfield polynomial "make"
+  unless (t == TypeFunction) $ throwTypeMismatchError "function" top
+  remove 1
+
+  newtable
+  p <- gettop
+
+  flip mapM_ (zip coeff [1..]) $ \(a, k) -> do
+    pushinteger (fromIntegral a)
+    rawseti p k
+
+  call 1 1
+
 main :: IO ()
 main = do
   luaSrc <- Paths_lua_bigint.getDataFileName "lua"
@@ -69,25 +85,7 @@ main = do
     openlibs
     extendLuaPath luaSrc
 
-    p <- require "polynomial"
-
-    newtable
-    a <- gettop
-
-    pushinteger 7
-    rawseti a 1
-
-    pushinteger 0
-    rawseti a 2
-
-    pushinteger 1
-    rawseti a 3
-
-    t <- getfield p "make"
-    unless (t == TypeFunction) $ throwTypeMismatchError "function" top
-    rotate top 2
-    call 1 1
-
+    makePolynomial ([7, 0, 9] :: [Int])
     s <- BSUTF8.toString <$> tostring' top
 
     liftIO $ putStrLn s
