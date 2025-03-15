@@ -1,0 +1,19 @@
+name: lua-bigint
+version: 0.1.0.0
+
+dependencies:
+  - base >= 4.19 && < 5
+
+ghc-options: -Wall -Werror
+
+default-extensions:
+  - LambdaCase
+  - DuplicateRecordFields
+  - OverloadedStrings
+  - FlexibleContexts
+  - GADTs
+
+executables:
+  lua-bigint:
+    source-dirs: src
+    main: Main.hs
