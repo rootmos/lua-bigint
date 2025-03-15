@@ -1,7 +1,7 @@
-run build test clean: lua-bigint.cabal
+run build clean: lua-bigint.cabal
 	stack $@
 
 lua-bigint.cabal: package.yaml
 	hpack
 
-.PHONY: run build test clean
+.PHONY: run build clean

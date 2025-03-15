@@ -1,4 +1,4 @@
-module MySpec where
+module LuaBigIntSpec where
 
 import Test.Hspec
 import Test.QuickCheck
