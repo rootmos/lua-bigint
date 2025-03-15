@@ -2,9 +2,21 @@ local M = {
     space = " ",
 }
 
+function M.make(p)
+    local q = {
+        o = p.o or 0,
+        n = p.n or #p,
+        v = p.v
+    }
+    for i = 1,q.n do
+        q[i] = p[i]
+    end
+    return q
+end
+
 function M.tostring(p)
     local s = ""
-    local v = p.v or "x"
+    local v <const> = p.v or "x"
     for i = 1, p.n do
         local k = p[i]
         if k and k ~= 0 then

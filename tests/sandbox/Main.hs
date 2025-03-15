@@ -77,11 +77,16 @@ main = do
     pushinteger 7
     rawseti a 1
 
+    pushinteger 0
+    rawseti a 2
+
     pushinteger 1
     rawseti a 3
 
-    pushinteger 3
-    setfield a "n"
+    t <- getfield p "make"
+    unless (t == TypeFunction) $ throwTypeMismatchError "function" top
+    rotate top 2
+    call 1 1
 
     t <- getfield p "tostring"
     unless (t == TypeFunction) $ throwTypeMismatchError "function" top
