@@ -16,13 +16,14 @@ data-files:
     lua/sandbox.lua
     lua/sketch.lua
 
-executable lua-bigint
+executable sandbox
   main-is: Main.hs
   other-modules:
-      LuaBigIntSpec
+      LuaUtils
       Paths_lua_bigint
   hs-source-dirs:
       src
+      sandbox
   default-extensions:
       DuplicateRecordFields
       FlexibleContexts
@@ -42,13 +43,15 @@ executable lua-bigint
     , utf8-string >=1.0.2 && <2
   default-language: Haskell2010
 
-executable sandbox
+executable specs
   main-is: Main.hs
   other-modules:
-      Utils
+      LuaUtils
+      PolynomialSpec
       Paths_lua_bigint
   hs-source-dirs:
-      sandbox
+      src
+      specs
   default-extensions:
       DuplicateRecordFields
       FlexibleContexts

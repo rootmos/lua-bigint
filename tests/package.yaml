@@ -25,9 +25,13 @@ data-files:
   - lua/**/*.lua
 
 executables:
-  lua-bigint:
-    source-dirs: src
+  specs:
+    source-dirs:
+      - src
+      - specs
     main: Main.hs
   sandbox:
-    source-dirs: sandbox
+    source-dirs:
+      - src
+      - sandbox
     main: Main.hs
