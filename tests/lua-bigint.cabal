@@ -30,6 +30,7 @@ executable sandbox
       GADTs
       LambdaCase
       OverloadedStrings
+      RankNTypes
       ScopedTypeVariables
       TypeApplications
   ghc-options: -Wall -Werror -fno-warn-name-shadowing
@@ -58,6 +59,7 @@ executable specs
       GADTs
       LambdaCase
       OverloadedStrings
+      RankNTypes
       ScopedTypeVariables
       TypeApplications
   ghc-options: -Wall -Werror -fno-warn-name-shadowing

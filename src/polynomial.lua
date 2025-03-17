@@ -38,7 +38,7 @@ function M.make(p)
     }
 
     for i = 1,q.n do
-        q[i] = p[i]
+        q[i] = p[i] or 0
     end
 
     -- TODO: cleanup o

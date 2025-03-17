@@ -1,10 +1,12 @@
 module PolynomialSpec where
 
-import Control.Monad ( unless )
+import Control.Monad ( unless, when )
 import Control.Monad.IO.Class ( MonadIO )
 import System.Environment ( lookupEnv )
+import Text.Printf
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.UTF8 as BSUTF8
 
 import Test.Hspec
 --import Test.QuickCheck
@@ -39,24 +41,33 @@ doRun ls = liftIO $ HsLua.run @HsLua.Exception $ stackNeutral $ do
   pop 1
   return a
 
-makePolynomial :: (LuaError e, Integral i) => [i] -> LuaE e ()
-makePolynomial coeff = ensureStackDiff 1 $ do
+data Polynomial = P { coefficients :: [Int]
+                    , offset :: Int
+                    }
+                  deriving ( Show, Eq )
+
+makePolynomial :: LuaError e => Polynomial -> LuaE e ()
+makePolynomial p = ensureStackDiff 1 $ do
   polynomial <- require "polynomial"
   t <- getfield polynomial "make"
   unless (t == TypeFunction) $ throwTypeMismatchError "function" top
   remove 1
 
   newtable
-  p <- gettop
+  t <- gettop
 
-  flip mapM_ (zip coeff [1..]) $ \(a, k) -> do
+  flip mapM_ (zip (coefficients p) [1..]) $ \(a, k) -> do
     pushinteger (fromIntegral a)
-    rawseti p k
+    rawseti t k
+
+  when (offset p /= 0) $ stackNeutral $ do
+    pushinteger (fromIntegral $ offset p)
+    setfield t "o"
 
   call 1 1
 
-withPolynomial :: (Peekable a, MonadIO m, Integral i)
-               => [ (Name, [i]) ] -> [ BS.ByteString ] -> m a
+withPolynomial :: (Peekable a, MonadIO m)
+               => [ (Name, Polynomial) ] -> [ BS.ByteString ] -> m a
 withPolynomial ps ls = liftIO $ HsLua.run @HsLua.Exception $ stackNeutral $ do
   prepare
 
@@ -73,6 +84,18 @@ withPolynomial ps ls = liftIO $ HsLua.run @HsLua.Exception $ stackNeutral $ do
   pop 1
   return a
 
+
+inspectPolynomial :: (forall a. (Eq a, Show a, Peekable a) => BS.ByteString -> a -> IO ()) -> String -> Polynomial -> SpecWith ()
+inspectPolynomial shouldEvaluateTo name p = context (show p) $ do
+  it "should have the correct type" $ do
+    (BSUTF8.fromString $ printf "P.is_polynomial(%s)" name) `shouldEvaluateTo` True
+  it "should have the correct coefficients" $ do
+    (BSUTF8.fromString $ printf "%s" name) `shouldEvaluateTo` (coefficients p)
+  it "should have the correct order" $
+    (BSUTF8.fromString $ printf "%s.n" name) `shouldEvaluateTo` (length $ coefficients p)
+  it "should have the correct offset" $
+    (BSUTF8.fromString $ printf "%s.o" name) `shouldEvaluateTo` (offset p)
+
 spec :: Spec
 spec = do
   describe "polynomial.lua" $ do
@@ -85,28 +108,25 @@ spec = do
 
     describe "make" $ do
       describe "polynomials from inside Lua" $ do
-        let shouldEvaluateTo expr res =
-              doRun [ "p = P.make{7,0,9}", "return " <> expr ] >>= flip shouldBe res
-        it "should have the correct type" $ do
-          "P.is_polynomial(p)" `shouldEvaluateTo` True
-        it "should have the correct coefficients" $ do
-          "p" `shouldEvaluateTo` ([7, 0, 9] :: [Int])
-        it "should have the correct order" $
-          "p.n" `shouldEvaluateTo` (3 :: Int)
-        it "should have the correct offset" $
-          "p.o" `shouldEvaluateTo` (0 :: Int)
+        let shouldEvaluateTo (name :: String) (make :: String) expr res =
+              doRun [ (BSUTF8.fromString $ printf "%s = P.make%s" name make), "return " <> expr ] >>= flip shouldBe res
+            testCase make = inspectPolynomial (shouldEvaluateTo "p" make) "p"
+
+        testCase "{}" (P [] 0)
+        testCase "{1}" (P [1] 0)
+        testCase "{7,0,9}" (P [7,0,9] 0)
+        testCase "{10,11,o=1}" (P [10,11] 1)
+        testCase "{12,nil,13,n=3}" (P [12,0,13] 0)
 
       describe "polynomials from Haskell" $ do
-        let shouldEvaluateTo expr res =
-              withPolynomial [ ("p", [ 7, 0, 9 ] :: [Int]) ] [ "return " <> expr ] >>= flip shouldBe res
-        it "should have the correct type" $
-          "P.is_polynomial(p)" `shouldEvaluateTo` True
-        it "should have the correct coefficients" $ do
-          "p" `shouldEvaluateTo` ([7, 0, 9] :: [Int])
-        it "should have the correct order" $
-          "p.n" `shouldEvaluateTo` (3 :: Int)
-        it "should have the correct offset" $
-          "p.o" `shouldEvaluateTo` (0 :: Int)
+        let shouldEvaluateTo name p expr res =
+              withPolynomial [ (name, p) ] [ "return " <> expr ] >>= flip shouldBe res
+            testCase p = inspectPolynomial (shouldEvaluateTo "p" p) "p" p
+
+        testCase (P [] 0)
+        testCase (P [1] 0)
+        testCase (P [7,0,9] 0)
+        testCase (P [10,11] 1)
 
     describe "add" $ do
       describe "polynomials from inside Lua" $ do

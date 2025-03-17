@@ -18,6 +18,7 @@ default-extensions:
   - GADTs
   - LambdaCase
   - OverloadedStrings
+  - RankNTypes
   - ScopedTypeVariables
   - TypeApplications
 
