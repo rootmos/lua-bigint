@@ -37,24 +37,23 @@ function M.make(p)
         v = p.v
     }
 
+    local j = 1
     for i = 1,q.n do
-        q[i] = p[i] or 0
+        if j == 1 then
+            local k = p[i]
+            if k == nil or k == 0 then
+                q.o = q.o + 1
+                q.n = q.n - 1
+            else
+                q[j] = k or 0
+                j = j + 1
+            end
+        else
+            q[j] = p[i] or 0
+            j = j + 1
+        end
+
     end
-
-    -- TODO: cleanup o
-    --for i = 1,q.n do
-        --local k = p[i]
-        --if k == 0 or k == nil then
-            --q = 
-    --end
-
-    --for i = 1,q.n do
-        --local k = p[i]
-        --if k == 0 or k == nil then
-    --else
-            
-        --q[i] = 
-    --end
 
     return setmetatable(q, __mt)
 end

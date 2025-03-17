@@ -109,7 +109,8 @@ spec = do
       describe "polynomials from inside Lua" $ do
         let shouldEvaluateTo (name :: String) (make :: String) expr res =
               doRun [ (printf "%s = %s" name make), "return " <> expr ] >>= flip shouldBe res
-            testCase make expect = inspectPolynomial (shouldEvaluateTo "p" make) "p" expect
+            testCase make expect = context ("p := " ++ make) $ do
+              inspectPolynomial (shouldEvaluateTo "p" make) "p" expect
 
         testCase "P.make{}" (P [] 0)
         testCase "P.make{1}" (P [1] 0)
@@ -117,15 +118,28 @@ spec = do
         testCase "P.make{10,11,o=1}" (P [10,11] 1)
         testCase "P.make{12,nil,13,n=3}" (P [12,0,13] 0)
 
+        testCase "P.make{0,1}" (P [1] 1)
+        testCase "P.make{0,0,1}" (P [1] 2)
+        testCase "P.make{nil,1,n=2}" (P [1] 1)
+        testCase "P.make{nil,nil,1,n=3}" (P [1] 2)
+        testCase "P.make{0,0,1,0,2}" (P [1,0,2] 2)
+        testCase "P.make{nil,nil,1,0,2,n=5}" (P [1,0,2] 2)
+
       describe "polynomials from Haskell" $ do
         let shouldEvaluateTo name p expr res =
               withPolynomial [ (name, p) ] [ "return " <> expr ] >>= flip shouldBe res
-            testCase p = inspectPolynomial (shouldEvaluateTo "p" p) "p" p
+            testCase2 p expect = context ("p := " ++ show p) $ do
+              inspectPolynomial (shouldEvaluateTo "p" p) "p" expect
+            testCase p = testCase2 p p
 
         testCase (P [] 0)
         testCase (P [1] 0)
         testCase (P [7,0,9] 0)
         testCase (P [10,11] 1)
+
+        testCase2 (P [0,1] 0) (P [1] 1)
+        testCase2 (P [0,0,1] 0) (P [1] 2)
+        testCase2 (P [0,0,1,0,2] 0) (P [1,0,2] 2)
 
     describe "add" $ do
       describe "polynomials from inside Lua" $ do
@@ -140,6 +154,7 @@ spec = do
         testCase "P.make{1,2}" "P.make{3,0,4}" (P [4,2,4] 0)
         testCase "P.make{1,2}" "P.make{3, o=2}" (P [1,2,3] 0)
         testCase "P.make{1,2,o=1}" "P.make{3, o=2}" (P [1,5] 1)
+        testCase "P.make{0,1,2}" "P.make{0,0,3}" (P [1,5] 1)
 
       describe "polynomials from Haskell" $ do
         let shouldEvaluateTo (name :: String) op1 op2 expr res =
