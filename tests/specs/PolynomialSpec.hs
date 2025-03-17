@@ -5,7 +5,7 @@ import Control.Monad.IO.Class ( MonadIO )
 import System.Environment ( lookupEnv )
 import Text.Printf
 
-import qualified Data.ByteString as BS
+--import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BSUTF8
 
 import Test.Hspec
@@ -30,10 +30,10 @@ prepare = stackNeutral $ do
     _ <- require "polynomial"
     setglobal "P"
 
-doRun :: (Peekable a, MonadIO m) => [BS.ByteString] -> m a
+doRun :: (Peekable a, MonadIO m) => [ String ] -> m a
 doRun ls = liftIO $ HsLua.run @HsLua.Exception $ stackNeutral $ do
   prepare
-  flip mapM_ ls $ \l -> dostring l >>= \case
+  flip mapM_ ls $ \l -> dostring (BSUTF8.fromString l) >>= \case
     OK -> return ()
     ErrRun -> throwErrorAsException
     _ -> undefined
@@ -67,7 +67,7 @@ makePolynomial p = ensureStackDiff 1 $ do
   call 1 1
 
 withPolynomial :: (Peekable a, MonadIO m)
-               => [ (Name, Polynomial) ] -> [ BS.ByteString ] -> m a
+               => [ (Name, Polynomial) ] -> [ String ] -> m a
 withPolynomial ps ls = liftIO $ HsLua.run @HsLua.Exception $ stackNeutral $ do
   prepare
 
@@ -75,7 +75,7 @@ withPolynomial ps ls = liftIO $ HsLua.run @HsLua.Exception $ stackNeutral $ do
     makePolynomial p
     setglobal n
 
-  flip mapM_ ls $ \l -> dostring l >>= \case
+  flip mapM_ ls $ \l -> dostring (BSUTF8.fromString l) >>= \case
     OK -> return ()
     ErrRun -> throwErrorAsException
     _ -> undefined
@@ -84,17 +84,16 @@ withPolynomial ps ls = liftIO $ HsLua.run @HsLua.Exception $ stackNeutral $ do
   pop 1
   return a
 
-
-inspectPolynomial :: (forall a. (Eq a, Show a, Peekable a) => BS.ByteString -> a -> IO ()) -> String -> Polynomial -> SpecWith ()
-inspectPolynomial shouldEvaluateTo name p = context (show p) $ do
+inspectPolynomial :: (forall a. (Eq a, Show a, Peekable a) => String -> a -> IO ()) -> String -> Polynomial -> SpecWith ()
+inspectPolynomial shouldEvaluateTo name p = context (printf "%s == %s" name (show p)) $ do
   it "should have the correct type" $ do
-    (BSUTF8.fromString $ printf "P.is_polynomial(%s)" name) `shouldEvaluateTo` True
+    (printf "P.is_polynomial(%s)" name) `shouldEvaluateTo` True
   it "should have the correct coefficients" $ do
-    (BSUTF8.fromString $ printf "%s" name) `shouldEvaluateTo` (coefficients p)
+    (printf "%s" name) `shouldEvaluateTo` (coefficients p)
   it "should have the correct order" $
-    (BSUTF8.fromString $ printf "%s.n" name) `shouldEvaluateTo` (length $ coefficients p)
+    (printf "%s.n" name) `shouldEvaluateTo` (length $ coefficients p)
   it "should have the correct offset" $
-    (BSUTF8.fromString $ printf "%s.o" name) `shouldEvaluateTo` (offset p)
+    (printf "%s.o" name) `shouldEvaluateTo` (offset p)
 
 spec :: Spec
 spec = do
@@ -109,14 +108,14 @@ spec = do
     describe "make" $ do
       describe "polynomials from inside Lua" $ do
         let shouldEvaluateTo (name :: String) (make :: String) expr res =
-              doRun [ (BSUTF8.fromString $ printf "%s = P.make%s" name make), "return " <> expr ] >>= flip shouldBe res
-            testCase make = inspectPolynomial (shouldEvaluateTo "p" make) "p"
+              doRun [ (printf "%s = %s" name make), "return " <> expr ] >>= flip shouldBe res
+            testCase make expect = inspectPolynomial (shouldEvaluateTo "p" make) "p" expect
 
-        testCase "{}" (P [] 0)
-        testCase "{1}" (P [1] 0)
-        testCase "{7,0,9}" (P [7,0,9] 0)
-        testCase "{10,11,o=1}" (P [10,11] 1)
-        testCase "{12,nil,13,n=3}" (P [12,0,13] 0)
+        testCase "P.make{}" (P [] 0)
+        testCase "P.make{1}" (P [1] 0)
+        testCase "P.make{7,0,9}" (P [7,0,9] 0)
+        testCase "P.make{10,11,o=1}" (P [10,11] 1)
+        testCase "P.make{12,nil,13,n=3}" (P [12,0,13] 0)
 
       describe "polynomials from Haskell" $ do
         let shouldEvaluateTo name p expr res =
@@ -130,16 +129,30 @@ spec = do
 
     describe "add" $ do
       describe "polynomials from inside Lua" $ do
-        let shouldEvaluateTo expr res =
-              doRun [ "sum = P.make{1,2} + P.make{3,0,4}", "return " <> expr ] >>= flip shouldBe res
-        it "should have the correct type" $ do
-          "P.is_polynomial(sum)" `shouldEvaluateTo` True
-        it "should have the correct coefficients" $ do
-          "sum" `shouldEvaluateTo` ([4,2,4] :: [Int])
-        it "should have the correct order" $ do
-          "sum.n" `shouldEvaluateTo` (3 :: Int)
-        it "should have the correct offset" $ do
-          "sum.o" `shouldEvaluateTo` (0 :: Int)
+        let shouldEvaluateTo (op1 :: String) (op2 :: String) expr res =
+              doRun [ printf "sum = %s + %s" op1 op2, "return " <> expr ] >>= flip shouldBe res
+            testCase op1 op2 expect = context (printf "sum := %s + %s" op1 op2) $ do
+              inspectPolynomial (shouldEvaluateTo op1 op2) "sum" expect
+
+        testCase "P.make{}" "P.make{}" (P [] 0)
+        testCase "P.make{1}" "P.make{}" (P [1] 0)
+        testCase "P.make{}" "P.make{2}" (P [2] 0)
+        testCase "P.make{1,2}" "P.make{3,0,4}" (P [4,2,4] 0)
+        testCase "P.make{1,2}" "P.make{3, o=2}" (P [1,2,3] 0)
+        testCase "P.make{1,2,o=1}" "P.make{3, o=2}" (P [1,5] 1)
+
+      describe "polynomials from Haskell" $ do
+        let shouldEvaluateTo (name :: String) op1 op2 expr res =
+              withPolynomial [ ("op1", op1), ("op2", op2) ] [ printf "%s = op1 + op2" name, "return " <> expr ] >>= flip shouldBe res
+            testCase op1 op2 expected = context (printf "sum := %s + %s" (show op1) (show op2)) $ do
+              inspectPolynomial (shouldEvaluateTo "sum" op1 op2) "sum" expected
+
+        testCase (P [] 0) (P [] 0) (P [] 0)
+        testCase (P [1] 0) (P [] 0) (P [1] 0)
+        testCase (P [] 0) (P [1] 0) (P [1] 0)
+        testCase (P [1,2] 0) (P [3,0,4] 0) (P [4,2,4] 0)
+        testCase (P [1,2] 0) (P [3] 2) (P [1,2,3] 0)
+        testCase (P [1,2] 1) (P [3] 2) (P [1,5] 1)
 
     --it "should have an identity element" $ property $ \(a :: Int) ->
         --a + 0 `shouldBe` a

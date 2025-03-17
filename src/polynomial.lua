@@ -79,7 +79,7 @@ function M.add(a, b)
         end
 
         if k ~= 0 then
-            sum[i+1] = k
+            sum[i-o+1] = k
         end
     end
 
