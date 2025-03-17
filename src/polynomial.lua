@@ -27,6 +27,40 @@ function M.tostring(p)
     return string.format("[%s]%s", v, M.space) .. s
 end
 
+local __mt <const> = {
+    __tostring = M.tostring,
+    __add = M.add,
+}
+
+function M.make(p)
+    local q = {
+        o = p.o or 0,
+        n = p.n or #p,
+        v = p.v
+    }
+
+    for i = 1,q.n do
+        q[i] = p[i]
+    end
+
+    -- TODO: cleanup o
+    --for i = 1,q.n do
+        --local k = p[i]
+        --if k == 0 or k == nil then
+            --q = 
+    --end
+
+    --for i = 1,q.n do
+        --local k = p[i]
+        --if k == 0 or k == nil then
+    --else
+            
+        --q[i] = 
+    --end
+
+    return setmetatable(q, __mt)
+end
+
 function M.add(a, b)
     local ao <const>, bo <const> = a.o, b.o
     local o <const>, m <const> = math.min(ao, bo), math.max(ao+a.n, bo+b.n)
@@ -51,26 +85,7 @@ function M.add(a, b)
         end
     end
 
-    return sum
-end
-
-local __mt <const> = {
-    __tostring = M.tostring,
-    __add = M.add,
-}
-
-function M.make(p)
-    local q = {
-        o = p.o or 0,
-        n = p.n or #p,
-        v = p.v
-    }
-
-    for i = 1,q.n do
-        q[i] = p[i]
-    end
-
-    return setmetatable(q, __mt)
+    return setmetatable(sum, __mt)
 end
 
 function M.is_polynomial(x)
