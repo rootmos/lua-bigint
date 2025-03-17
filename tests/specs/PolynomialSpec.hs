@@ -31,9 +31,10 @@ prepare = stackNeutral $ do
 doRun :: (Peekable a, MonadIO m) => [BS.ByteString] -> m a
 doRun ls = liftIO $ HsLua.run @HsLua.Exception $ stackNeutral $ do
   prepare
-  flip mapM_ ls $ \l -> do
-    OK <- dostring l
-    return ()
+  flip mapM_ ls $ \l -> dostring l >>= \case
+    OK -> return ()
+    ErrRun -> throwErrorAsException
+    _ -> undefined
   a <- peek top
   pop 1
   return a
@@ -63,9 +64,10 @@ withPolynomial ps ls = liftIO $ HsLua.run @HsLua.Exception $ stackNeutral $ do
     makePolynomial p
     setglobal n
 
-  flip mapM_ ls $ \l -> do
-    OK <- dostring l
-    return ()
+  flip mapM_ ls $ \l -> dostring l >>= \case
+    OK -> return ()
+    ErrRun -> throwErrorAsException
+    _ -> undefined
 
   a <- peek top
   pop 1
@@ -83,14 +85,16 @@ spec = do
 
     describe "make" $ do
       describe "polynomials from inside Lua" $ do
+        let shouldEvaluateTo expr res =
+              doRun [ "p = P.make{7,0,9}", "return " <> expr ] >>= flip shouldBe res
         it "should have the correct type" $ do
-          doRun [ "return P.is_polynomial(P.make{7,0,9})" ] >>= flip shouldBe True
+          "P.is_polynomial(p)" `shouldEvaluateTo` True
         it "should have the correct coefficients" $ do
-          doRun [ "return P.make{7,0,9}" ] >>= flip shouldBe ([7, 0, 9] :: [Int])
+          "p" `shouldEvaluateTo` ([7, 0, 9] :: [Int])
         it "should have the correct order" $
-          doRun [ "return P.make{7,0,9}.n" ] >>= flip shouldBe (3 :: Int)
-        it "should have the default offset" $
-          doRun [ "return P.make{7,0,9}.o" ] >>= flip shouldBe (0 :: Int)
+          "p.n" `shouldEvaluateTo` (3 :: Int)
+        it "should have the correct offset" $
+          "p.o" `shouldEvaluateTo` (0 :: Int)
 
       describe "polynomials from Haskell" $ do
         let shouldEvaluateTo expr res =
@@ -101,15 +105,21 @@ spec = do
           "p" `shouldEvaluateTo` ([7, 0, 9] :: [Int])
         it "should have the correct order" $
           "p.n" `shouldEvaluateTo` (3 :: Int)
-        it "should have the default offset" $
+        it "should have the correct offset" $
           "p.o" `shouldEvaluateTo` (0 :: Int)
 
     describe "add" $ do
       describe "polynomials from inside Lua" $ do
+        let shouldEvaluateTo expr res =
+              doRun [ "sum = P.make{1,2} + P.make{3,0,4}", "return " <> expr ] >>= flip shouldBe res
         it "should have the correct type" $ do
-          doRun [ "sum = P.make{1,2,3} + P.make{4, 0, 5}", "return P.is_polynomial(sum)" ] >>= flip shouldBe True
+          "P.is_polynomial(sum)" `shouldEvaluateTo` True
         it "should have the correct coefficients" $ do
-          doRun [ "sum = P.make{1,2,3} + P.make{4, 0, 5}", "return sum" ] >>= flip shouldBe ([5,2,8] :: [Int])
+          "sum" `shouldEvaluateTo` ([4,2,4] :: [Int])
+        it "should have the correct order" $ do
+          "sum.n" `shouldEvaluateTo` (3 :: Int)
+        it "should have the correct offset" $ do
+          "sum.o" `shouldEvaluateTo` (0 :: Int)
 
     --it "should have an identity element" $ property $ \(a :: Int) ->
         --a + 0 `shouldBe` a

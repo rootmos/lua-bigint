@@ -2,6 +2,8 @@ local M = {
     space = " ",
 }
 
+local __mt <const> = {}
+
 function M.tostring(p)
     local s = ""
     local v <const> = p.v or "x"
@@ -26,11 +28,7 @@ function M.tostring(p)
 
     return string.format("[%s]%s", v, M.space) .. s
 end
-
-local __mt <const> = {
-    __tostring = M.tostring,
-    __add = M.add,
-}
+__mt.__tostring = M.tostring
 
 function M.make(p)
     local q = {
@@ -64,7 +62,7 @@ end
 function M.add(a, b)
     local ao <const>, bo <const> = a.o, b.o
     local o <const>, m <const> = math.min(ao, bo), math.max(ao+a.n, bo+b.n)
-    local n <const> = m - o + 1
+    local n <const> = m - o
 
     local sum = {o=o, n=n, v=a.v or b.v}
     for i = o, m do
@@ -81,12 +79,13 @@ function M.add(a, b)
         end
 
         if k ~= 0 then
-            sum[i] = k
+            sum[i+1] = k
         end
     end
 
     return setmetatable(sum, __mt)
 end
+__mt.__add = M.add
 
 function M.is_polynomial(x)
     return getmetatable(x) == __mt
