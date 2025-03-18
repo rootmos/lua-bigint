@@ -125,6 +125,9 @@ spec = do
         testCase "P.make{0,0,1,0,2}" (P [1,0,2] 2)
         testCase "P.make{nil,nil,1,0,2,n=5}" (P [1,0,2] 2)
 
+        -- TODO
+        -- testCase "P.make{1,0}" (P [1] 1)
+
       describe "polynomials from Haskell" $ do
         let shouldEvaluateTo name p expr res =
               withPolynomial [ (name, p) ] [ "return " <> expr ] >>= flip shouldBe res
@@ -168,6 +171,49 @@ spec = do
         testCase (P [1,2] 0) (P [3,0,4] 0) (P [4,2,4] 0)
         testCase (P [1,2] 0) (P [3] 2) (P [1,2,3] 0)
         testCase (P [1,2] 1) (P [3] 2) (P [1,5] 1)
+
+    describe "mul" $ do
+      describe "polynomials from inside Lua" $ do
+        let shouldEvaluateTo (op1 :: String) (op2 :: String) expr res =
+              doRun [ printf "prod = %s * %s" op1 op2, "return " <> expr ] >>= flip shouldBe res
+            testCase op1 op2 expect = context (printf "prod := %s + %s" op1 op2) $ do
+              inspectPolynomial (shouldEvaluateTo op1 op2) "prod" expect
+
+        testCase "P.make{}" "P.make{}" (P [] 0)
+        testCase "P.make{0}" "P.make{2,3}" (P [] 0)
+        testCase "P.make{2,3}" "P.make{0}" (P [] 0)
+
+        testCase "P.make{1}" "P.make{1}" (P [1] 0)
+        testCase "P.make{1}" "P.make{2,3}" (P [2,3] 0)
+        testCase "P.make{2,3}" "P.make{1}" (P [2,3] 0)
+
+        testCase "P.make{2}" "P.make{3}" (P [6] 0)
+        testCase "P.make{1,2}" "P.make{3,4}" (P [1*3, 1*4+2*3, 2*4] 0)
+
+        -- (x+2x^3)*(3x^2+4x^5) == x^3*(8x^5 + 4x^3 + 6x^2 + 3)
+        testCase "P.make{0,1,0,2}" "P.make{0,0,3,0,0,4}" (P [3, 0, 6, 4, 0, 8] 3)
+        testCase "P.make{1,0,2,o=1}" "P.make{3,0,0,4,o=2}" (P [3, 0, 6, 4, 0, 8] 3)
+
+      describe "polynomials from Haskell" $ do
+        let shouldEvaluateTo (name :: String) op1 op2 expr res =
+              withPolynomial [ ("op1", op1), ("op2", op2) ] [ printf "%s = op1 * op2" name, "return " <> expr ] >>= flip shouldBe res
+            testCase op1 op2 expected = context (printf "prod := %s * %s" (show op1) (show op2)) $ do
+              inspectPolynomial (shouldEvaluateTo "prod" op1 op2) "prod" expected
+
+        testCase (P [] 0) (P [] 0) (P [] 0)
+        testCase (P [0] 0) (P [2,3] 0) (P [] 0)
+        testCase (P [2,3] 0) (P [0] 0) (P [] 0)
+
+        testCase (P [1] 0) (P [1] 0) (P [1] 0)
+        testCase (P [1] 0) (P [2,3] 0) (P [2,3] 0)
+        testCase (P [2,3] 0) (P [1] 0) (P [2,3] 0)
+
+        testCase (P [2] 0) (P [3] 0) (P [6] 0)
+        testCase (P [1,2] 0) (P [3,4] 0) (P [1*3, 1*4+2*3, 2*4] 0)
+
+        -- (x+2x^3)*(3x^2+4x^5) == x^3*(8x^5 + 4x^3 + 6x^2 + 3)
+        testCase (P [0,1,0,2] 0) (P [0,0,3,0,0,4] 0) (P [3, 0, 6, 4, 0, 8] 3)
+        testCase (P [1,0,2] 1) (P [3,0,0,4] 2) (P [3, 0, 6, 4, 0, 8] 3)
 
     --it "should have an identity element" $ property $ \(a :: Int) ->
         --a + 0 `shouldBe` a

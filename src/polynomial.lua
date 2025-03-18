@@ -52,15 +52,17 @@ function M.make(p)
             q[j] = p[i] or 0
             j = j + 1
         end
-
     end
+
+    -- TODO trailing zeroes
 
     return setmetatable(q, __mt)
 end
 
 function M.add(a, b)
     local ao <const>, bo <const> = a.o, b.o
-    local o <const>, m <const> = math.min(ao, bo), math.max(ao+a.n, bo+b.n)
+    local an <const>, bn <const> = a.n, b.n
+    local o <const>, m <const> = math.min(ao, bo), math.max(ao+an, bo+bn)
     local n <const> = m - o
 
     local sum = {o=o, n=n, v=a.v or b.v}
@@ -85,6 +87,40 @@ function M.add(a, b)
     return setmetatable(sum, __mt)
 end
 __mt.__add = M.add
+
+function M.mul(a, b)
+    local ao <const>, bo <const> = a.o, b.o
+    local an <const>, bn <const> = a.n, b.n
+
+    if an == 0 or bn == 0 then
+        return M.make{}
+    end
+
+    -- a[i] ~ x^(i + ao - 1), 1 <= i <= a.n
+    -- min: o := 1 + ao - 1 + 1 + bo - 1
+    -- max: n := an + ao - 1 + bn + bo - 1 - o + 1
+
+    local o <const> = ao + bo
+    local n <const> = an + bn - 1
+
+    local prod = {o=o, n=n, v=a.v or b.v}
+    for i = 1, an do
+        local ai = a[i] or 0
+        -- TODO skip if ai == 0
+        for j = 1, bn do
+            local bj = b[j] or 0
+            -- TODO skip if bj == 0
+
+            -- (i + ao - 1) + (j + bo - 1) - o + 1
+            prod[i + j - 1] = (prod[i + j - 1] or 0) + ai*bj
+        end
+    end
+
+    -- TODO cleanup leading, trailing zeros
+
+    return setmetatable(prod, __mt)
+end
+__mt.__mul = M.mul
 
 function M.is_polynomial(x)
     return getmetatable(x) == __mt
