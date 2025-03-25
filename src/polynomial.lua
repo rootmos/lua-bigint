@@ -126,4 +126,8 @@ function M.is_polynomial(x)
     return getmetatable(x) == __mt
 end
 
-return M
+return setmetatable(M, {
+    __call = function(N, o)
+        return N.make(o)
+    end,
+})
