@@ -31,30 +31,58 @@ end
 __mt.__tostring = M.tostring
 
 function M.make(p)
+    local n <const> = p.n or #p
+
     local q = {
         o = p.o or 0,
-        n = p.n or #p,
         v = p.v
     }
 
-    local j = 1
-    for i = 1,q.n do
-        if j == 1 then
+    local i, j = 1, 1
+    while i <= n do
+        if j == 1 then -- strip leading zeroes/nils
             local k = p[i]
             if k == nil or k == 0 then
                 q.o = q.o + 1
-                q.n = q.n - 1
             else
-                q[j] = k or 0
+                q[j] = k
                 j = j + 1
             end
+            i = i + 1
         else
-            q[j] = p[i] or 0
-            j = j + 1
+            local k = p[i]
+            if k == nil or k == 0 then
+                local i0 = i + 1
+                while true do
+                    if i0 > n then -- trailing zeroes/nils
+                        break
+                    end
+
+                    k = p[i0]
+                    if (k or 0) ~= 0 then
+                        for _ = i,i0 do -- TODO make a "sparse" table?
+                            q[j] = 0
+                            j = j + 1
+                        end
+                        q[j - 1] = k
+                        break
+                    end
+
+                    i0 = i0 + 1
+                end
+                i = i0 + 1
+            else
+                q[j] = k
+                i = i + 1
+                j = j + 1
+            end
         end
     end
 
-    -- TODO trailing zeroes
+    if j == 1 then
+        q.o = 0
+    end
+    q.n = j - 1
 
     return setmetatable(q, __mt)
 end

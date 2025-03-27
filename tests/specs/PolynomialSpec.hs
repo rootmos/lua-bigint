@@ -125,8 +125,14 @@ spec = do
         testCase "P.make{0,0,1,0,2}" (P [1,0,2] 2)
         testCase "P.make{nil,nil,1,0,2,n=5}" (P [1,0,2] 2)
 
-        -- TODO
-        -- testCase "P.make{1,0}" (P [1] 1)
+        testCase "P.make{0}" (P [] 0)
+        testCase "P.make{0,0,0}" (P [] 0)
+        testCase "P.make{1,0}" (P [1] 0)
+        testCase "P.make{1,0,0}" (P [1] 0)
+
+        testCase "P.make{0,1,0}" (P [1] 1)
+        testCase "P.make{0,0,1,0,0}" (P [1] 2)
+        testCase "P.make{0,0,1,0,2,0,0,0}" (P [1,0,2] 2)
 
       describe "polynomials from Haskell" $ do
         let shouldEvaluateTo name p expr res =
@@ -143,6 +149,15 @@ spec = do
         testCase2 (P [0,1] 0) (P [1] 1)
         testCase2 (P [0,0,1] 0) (P [1] 2)
         testCase2 (P [0,0,1,0,2] 0) (P [1,0,2] 2)
+
+        testCase2 (P [0] 0) (P [] 0)
+        testCase2 (P [0,0,0] 0) (P [] 0)
+        testCase2 (P [1,0] 0) (P [1] 0)
+        testCase2 (P [1,0,0] 0) (P [1] 0)
+
+        testCase2 (P [0,1,0] 0) (P [1] 1)
+        testCase2 (P [0,0,1,0,0] 0) (P [1] 2)
+        testCase2 (P [0,0,1,0,2,0,0,0] 0) (P [1,0,2] 2)
 
     describe "add" $ do
       describe "polynomials from inside Lua" $ do
