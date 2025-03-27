@@ -8,6 +8,7 @@ name:           lua-bigint
 version:        0.1.0.0
 build-type:     Simple
 data-files:
+    lua/arbbase.lua
     lua/bint.lua
     lua/lua-bigint.lua
     lua/lua-bigint.test.lua
