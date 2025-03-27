@@ -43,7 +43,7 @@ local o_a = 1
 local o_b = 1
 local M = P{1,v="B"}
 
-function munch()
+local function munch()
     local sum = 0
     local pow = 1
     for j = 1,stencil.n do
@@ -54,93 +54,37 @@ function munch()
 end
 
 local i = 0
-print(string.format("\ni = %d", i))
-print(string.format("M = %s", M))
+while o_a <= #a do
+    print(string.format("\ni = %d", i))
+    print(string.format("M = %s", M))
 
--- assumption: stencil.n <= 2
-local q, r = do_divrem(munch(sum), B)
-b[o_b] = (b[o_b] or 0) + r
-b[o_b+1] = (b[o_b+1] or 0) + q
-b.n = b.n + 2
-print(b)
+    local q, r = do_divrem(munch(sum), B)
+    local d = carry_the_one(M*P.make{r, q, v="B"})
+    print(string.format("d = %s", d))
 
+    for j = 1,d.n do
+        local k = o_b + d.o + j - 1
+        b[k] = (b[k] or 0) + d[j]
+        b.n = math.max(b.n, k)
+    end
+    b = carry_the_one(b) -- TODO mutable
+    print(string.format("b = %s", b))
 
-local i = i + 1
-print(string.format("\ni = %d", i))
-M = M * stencil
-print(string.format("M = %s", M))
-o_a = o_a + stencil.n
-
-local q, r = do_divrem(munch(sum), B)
-local d = carry_the_one(M*P.make{r, q, v="B"})
-print(string.format("d = %s", d))
-for j = 1,d.n do
-    local k = o_b + d.o + j - 1
-    b[k] = (b[k] or 0) + d[j]
-    b.n = math.max(b.n, k)
+    i = i + 1
+    M = carry_the_one(M * stencil)
+    o_a = o_a + stencil.n
+    o_b = o_b + M.o
+    M.o = 0
 end
-b = carry_the_one(b)
-print(b)
 
-
-local i = i + 1
-print(string.format("\ni = %d", i))
-M = carry_the_one(M * stencil)
-assert(M.o == 1)
-o_b = o_b + M.o
-M.o = 0
-print(string.format("M = %s", M))
-o_a = o_a + stencil.n
-
-local q, r = do_divrem(munch(sum), B)
-local d = carry_the_one(M*P.make{r, q, v="B"})
-print(string.format("d = %s", d))
-for j = 1,d.n do
-    local k = o_b + d.o + j - 1
-    b[k] = (b[k] or 0) + d[j]
-    b.n = math.max(b.n, k)
+local alphabeth <const> = "0123456789abcdefghijklmnopqrstuvwxyz"
+local function render_ascii(p)
+    local s = ""
+    for i = (p.n or #p),1,-1 do
+        local k = p[i] + 1
+        s = s .. alphabeth:sub(k, k)
+    end
+    return s
 end
-b = carry_the_one(b)
-print(b)
 
-
-local i = i + 1
-print(string.format("\ni = %d", i))
-M = carry_the_one(M * stencil)
-o_b = o_b + M.o
-M.o = 0
-print(string.format("M = %s", M))
-o_a = o_a + stencil.n
-
-local q, r = do_divrem(munch(sum), B)
-local d = carry_the_one(M*P.make{r, q, v="B"})
-print(string.format("d = %s", d))
-for j = 1,d.n do
-    local k = o_b + d.o + j - 1
-    b[k] = (b[k] or 0) + d[j]
-    b.n = math.max(b.n, k)
-end
-b = carry_the_one(b)
-print(b)
-
-
-local i = i + 1
-print(string.format("\ni = %d", i))
-M = carry_the_one(M * stencil)
-o_b = o_b + M.o
-M.o = 0
-print(string.format("M = %s", M))
-o_a = o_a + stencil.n
-
-local q, r = do_divrem(munch(sum), B)
-local d = carry_the_one(M*P.make{r, q, v="B"})
-print(string.format("d = %s", d))
-for j = 1,d.n do
-    local k = o_b + d.o + j - 1
-    b[k] = (b[k] or 0) + d[j]
-    b.n = math.max(b.n, k)
-end
-b = carry_the_one(b)
-print(b)
-
-print(o_a + stencil.n <= #a)
+print(string.format("\n%s = 0x%s", render_ascii(a), render_ascii(b)))

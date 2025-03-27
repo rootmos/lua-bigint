@@ -8,12 +8,6 @@ local function do_divrem(a, b)
     print(string.format("%d divrem %d = (%d, %d)", a, b, divrem(a, b)))
 end
 
-local A = 10
-local B = 16
-
-local A2 = P.make{4, 6, v="B"}
-print(string.format("A^2 := %s", A2))
-
 local function carry_the_one(p)
     local p = p:clone()
     local i = 1
@@ -33,6 +27,15 @@ local function carry_the_one(p)
     p.n = i
     return p:clone() -- TODO: should call a mutable p:clean() method
 end
+
+local A = 10
+local B = 16
+
+local stencil = P.make{4, 6, v="B"}
+
+local A2 = P.make{4, 6, v="B"}
+print(string.format("A^2 := %s", A2))
+
 
 local A4 = carry_the_one(A2*A2)
 print(string.format("A^4 := %s", A4))
