@@ -2,7 +2,10 @@ local M = {
     space = " ",
 }
 
-local __mt <const> = {}
+local __fn <const> = {}
+local __mt <const> = {
+    __index = __fn,
+}
 
 function M.tostring(p)
     local s = ""
@@ -86,6 +89,8 @@ function M.make(p)
 
     return setmetatable(q, __mt)
 end
+
+__fn.clone = M.make
 
 function M.add(a, b)
     local ao <const>, bo <const> = a.o, b.o

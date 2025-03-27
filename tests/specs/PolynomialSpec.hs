@@ -159,6 +159,12 @@ spec = do
         testCase2 (P [0,0,1,0,0] 0) (P [1] 2)
         testCase2 (P [0,0,1,0,2,0,0,0] 0) (P [1,0,2] 2)
 
+    describe "clone" $ do
+      let shouldEvaluateTo expr res =
+            withPolynomial [ ("x", P [7] 0) ] [ "y = x:clone()", "y[1] = 9", "return " <> expr ] >>= flip shouldBe res
+      inspectPolynomial (shouldEvaluateTo ) "x" (P [7] 0)
+      inspectPolynomial (shouldEvaluateTo ) "y" (P [9] 0)
+
     describe "add" $ do
       describe "polynomials from inside Lua" $ do
         let shouldEvaluateTo (op1 :: String) (op2 :: String) expr res =
