@@ -1,5 +1,4 @@
 go() {
-    #./run -e sandbox
-    make -C tests
-    #lua go.lua
+    make -C tests && ./run -e sandbox
+    # lua go.lua
 }
