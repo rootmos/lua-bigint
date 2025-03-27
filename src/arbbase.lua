@@ -1,5 +1,24 @@
 local P = require"polynomial"
 
+local function be_decimal_string_to_le_digits_table(str)
+    local xs = {}
+    local n = #str
+    for i = 1,n do
+        local j = n - i + 1
+        local k = str:byte(j)
+        if 48 <= k and k <= 57 then
+            xs[i] = k - 48
+        elseif 97 <= k and k <= 122 then
+            xs[i] = k - 87
+        elseif 65 <= k and k <= 90 then
+            xs[i] = k - 55
+        else
+            error(string.format("unable to decode character: %s (at %d)", string.char(k), j))
+        end
+    end
+    return xs
+end
+
 local function divrem(a, b)
     return a//b, a%b
 end
@@ -32,7 +51,10 @@ local function carry_the_one(p)
     return p:clone() -- TODO: should call a mutable p:clean() method
 end
 
-local a = {0, 9, 8, 7, 6, 5, 4, 3, 2, 1, v="A"}
+--local a = {0, 9, 8, 7, 6, 5, 4, 3, 2, 1, v="A"} -- 0x499602d2
+--local a = be_decimal_string_to_le_digits_table("1234567890") -- 0x499602d2
+--local a = be_decimal_string_to_le_digits_table("123") -- 0x7b
+local a = be_decimal_string_to_le_digits_table("10000000000000000000000000000000000000000000000000000000000000000000000000000000001") -- 0x15159af8044462379881065d41ad19c19af0eeb576360c36400000000000000000001
 local b = P.make{v="B"}
 
 local stencil = P.make{4, 6, v="B"}
@@ -47,7 +69,7 @@ local function munch()
     local sum = 0
     local pow = 1
     for j = 1,stencil.n do
-        sum = sum + a[o_a + j - 1]*pow
+        sum = sum + (a[o_a + j - 1] or 0)*pow
         pow = pow * A
     end
     return sum
