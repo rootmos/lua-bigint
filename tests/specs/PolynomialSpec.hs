@@ -2,6 +2,8 @@ module PolynomialSpec where
 
 import Control.Monad ( unless, when )
 import Control.Monad.IO.Class ( MonadIO )
+import Data.List ( dropWhileEnd )
+import Data.Maybe ( fromMaybe )
 import System.Environment ( lookupEnv )
 import Text.Printf
 
@@ -9,9 +11,10 @@ import Text.Printf
 import qualified Data.ByteString.UTF8 as BSUTF8
 
 import Test.Hspec
---import Test.QuickCheck
+import Test.QuickCheck
 
-import HsLua
+import HsLua hiding ( property, cleanup )
+import HsLua.Marshalling.Peekers
 
 import LuaUtils
 import Paths_lua_bigint
@@ -30,9 +33,11 @@ prepare = stackNeutral $ do
     _ <- require "polynomial"
     setglobal "P"
 
+runLua :: MonadIO m => LuaE HsLua.Exception a -> m a
+runLua m = liftIO . HsLua.run $ prepare >> m
+
 doRun :: (Peekable a, MonadIO m) => [ String ] -> m a
-doRun ls = liftIO $ HsLua.run @HsLua.Exception $ stackNeutral $ do
-  prepare
+doRun ls = runLua $ stackNeutral $ do
   flip mapM_ ls $ \l -> dostring (BSUTF8.fromString l) >>= \case
     OK -> return ()
     ErrRun -> throwErrorAsException
@@ -46,8 +51,19 @@ data Polynomial = P { coefficients :: [Int]
                     }
                   deriving ( Show, Eq )
 
-makePolynomial :: LuaError e => Polynomial -> LuaE e ()
-makePolynomial p = ensureStackDiff 1 $ do
+instance Arbitrary Polynomial where
+  arbitrary = P <$> arbitrary <*> (getNonNegative <$> arbitrary)
+
+instance Peekable Polynomial where
+  safepeek idx = retrieving "Polynomial" $ do
+    n <- peekFieldRaw peekIntegral "n" idx
+    as <- flip mapM [1..n] $ \i -> do
+      peekIndexRaw i (\idx -> fromMaybe 0 <$> peekNilOr peekIntegral idx) idx
+    o <- peekFieldRaw peekIntegral "o" idx
+    return $ P as o
+
+pushPolynomial :: LuaError e => Polynomial -> LuaE e ()
+pushPolynomial p = ensureStackDiff 1 $ do
   polynomial <- require "polynomial"
   t <- getfield polynomial "make"
   unless (t == TypeFunction) $ throwTypeMismatchError "function" top
@@ -56,7 +72,7 @@ makePolynomial p = ensureStackDiff 1 $ do
   newtable
   t <- gettop
 
-  flip mapM_ (zip (coefficients p) [1..]) $ \(a, k) -> do
+  flip mapM_ (zip (coefficients p) [1..]) $ \(a, k) -> stackNeutral $ do
     pushinteger (fromIntegral a)
     rawseti t k
 
@@ -68,11 +84,9 @@ makePolynomial p = ensureStackDiff 1 $ do
 
 withPolynomial :: (Peekable a, MonadIO m)
                => [ (Name, Polynomial) ] -> [ String ] -> m a
-withPolynomial ps ls = liftIO $ HsLua.run @HsLua.Exception $ stackNeutral $ do
-  prepare
-
+withPolynomial ps ls = runLua $ stackNeutral $ do
   flip mapM_ ps $ \(n, p) -> stackNeutral $ do
-    makePolynomial p
+    pushPolynomial p
     setglobal n
 
   flip mapM_ ls $ \l -> dostring (BSUTF8.fromString l) >>= \case
@@ -95,22 +109,30 @@ inspectPolynomial shouldEvaluateTo name p = context (printf "%s == %s" name (sho
   it "should have the correct offset" $
     (printf "%s.o" name) `shouldEvaluateTo` (offset p)
 
+cleanup :: Polynomial -> Polynomial
+cleanup = zo . stripLeadingZeroes . stripTrailingZeroes
+  where stripTrailingZeroes (P as o) = P (dropWhileEnd (== 0) as) o
+        stripLeadingZeroes (P [] o) = P [] o
+        stripLeadingZeroes (P (0:as) o) = stripLeadingZeroes $ P as (succ o)
+        stripLeadingZeroes (P as@(_:_) o) = P as o
+        zo (P [] _) = P [] 0
+        zo p@(P _ _) = p
+
 spec :: Spec
 spec = do
   describe "polynomial.lua" $ do
     it "should prepare properly" $ do
-      t <- liftIO $ HsLua.run @HsLua.Exception $ do
-        prepare
+      t <- runLua $ do
         OK <- dostring "return type(P)"
         peek @String top
       t `shouldBe` "table"
 
     describe "make" $ do
       describe "polynomials from inside Lua" $ do
-        let shouldEvaluateTo (name :: String) (make :: String) expr res =
-              doRun [ (printf "%s = %s" name make), "return " <> expr ] >>= flip shouldBe res
+        let shouldEvaluateTo make expr res =
+              doRun [ "p = " <> make, "return " <> expr ] >>= flip shouldBe res
             testCase make expect = context ("p := " ++ make) $ do
-              inspectPolynomial (shouldEvaluateTo "p" make) "p" expect
+              inspectPolynomial (shouldEvaluateTo make) "p" expect
 
         testCase "P.make{}" (P [] 0)
         testCase "P.make{1}" (P [1] 0)
@@ -159,11 +181,47 @@ spec = do
         testCase2 (P [0,0,1,0,0] 0) (P [1] 2)
         testCase2 (P [0,0,1,0,2,0,0,0] 0) (P [1,0,2] 2)
 
+    describe "Peekable Polynomial" $ do
+      describe "polynomials from inside Lua" $ do
+        let testCase make expect = it ("should peek " ++ make) $ do
+              doRun [ "return " <> make ] >>= flip shouldBe expect
+
+        testCase "P.make{}" (P [] 0)
+        testCase "P.make{1}" (P [1] 0)
+        testCase "P.make{7,0,9}" (P [7,0,9] 0)
+        testCase "P.make{10,11,o=1}" (P [10,11] 1)
+        testCase "P.make{12,nil,13,n=3}" (P [12,0,13] 0)
+
+        testCase "P.make{0,1}" (P [1] 1)
+        testCase "P.make{0,0,1}" (P [1] 2)
+        testCase "P.make{nil,1,n=2}" (P [1] 1)
+        testCase "P.make{nil,nil,1,n=3}" (P [1] 2)
+        testCase "P.make{0,0,1,0,2}" (P [1,0,2] 2)
+        testCase "P.make{nil,nil,1,0,2,n=5}" (P [1,0,2] 2)
+
+        testCase "P.make{0}" (P [] 0)
+        testCase "P.make{0,0,0}" (P [] 0)
+        testCase "P.make{1,0}" (P [1] 0)
+        testCase "P.make{1,0,0}" (P [1] 0)
+
+        testCase "P.make{0,1,0}" (P [1] 1)
+        testCase "P.make{0,0,1,0,0}" (P [1] 2)
+        testCase "P.make{0,0,1,0,2,0,0,0}" (P [1,0,2] 2)
+
+      it "should push and peek roundtrip" $ property $ \p -> do
+        q <- runLua $ pushPolynomial p >> peek top
+        q `shouldBe` cleanup p
+
     describe "clone" $ do
       let shouldEvaluateTo expr res =
             withPolynomial [ ("x", P [7] 0) ] [ "y = x:clone()", "y[1] = 9", "return " <> expr ] >>= flip shouldBe res
       inspectPolynomial (shouldEvaluateTo ) "x" (P [7] 0)
       inspectPolynomial (shouldEvaluateTo ) "y" (P [9] 0)
+
+      let shouldEvaluateTo expr res =
+            withPolynomial [ ("x", P [7] 0) ] [ "y = x:clone()", "x[1] = 9", "return " <> expr ] >>= flip shouldBe res
+      inspectPolynomial (shouldEvaluateTo ) "x" (P [9] 0)
+      inspectPolynomial (shouldEvaluateTo ) "y" (P [7] 0)
 
     describe "add" $ do
       describe "polynomials from inside Lua" $ do
@@ -192,6 +250,14 @@ spec = do
         testCase (P [1,2] 0) (P [3,0,4] 0) (P [4,2,4] 0)
         testCase (P [1,2] 0) (P [3] 2) (P [1,2,3] 0)
         testCase (P [1,2] 1) (P [3] 2) (P [1,5] 1)
+
+      describe "zero" $ do
+        it "should be a left identity" $ property $ \p -> do
+          q <- withPolynomial [ ("a", p) ] [ "return P.make{0} + a" ]
+          q `shouldBe` cleanup p
+        it "should be a right identity" $ property $ \p -> do
+          q <- withPolynomial [ ("a", p) ] [ "return a + P.make{0}" ]
+          q `shouldBe` cleanup p
 
     describe "mul" $ do
       describe "polynomials from inside Lua" $ do
@@ -236,7 +302,18 @@ spec = do
         testCase (P [0,1,0,2] 0) (P [0,0,3,0,0,4] 0) (P [3, 0, 6, 4, 0, 8] 3)
         testCase (P [1,0,2] 1) (P [3,0,0,4] 2) (P [3, 0, 6, 4, 0, 8] 3)
 
-    --it "should have an identity element" $ property $ \(a :: Int) ->
-        --a + 0 `shouldBe` a
-    --it "should be commutative" $ property $ \(a :: Int) b ->
-        --a + b `shouldBe` b + a
+      describe "one" $ do
+        it "should be a left identity" $ property $ \p -> do
+          q <- withPolynomial [ ("a", p) ] [ "return P.make{1} * a" ]
+          q `shouldBe` cleanup p
+        it "should be a right identity" $ property $ \p -> do
+          q <- withPolynomial [ ("a", p) ] [ "return a * P.make{1}" ]
+          q `shouldBe` cleanup p
+
+      describe "zero" $ do
+        it "should be a left zero divisor" $ property $ \p -> do
+          q <- withPolynomial [ ("a", p) ] [ "return P.make{0} * a" ]
+          q `shouldBe` (P [] 0)
+        it "should be a right zero divisor" $ property $ \p -> do
+          q <- withPolynomial [ ("a", p) ] [ "return a * P.make{0}" ]
+          q `shouldBe` (P [] 0)

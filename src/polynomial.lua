@@ -117,7 +117,8 @@ function M.add(a, b)
         end
     end
 
-    return setmetatable(sum, __mt)
+    -- TODO mutable cleanup
+    return M.make(sum)
 end
 __mt.__add = M.add
 
