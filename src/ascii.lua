@@ -15,13 +15,17 @@ function M.be_string_to_le_digits(str)
         elseif 65 <= k and k <= 90 then
             xs[i] = k - 55
         else
-            error(string.format("unable to decode character: %s (at %d)", string.char(k), j))
+            error(string.format("unable to decode character: [%s] (at %d)", string.char(k), j))
         end
     end
     return xs
 end
 
 function M.le_digits_to_be_string(p)
+    if p == nil then
+        return ""
+    end
+
     local s = ""
     for i = (p.n or #p),1,-1 do
         local k = p[i]
