@@ -33,22 +33,21 @@ function M.tostring(p)
 end
 __mt.__tostring = M.tostring
 
-function M.make(p)
+local function clean(p, q)
     local n <const> = p.n or #p
 
-    local q = {
-        o = p.o or 0,
-        v = p.v
-    }
+    local mut <const> = p == q
 
     local i, j = 1, 1
     while i <= n do
         if j == 1 then -- strip leading zeroes/nils
-            local k = p[i]
+            local k <const> = p[i]
             if k == nil or k == 0 then
                 q.o = q.o + 1
             else
-                q[j] = k
+                if not mut or i ~= j then
+                    q[j] = k
+                end
                 j = j + 1
             end
             i = i + 1
@@ -75,7 +74,9 @@ function M.make(p)
                 end
                 i = i0 + 1
             else
-                q[j] = k
+                if not mut or i ~= j then
+                    q[j] = k
+                end
                 i = i + 1
                 j = j + 1
             end
@@ -86,7 +87,15 @@ function M.make(p)
         q.o = 0
     end
     q.n = j - 1
+end
 
+function M.make(p)
+    local q = {
+        o = p.o or 0,
+        v = p.v
+    }
+
+    clean(p, q)
     return setmetatable(q, __mt)
 end
 
@@ -117,8 +126,8 @@ function M.add(a, b)
         end
     end
 
-    -- TODO mutable cleanup
-    return M.make(sum)
+    clean(sum, sum)
+    return setmetatable(sum, __mt)
 end
 __mt.__add = M.add
 
@@ -150,8 +159,7 @@ function M.mul(a, b)
         end
     end
 
-    -- TODO cleanup leading, trailing zeros
-
+    -- TODO is clean(prod, prod) necessary?
     return setmetatable(prod, __mt)
 end
 __mt.__mul = M.mul
