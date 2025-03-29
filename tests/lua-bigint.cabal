@@ -9,6 +9,7 @@ version:        0.1.0.0
 build-type:     Simple
 data-files:
     lua/arbbase.lua
+    lua/ascii.lua
     lua/bint.lua
     lua/lua-bigint.lua
     lua/lua-bigint.test.lua
@@ -50,6 +51,8 @@ executable specs
   main-is: Main.hs
   other-modules:
       LuaUtils
+      AsciiSpec
+      LuaBigInt
       PolynomialSpec
       Paths_lua_bigint
   hs-source-dirs:

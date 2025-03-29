@@ -1,10 +1,8 @@
 module PolynomialSpec where
 
 import Control.Monad ( unless, when )
-import Control.Monad.IO.Class ( MonadIO )
 import Data.List ( dropWhileEnd )
 import Data.Maybe ( fromMaybe )
-import System.Environment ( lookupEnv )
 import Text.Printf
 
 --import qualified Data.ByteString as BS
@@ -13,38 +11,19 @@ import qualified Data.ByteString.UTF8 as BSUTF8
 import Test.Hspec
 import Test.QuickCheck
 
-import HsLua hiding ( property, cleanup )
+import HsLua hiding ( property )
 import HsLua.Marshalling.Peekers
 
+import LuaBigInt
 import LuaUtils
-import Paths_lua_bigint
 
-pickLuaSource :: IO FilePath
-pickLuaSource = lookupEnv "LUA_BIGINT_SRC" >>= \case
-  Just p -> return p
-  Nothing -> Paths_lua_bigint.getDataFileName "lua"
+runLua :: RunLuaRun
+runLua = mkRun $ do
+  prepare
+  "P" `requireG` "polynomial"
 
-prepare :: LuaError e => LuaE e ()
-prepare = stackNeutral $ do
-    openlibs
-    src <- liftIO pickLuaSource
-    extendLuaPath src
-
-    _ <- require "polynomial"
-    setglobal "P"
-
-runLua :: MonadIO m => LuaE HsLua.Exception a -> m a
-runLua m = liftIO . HsLua.run $ prepare >> m
-
-doRun :: (Peekable a, MonadIO m) => [ String ] -> m a
-doRun ls = runLua $ stackNeutral $ do
-  flip mapM_ ls $ \l -> dostring (BSUTF8.fromString l) >>= \case
-    OK -> return ()
-    ErrRun -> throwErrorAsException
-    _ -> undefined
-  a <- peek top
-  pop 1
-  return a
+runAndPeek :: RunLuaAndPeek
+runAndPeek = mkRunAndPeek runLua
 
 data Polynomial = P { coefficients :: [Int]
                     , offset :: Int
@@ -82,8 +61,7 @@ pushPolynomial p = ensureStackDiff 1 $ do
 
   call 1 1
 
-withPolynomial :: (Peekable a, MonadIO m)
-               => [ (Name, Polynomial) ] -> [ String ] -> m a
+withPolynomial :: [ (Name, Polynomial) ] -> RunLuaAndPeek
 withPolynomial ps ls = runLua $ stackNeutral $ do
   flip mapM_ ps $ \(n, p) -> stackNeutral $ do
     pushPolynomial p
@@ -109,8 +87,8 @@ inspectPolynomial shouldEvaluateTo name p = context (printf "%s == %s" name (sho
   it "should have the correct offset" $
     (printf "%s.o" name) `shouldEvaluateTo` (offset p)
 
-cleanup :: Polynomial -> Polynomial
-cleanup = zo . stripLeadingZeroes . stripTrailingZeroes
+clean :: Polynomial -> Polynomial
+clean = zo . stripLeadingZeroes . stripTrailingZeroes
   where stripTrailingZeroes (P as o) = P (dropWhileEnd (== 0) as) o
         stripLeadingZeroes (P [] o) = P [] o
         stripLeadingZeroes (P (0:as) o) = stripLeadingZeroes $ P as (succ o)
@@ -130,7 +108,7 @@ spec = do
     describe "make" $ do
       describe "polynomials from inside Lua" $ do
         let shouldEvaluateTo make expr res =
-              doRun [ "p = " <> make, "return " <> expr ] >>= flip shouldBe res
+              runAndPeek [ "p = " <> make, "return " <> expr ] >>= flip shouldBe res
             testCase make expect = context ("p := " ++ make) $ do
               inspectPolynomial (shouldEvaluateTo make) "p" expect
 
@@ -184,7 +162,7 @@ spec = do
     describe "Peekable Polynomial" $ do
       describe "polynomials from inside Lua" $ do
         let testCase make expect = it ("should peek " ++ make) $ do
-              doRun [ "return " <> make ] >>= flip shouldBe expect
+              runAndPeek [ "return " <> make ] >>= flip shouldBe expect
 
         testCase "P.make{}" (P [] 0)
         testCase "P.make{1}" (P [1] 0)
@@ -210,7 +188,7 @@ spec = do
 
       it "should push and peek roundtrip" $ property $ \p -> do
         q <- runLua $ pushPolynomial p >> peek top
-        q `shouldBe` cleanup p
+        q `shouldBe` clean p
 
     describe "clone" $ do
       let shouldEvaluateTo expr res =
@@ -226,7 +204,7 @@ spec = do
     describe "add" $ do
       describe "polynomials from inside Lua" $ do
         let shouldEvaluateTo (op1 :: String) (op2 :: String) expr res =
-              doRun [ printf "sum = %s + %s" op1 op2, "return " <> expr ] >>= flip shouldBe res
+              runAndPeek [ printf "sum = %s + %s" op1 op2, "return " <> expr ] >>= flip shouldBe res
             testCase op1 op2 expect = context (printf "sum := %s + %s" op1 op2) $ do
               inspectPolynomial (shouldEvaluateTo op1 op2) "sum" expect
 
@@ -254,15 +232,15 @@ spec = do
       describe "zero" $ do
         it "should be a left identity" $ property $ \p -> do
           q <- withPolynomial [ ("a", p) ] [ "return P.make{0} + a" ]
-          q `shouldBe` cleanup p
+          q `shouldBe` clean p
         it "should be a right identity" $ property $ \p -> do
           q <- withPolynomial [ ("a", p) ] [ "return a + P.make{0}" ]
-          q `shouldBe` cleanup p
+          q `shouldBe` clean p
 
     describe "mul" $ do
       describe "polynomials from inside Lua" $ do
         let shouldEvaluateTo (op1 :: String) (op2 :: String) expr res =
-              doRun [ printf "prod = %s * %s" op1 op2, "return " <> expr ] >>= flip shouldBe res
+              runAndPeek [ printf "prod = %s * %s" op1 op2, "return " <> expr ] >>= flip shouldBe res
             testCase op1 op2 expect = context (printf "prod := %s + %s" op1 op2) $ do
               inspectPolynomial (shouldEvaluateTo op1 op2) "prod" expect
 
@@ -305,10 +283,10 @@ spec = do
       describe "one" $ do
         it "should be a left identity" $ property $ \p -> do
           q <- withPolynomial [ ("a", p) ] [ "return P.make{1} * a" ]
-          q `shouldBe` cleanup p
+          q `shouldBe` clean p
         it "should be a right identity" $ property $ \p -> do
           q <- withPolynomial [ ("a", p) ] [ "return a * P.make{1}" ]
-          q `shouldBe` cleanup p
+          q `shouldBe` clean p
 
       describe "zero" $ do
         it "should be a left zero divisor" $ property $ \p -> do

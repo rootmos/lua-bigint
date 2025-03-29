@@ -2,10 +2,11 @@ module LuaUtils where
 
 import HsLua hiding ( Integer )
 
-import Data.List ( intercalate )
 import Control.Monad ( unless )
-import Text.Printf ( printf )
+import Control.Monad.IO.Class ( MonadIO )
+import Data.List ( intercalate )
 import System.FilePath ( (</>) )
+import Text.Printf ( printf )
 
 --import qualified Data.ByteString as BS
 import Data.ByteString.UTF8 as BSUTF8
@@ -41,6 +42,11 @@ require modname = ensureStackDiff 1 $ do
   call 1 1
   gettop
 
+requireG :: LuaError e => Name -> String -> LuaE e ()
+requireG g modname = stackNeutral $ do
+    _ <- require modname
+    setglobal g
+
 extendLuaPath :: LuaError e => FilePath -> LuaE e ()
 extendLuaPath dir = stackNeutral $ do
   openpackage
@@ -55,3 +61,21 @@ extendLuaPath dir = stackNeutral $ do
   pushstring $ BSUTF8.fromString path'
   setfield (nth 2) "path"
   pop 1
+
+
+type Prepare = LuaE HsLua.Exception ()
+type RunLuaRun = forall m a. MonadIO m => LuaE HsLua.Exception a -> m a
+type RunLuaAndPeek = forall m a. (Peekable a, MonadIO m) => [ String ] -> m a
+
+mkRun :: Prepare -> RunLuaRun
+mkRun prepare m = liftIO . HsLua.run $ stackNeutral prepare >> m
+
+mkRunAndPeek :: RunLuaRun -> RunLuaAndPeek
+mkRunAndPeek runner ls = runner $ stackNeutral $ do
+  flip mapM_ ls $ \l -> dostring (BSUTF8.fromString l) >>= \case
+    OK -> return ()
+    ErrRun -> throwErrorAsException
+    _ -> undefined
+  a <- peek top
+  pop 1
+  return a
