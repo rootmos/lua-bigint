@@ -25,7 +25,7 @@ function M.le_digits_to_be_string(p)
     local s = ""
     for i = (p.n or #p),1,-1 do
         local k = p[i]
-        local d = alphabeth:sub(k+1, k+1)
+        local d = M.alphabeth:sub(k+1, k+1)
         if d == "" then
             error(string.format("unable to encode digit: %d (at %d)", k, i))
         end

@@ -64,8 +64,8 @@ extendLuaPath dir = stackNeutral $ do
 
 
 type Prepare = LuaE HsLua.Exception ()
-type RunLuaRun = forall m a. MonadIO m => LuaE HsLua.Exception a -> m a
-type RunLuaAndPeek = forall m a. (Peekable a, MonadIO m) => [ String ] -> m a
+type RunLuaRun = forall a m. MonadIO m => LuaE HsLua.Exception a -> m a
+type RunLuaAndPeek = forall a m. (Peekable a, MonadIO m) => [ String ] -> m a
 
 mkRun :: Prepare -> RunLuaRun
 mkRun prepare m = liftIO . HsLua.run $ stackNeutral prepare >> m
