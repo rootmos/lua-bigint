@@ -1,5 +1,5 @@
 go() {
-    make -C tests
+    #make -C tests
     #./run -e arbbase
-    #lua go.lua
+    lua go.lua
 }

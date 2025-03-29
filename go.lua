@@ -1,21 +1,16 @@
-local function be_string_to_le_digits_table(str)
-    local xs = {}
-    local n = #str
-    for i = 1,n do
-        local j = n - i + 1
-        local k = str:byte(j)
-        if 48 <= k and k <= 57 then
-            xs[i] = k - 48
-        elseif 97 <= k and k <= 122 then
-            xs[i] = k - 87
-        elseif 65 <= k and k <= 90 then
-            xs[i] = k - 55
-        else
-            error(string.format("unable to decode character: %s (at %d)", string.char(k), j))
-        end
-    end
-    return xs
-end
+local x = 953262827964357507520131
+assert(math.type(x) == "float")
 
-print(table.unpack(be_string_to_le_digits_table("0123456789abcdefghijklmnOpqrsTuvWxyz")))
-print(table.unpack(be_string_to_le_digits_table("123456890")))
+print(x) -- 9.5326282796436e+23
+
+local exp <const> = 1e18
+print(string.format("%f...ETH", x/exp)) -- 953262.827964...ETH -- here at least you indicate that the value isn't precise
+
+
+-- and just for fun, I ran:
+print(string.format("%f", x)) -- 953262827964357475827712.000000
+-- through calc (http://www.isthe.com/chongo/tech/comp/calc/)
+-- my favorite arbitrary precision calculator I use for everything these days
+--
+-- ; 953262827964357507520131 - 953262827964357475827712.000000
+--         31692419
