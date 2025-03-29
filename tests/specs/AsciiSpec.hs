@@ -9,7 +9,7 @@ import Test.QuickCheck
 import LuaBigInt
 import LuaUtils
 
-import HsLua hiding ( Integer, property )
+import HsLua hiding ( Integer, property, concat )
 
 runLua :: RunLuaRun
 runLua = mkRun $ do
@@ -19,8 +19,24 @@ runLua = mkRun $ do
 runAndPeek :: RunLuaAndPeek
 runAndPeek = mkRunAndPeek runLua
 
+digitsInBase :: Integer -> Integer -> [ Integer ]
+digitsInBase base x = f [] x
+  where f acc 0 = acc
+        f acc n = let (q, r) = quotRem n base in f (r:acc) q
+
+evalInBase :: Integer -> [ Integer ] -> Integer
+evalInBase base ds = sum $ zipWith (*) ds (iterate (* base) 1)
+
 spec :: Spec
 spec = do
+  describe "sanity checks" $ do
+   describe "digitsInBase" $
+    it "should render decimals" $ property $ \(n :: Integer) ->
+      (concat $ show <$> digitsInBase 10 n) `shouldBe` show n
+
+   it "should survive a digitsInBase and evalInBase roundtrip" $ property $ \(b :: Integer, n :: Integer) ->
+      (evalInBase b $ reverse $ digitsInBase b n) `shouldBe` n
+
   describe "ascii.lua" $ do
     it "should prepare properly" $ do
       t <- runLua $ do
@@ -33,13 +49,11 @@ spec = do
 
       it "should work for decimals" $ property $ \(n :: NonNegative Integer) -> do
         ds <- runAndPeek [ printf "return A.be_string_to_le_digits('%d')" (getNonNegative n) ]
-        let m = sum $ zipWith (*) ds (iterate (* 10) 1)
-        m `shouldBe` (getNonNegative n)
+        (evalInBase 10 ds) `shouldBe` (getNonNegative n)
 
       it "should work for hexadecimals" $ property $ \(n :: NonNegative Integer) -> do
         ds <- runAndPeek [ printf "return A.be_string_to_le_digits('%X')" (getNonNegative n) ]
-        let m = sum $ zipWith (*) ds (iterate (* 16) 1)
-        m `shouldBe` (getNonNegative n)
+        (evalInBase 16 ds) `shouldBe` (getNonNegative n)
 
     describe "le_digits_to_be_string" $ do
       let r = intersperse ',' . reverse
