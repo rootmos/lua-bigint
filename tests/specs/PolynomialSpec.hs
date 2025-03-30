@@ -99,7 +99,7 @@ clean = zo . stripLeadingZeroes . stripTrailingZeroes
 spec :: Spec
 spec = do
   describe "polynomial.lua" $ do
-    it "should prepare properly" $ do
+    it "should load properly" $ do
       t <- runLua $ do
         OK <- dostring "return type(P)"
         peek @String top

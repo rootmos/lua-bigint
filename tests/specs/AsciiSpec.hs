@@ -1,6 +1,6 @@
 module AsciiSpec where
 
-import Data.List ( intersperse )
+import Data.List ( intersperse, intercalate )
 import Text.Printf
 
 import Test.Hspec
@@ -45,7 +45,7 @@ spec = do
         (evalInBase b $ reverse $ digitsInBase b n) `shouldBe` n
 
   describe "ascii.lua" $ do
-    it "should prepare properly" $ do
+    it "should load properly" $ do
       t <- runLua $ do
         OK <- dostring "return type(A)"
         peek @String top
@@ -53,14 +53,23 @@ spec = do
 
     describe "be_string_to_le_digits" $ do
       let fn = "A.be_string_to_le_digits" :: String
-      --describe "should work for some examples" $
+
+      let example (str :: String) (ds :: [Integer]) =
+            context (printf "%s(\"%s\") -> %s" fn str (show ds)) $ do
+              it "should decode digits properly" $ do
+                (evalAndPeek $ printf "%s('%s')" fn str) >>= flip shouldBe ds
+
+      describe "examples" $ do
+        example "" []
+        example "0" [0]
+        example "abcdef097" [7, 9, 0, 15, 14, 13, 12, 11, 10]
 
       it "should work for decimals" $ property $ \(NonNegative n) -> do
         ds <- evalAndPeek $ printf "%s('%d')" fn n
         (evalInBase 10 ds) `shouldBe` n
 
       it "should work for hexadecimals" $ property $ \(NonNegative n) -> do
-        ds <- evalAndPeek $ printf "%s('%X')" fn n
+        ds <- evalAndPeek $ printf "%s('%x')" fn n
         (evalInBase 16 ds) `shouldBe` n
 
     describe "le_digits_to_be_string" $ do
@@ -71,7 +80,7 @@ spec = do
 
       let example (expr :: String) (str :: String) =
             context (printf "%s%s -> \"%s\"" fn expr str) $ do
-              it "should encode properly" $ testCase expr str
+              it "should encode digits properly" $ testCase expr str
 
       describe "examples" $ do
         example "()" ""
@@ -83,7 +92,13 @@ spec = do
         example "{10, 15}" "fa"
         example "{0, 10, 15}" "fa0"
 
+      let embrace = printf "{%s}"
+
       it "should work for decimals" $ property $ \(NonNegative (n :: Integer)) -> do
         let r = intersperse ',' . reverse
-            embrace = printf "{%s}"
         testCase (embrace . r $ show n) (show n)
+
+      it "should work for hexadecimals" $ property $ \(NonNegative (n :: Integer)) -> do
+        let ds = digitsInBase 16 n
+            r = intercalate "," . reverse
+        testCase (embrace . r $ show <$> ds) (printf "%x" n)
