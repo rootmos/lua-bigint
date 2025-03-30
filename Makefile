@@ -1,4 +1,5 @@
 test: deps
+	$(MAKE) -C tests
 	./run -t
 
 run: deps

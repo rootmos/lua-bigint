@@ -9,6 +9,7 @@ version:        0.1.0.0
 build-type:     Simple
 data-files:
     lua/arbbase.lua
+    lua/arbbase.test.lua
     lua/ascii.lua
     lua/bint.lua
     lua/lua-bigint.lua

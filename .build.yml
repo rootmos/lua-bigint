@@ -5,15 +5,15 @@ packages:
   - build-base
   - gmp-dev
 tasks:
-  - accept-cabal-file: |
+  - specs-accept-cabal-file: |
       cd lua-bigint/tests
       touch lua-bigint.cabal
-  - build: |
+  - specs-build: |
       cd lua-bigint
       make -C tests build
   - tests: |
       cd lua-bigint
-      make -C tests run
+      make -C test
 triggers:
   - action: email
     condition: always
