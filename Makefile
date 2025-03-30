@@ -1,4 +1,4 @@
-test: deps
+tests: deps
 	$(MAKE) -C tests
 	./run -t
 
@@ -8,5 +8,5 @@ run: deps
 deps:
 	$(MAKE) -C deps
 
-.PHONY: test run
+.PHONY: tests run
 .PHONY: deps

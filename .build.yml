@@ -4,6 +4,7 @@ packages:
   - xz
   - build-base
   - gmp-dev
+  - lua
 tasks:
   - specs-accept-cabal-file: |
       cd lua-bigint/tests
@@ -11,9 +12,12 @@ tasks:
   - specs-build: |
       cd lua-bigint
       make -C tests build
+  - deps: |
+      cd lua-bigint
+      make deps
   - tests: |
       cd lua-bigint
-      make -C test
+      make tests
 triggers:
   - action: email
     condition: always
