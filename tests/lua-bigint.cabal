@@ -52,6 +52,7 @@ executable specs
   main-is: Main.hs
   other-modules:
       LuaUtils
+      ArbbaseSpec
       AsciiSpec
       LuaBigInt
       PolynomialSpec

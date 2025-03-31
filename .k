@@ -1,9 +1,9 @@
 go() {
     #timeout 10 make -C tests
-    #cd tests && stack run specs -- -m '/Ascii'
-    #./run -e arbbase
-    ##lua go.lua
+    cd tests && stack run specs -- -m '/Arbbase'
+    #./run -e arbbase.test
+    #lua go.lua
     #timeout 10 stack runhaskell go.hs
     #./run -t
-    make tests
+    #make tests
 }

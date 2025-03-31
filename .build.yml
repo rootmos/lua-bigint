@@ -5,6 +5,7 @@ packages:
   - build-base
   - gmp-dev
   - lua
+  - coreutils
 tasks:
   - specs-accept-cabal-file: |
       cd lua-bigint/tests

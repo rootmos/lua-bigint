@@ -51,7 +51,7 @@ function M.to_hex(a)
 
     local i = 0
     while o_a <= #a do
-        local q, r = divrem(munch(sum), B)
+        local q, r = divrem(munch(), B)
         local d = carry_the_one(M*P.make{r, q, v="B"})
 
         for j = 1,d.n do
