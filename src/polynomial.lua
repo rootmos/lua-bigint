@@ -164,6 +164,18 @@ function M.mul(a, b)
 end
 __mt.__mul = M.mul
 
+function __fn:coefficients()
+    local cs = {}
+    local o <const>, n <const> = self.o, self.n
+    for i = 0,o-1 do
+        cs[i+1] = 0
+    end
+    for i = 1,n do
+        cs[o+i] = self[i]
+    end
+    return cs
+end
+
 function M.is_polynomial(x)
     return getmetatable(x) == __mt
 end

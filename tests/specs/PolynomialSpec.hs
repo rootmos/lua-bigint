@@ -11,7 +11,7 @@ import qualified Data.ByteString.UTF8 as BSUTF8
 import Test.Hspec
 import Test.QuickCheck
 
-import HsLua hiding ( property )
+import HsLua hiding ( property, Integer )
 import HsLua.Marshalling.Peekers
 
 import LuaBigInt
@@ -24,6 +24,9 @@ runLua = mkRun $ do
 
 runAndPeek :: RunLuaAndPeek
 runAndPeek = mkRunAndPeek runLua
+
+evalAndPeek :: EvalLuaAndPeek
+evalAndPeek = mkEvalAndPeek runAndPeek
 
 data Polynomial = P { coefficients :: [Int]
                     , offset :: Int
@@ -200,6 +203,31 @@ spec = do
             withPolynomial [ ("x", P [7] 0) ] [ "y = x:clone()", "x[1] = 9", "return " <> expr ] >>= flip shouldBe res
       inspectPolynomial (shouldEvaluateTo ) "x" (P [9] 0)
       inspectPolynomial (shouldEvaluateTo ) "y" (P [7] 0)
+
+    describe "coefficients" $ do
+      describe "polynomials from inside Lua" $ do
+        let testCase e (cs :: [Int]) =
+              it (e ++ " should evaluate to " ++ show cs) $
+                evalAndPeek e >>= flip shouldBe cs
+
+        testCase "P.make{}:coefficients()" []
+        testCase "P.make{1}:coefficients()" [1]
+        testCase "P.make{0,1}:coefficients()" [0, 1]
+        testCase "P.make{1,o=2}:coefficients()" [0, 0, 1]
+
+      describe "polynomials from Haskell" $ do
+        let testCase p (cs :: [Int]) =
+              it ("the coefficients of " ++ show p ++ " should be " ++ show cs) $ do
+                withPolynomial [ ("p", p) ] [ "return p:coefficients()" ] >>= flip shouldBe cs
+
+        testCase (P [] 0) []
+        testCase (P [1] 0) [1]
+        testCase (P [0, 1] 0) [0,1]
+        testCase (P [1] 2) [0,0,1]
+
+      it "should work for arbitrary polynomials" $ property $ \p -> do
+        cs' <- withPolynomial [ ("p", p) ] [ "return p:coefficients()" ]
+        cs' `shouldBe` (let P cs o = clean p in (take o $ repeat 0) ++ cs)
 
     describe "add" $ do
       describe "polynomials from inside Lua" $ do
