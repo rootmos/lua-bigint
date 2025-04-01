@@ -35,37 +35,27 @@ function M.to_hex(a)
     local stencil = P.make{4, 6, v="B"}
     assert(stencil.n == 2)
 
-    local o_a = 1
-    local o_b = 1
+    local o_a = 0
     local M = P{1,v="B"}
 
     local function munch()
         local sum = 0
         local pow = 1
         for j = 1,stencil.n do
-            sum = sum + (a[o_a + j - 1] or 0)*pow
+            sum = sum + (a[o_a + j] or 0)*pow
             pow = pow * A
         end
         return sum
     end
 
-    local i = 0
     while o_a <= #a do
-        local q, r = divrem(munch(), B)
+        local m = munch()
+        local q, r = divrem(m, B)
         local d = carry_the_one(M*P.make{r, q, v="B"})
+        b = carry_the_one(b + d) -- TODO mutable
 
-        for j = 1,d.n do
-            local k = o_b + d.o + j - 1
-            b[k] = (b[k] or 0) + d[j]
-            b.n = math.max(b.n, k)
-        end
-        b = carry_the_one(b) -- TODO mutable
-
-        i = i + 1
         M = carry_the_one(M * stencil)
         o_a = o_a + stencil.n
-        o_b = o_b + M.o
-        M.o = 0
     end
 
     return b:coefficients()

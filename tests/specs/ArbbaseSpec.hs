@@ -30,6 +30,17 @@ digitsInBase base x = f [] x
   where f acc 0 = acc
         f acc n = let (q, r) = quotRem n base in f (r:acc) q
 
+--newtype Largeish = Largeish Integer
+
+--instance Show Largeish where
+  --show (Largeish n) = show n
+
+--instance Arbitrary Largeish where
+  --arbitrary = do
+    --ns :: [Positive Integer] <- arbitrary
+    --let n = foldl' (*) 1 $ getPositive <$> ns
+    --return $ Largeish n
+
 spec :: Spec
 spec = do
   describe "arbbase.lua" $ do
@@ -62,5 +73,10 @@ spec = do
 
       it "should work for large integers" $ property $ \(ns :: [Positive Integer]) ->
         let n = foldl' (*) 1 $ getPositive <$> ns in
-        let e = expr (reverse $ digitsInBase 10 n) in
-        evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)
+        counterexample ("n := " ++ show n) $
+          let e = expr (reverse $ digitsInBase 10 n) in
+          evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)
+
+      --it "should work for large integers" $ property $ \(Largeish n) ->
+        --let e = expr (reverse $ digitsInBase 10 n) in
+        --evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)
