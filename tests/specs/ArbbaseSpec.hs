@@ -1,6 +1,6 @@
 module ArbbaseSpec where
 
-import Data.List ( intercalate )
+import Data.List ( intercalate, foldl' )
 import Text.Printf
 
 import Test.Hspec
@@ -57,5 +57,10 @@ spec = do
         example [0, 9, 8, 7, 6, 5, 4, 3, 2, 1] [2, 13, 2, 0, 6, 9, 9, 4]
 
       it "should work for any integer" $ property $ \(Positive (n :: Integer)) ->
+        let e = expr (reverse $ digitsInBase 10 n) in
+        evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)
+
+      it "should work for large integers" $ property $ \(ns :: [Positive Integer]) ->
+        let n = foldl' (*) 1 $ getPositive <$> ns in
         let e = expr (reverse $ digitsInBase 10 n) in
         evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)

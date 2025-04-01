@@ -68,7 +68,7 @@ function M.to_hex(a)
         M.o = 0
     end
 
-    return b
+    return b:coefficients()
 end
 
 return M
