@@ -9,7 +9,7 @@ import Test.QuickCheck
 import LuaBigInt
 import LuaUtils
 
-import HsLua hiding ( Integer, property )
+import HsLua hiding ( Integer, property, concat )
 
 runLua :: RunLuaRun
 runLua = mkRun $ do
@@ -25,21 +25,22 @@ evalAndPeek = mkEvalAndPeek runAndPeek
 -- TODO move to utils
 digitsInBase :: Integer -> Integer -> [ Integer ]
 digitsInBase _ x | x < 0 = undefined
-digitsInBase _ 0 = [ 0 ]
+digitsInBase _ 0 = []
 digitsInBase base x = f [] x
   where f acc 0 = acc
         f acc n = let (q, r) = quotRem n base in f (r:acc) q
 
---newtype Largeish = Largeish Integer
+data Huge = Huge { getHuge :: Integer, factors :: [ Positive Integer ] }
 
---instance Show Largeish where
-  --show (Largeish n) = show n
+mkHuge :: [ Positive Integer ] -> Huge
+mkHuge ns = Huge (foldl' lcg 1 $ getPositive <$> ns) ns
+  where lcg a b = 7*a + 13*b
 
---instance Arbitrary Largeish where
-  --arbitrary = do
-    --ns :: [Positive Integer] <- arbitrary
-    --let n = foldl' (*) 1 $ getPositive <$> ns
-    --return $ Largeish n
+instance Show Huge where
+  show (Huge n _) = show n
+
+instance Arbitrary Huge where
+  arbitrary = mkHuge <$> arbitrary
 
 spec :: Spec
 spec = do
@@ -60,6 +61,7 @@ spec = do
 
       describe "examples" $ do
         example [] []
+        example [0] []
         example [1] [1]
         example [15] [15]
         example [16] [0, 1]
@@ -71,12 +73,6 @@ spec = do
         let e = expr (reverse $ digitsInBase 10 n) in
         evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)
 
-      it "should work for large integers" $ property $ \(ns :: [Positive Integer]) ->
-        let n = foldl' (*) 1 $ getPositive <$> ns in
-        counterexample ("n := " ++ show n) $
-          let e = expr (reverse $ digitsInBase 10 n) in
-          evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)
-
-      --it "should work for large integers" $ property $ \(Largeish n) ->
-        --let e = expr (reverse $ digitsInBase 10 n) in
-        --evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)
+      it "should work for huge integers" $ property $ \(Huge n _) -> within 1_000_000 $
+        let e = expr (reverse $ digitsInBase 10 n) in
+        evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)
