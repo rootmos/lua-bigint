@@ -55,6 +55,6 @@ spec = do
         let e = expr (reverse $ digitsInBase 10 n) in
         evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)
 
-      it "should work for huge integers" $ property $ \(Huge {getHuge = n}) ->
+      it "should work for huge integers" $ properly $ \(Huge {getHuge = n}) ->
         let e = expr (reverse $ digitsInBase 10 n) in
         evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)

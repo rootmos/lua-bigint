@@ -15,3 +15,5 @@ instance Show Huge where
 
 instance Arbitrary Huge where
   arbitrary = mkHuge <$> arbitrary
+
+  -- TODO shrink
