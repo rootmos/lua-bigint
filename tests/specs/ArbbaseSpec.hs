@@ -1,15 +1,17 @@
 module ArbbaseSpec where
 
-import Data.List ( intercalate, foldl' )
+import Data.List ( intercalate )
 import Text.Printf
 
 import Test.Hspec
 import Test.QuickCheck
 
+import HsLua hiding ( Integer, property, concat )
+
 import LuaBigInt
 import LuaUtils
-
-import HsLua hiding ( Integer, property, concat )
+import Utils
+import Huge
 
 runLua :: RunLuaRun
 runLua = mkRun $ do
@@ -21,26 +23,6 @@ runAndPeek = mkRunAndPeek runLua
 
 evalAndPeek :: EvalLuaAndPeek
 evalAndPeek = mkEvalAndPeek runAndPeek
-
--- TODO move to utils
-digitsInBase :: Integer -> Integer -> [ Integer ]
-digitsInBase _ x | x < 0 = undefined
-digitsInBase _ 0 = []
-digitsInBase base x = f [] x
-  where f acc 0 = acc
-        f acc n = let (q, r) = quotRem n base in f (r:acc) q
-
-data Huge = Huge { getHuge :: Integer, factors :: [ Positive Integer ] }
-
-mkHuge :: [ Positive Integer ] -> Huge
-mkHuge ns = Huge (foldl' lcg 1 $ getPositive <$> ns) ns
-  where lcg a b = 7*a + 13*b
-
-instance Show Huge where
-  show (Huge n _) = show n
-
-instance Arbitrary Huge where
-  arbitrary = mkHuge <$> arbitrary
 
 spec :: Spec
 spec = do
@@ -73,6 +55,6 @@ spec = do
         let e = expr (reverse $ digitsInBase 10 n) in
         evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)
 
-      it "should work for huge integers" $ property $ \(Huge n _) -> within 1_000_000 $
+      it "should work for huge integers" $ property $ \(Huge {getHuge = n}) ->
         let e = expr (reverse $ digitsInBase 10 n) in
         evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)

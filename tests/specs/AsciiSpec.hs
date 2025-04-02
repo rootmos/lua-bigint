@@ -6,6 +6,7 @@ import Text.Printf
 import Test.Hspec
 import Test.QuickCheck
 
+import Utils
 import LuaBigInt
 import LuaUtils
 
@@ -22,28 +23,8 @@ runAndPeek = mkRunAndPeek runLua
 evalAndPeek :: EvalLuaAndPeek
 evalAndPeek = mkEvalAndPeek runAndPeek
 
-digitsInBase :: Integer -> Integer -> [ Integer ]
-digitsInBase _ x | x < 0 = undefined
-digitsInBase _ 0 = [ 0 ]
-digitsInBase base x = f [] x
-  where f acc 0 = acc
-        f acc n = let (q, r) = quotRem n base in f (r:acc) q
-
-evalInBase :: Integer -> [ Integer ] -> Integer
-evalInBase b _ | b < 2 = undefined
-evalInBase b ds = sum $ zipWith (*) ds (iterate (* b) 1)
-
 spec :: Spec
 spec = do
-  describe "sanity checks" $ do
-   describe "digitsInBase" $
-    it "should render decimals" $ property $ \(NonNegative n) ->
-      (concat $ show <$> digitsInBase 10 n) `shouldBe` (show n)
-
-   it "should survive a digitsInBase and evalInBase roundtrip" $ do
-      forAll (arbitrary `suchThat` ((> 1) . fst)) $ \(b, NonNegative n) ->
-        (evalInBase b $ reverse $ digitsInBase b n) `shouldBe` n
-
   describe "ascii.lua" $ do
     it "should load properly" $ do
       t <- runLua $ do
@@ -94,11 +75,11 @@ spec = do
 
       let embrace = printf "{%s}"
 
-      it "should work for decimals" $ property $ \(NonNegative (n :: Integer)) -> do
+      it "should work for decimals" $ property $ \(Positive (n :: Integer)) -> do
         let r = intersperse ',' . reverse
         testCase (embrace . r $ show n) (show n)
 
-      it "should work for hexadecimals" $ property $ \(NonNegative (n :: Integer)) -> do
+      it "should work for hexadecimals" $ property $ \(Positive (n :: Integer)) -> do
         let ds = digitsInBase 16 n
             r = intercalate "," . reverse
         testCase (embrace . r $ show <$> ds) (printf "%x" n)
