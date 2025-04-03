@@ -15,4 +15,3 @@ spec = do
    it "should survive a digitsInBase and evalInBase roundtrip" $ properly $ do
       forAll (arbitrary `suchThat` ((> 1) . fst)) $ \(b, Positive n) ->
         (evalInBase b $ reverse $ digitsInBase b n) `shouldBe` n
-
