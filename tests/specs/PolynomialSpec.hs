@@ -11,11 +11,12 @@ import qualified Data.ByteString.UTF8 as BSUTF8
 import Test.Hspec
 import Test.QuickCheck
 
-import HsLua hiding ( property, Integer )
+import HsLua
 import HsLua.Marshalling.Peekers
 
 import LuaBigInt
 import LuaUtils
+import Utils
 
 runLua :: RunLuaRun
 runLua = mkRun $ do
@@ -189,7 +190,7 @@ spec = do
         testCase "P.make{0,0,1,0,0}" (P [1] 2)
         testCase "P.make{0,0,1,0,2,0,0,0}" (P [1,0,2] 2)
 
-      it "should push and peek roundtrip" $ property $ \p -> do
+      it "should push and peek roundtrip" $ properly $ \p -> do
         q <- runLua $ pushPolynomial p >> peek top
         q `shouldBe` clean p
 
@@ -225,7 +226,7 @@ spec = do
         testCase (P [0, 1] 0) [0,1]
         testCase (P [1] 2) [0,0,1]
 
-      it "should work for arbitrary polynomials" $ property $ \p -> do
+      it "should work for arbitrary polynomials" $ properly $ \p -> do
         cs' <- withPolynomial [ ("p", p) ] [ "return p:coefficients()" ]
         cs' `shouldBe` (let P cs o = clean p in (take o $ repeat 0) ++ cs)
 
@@ -258,10 +259,10 @@ spec = do
         testCase (P [1,2] 1) (P [3] 2) (P [1,5] 1)
 
       describe "zero" $ do
-        it "should be a left identity" $ property $ \p -> do
+        it "should be a left identity" $ properly $ \p -> do
           q <- withPolynomial [ ("a", p) ] [ "return P.make{0} + a" ]
           q `shouldBe` clean p
-        it "should be a right identity" $ property $ \p -> do
+        it "should be a right identity" $ properly $ \p -> do
           q <- withPolynomial [ ("a", p) ] [ "return a + P.make{0}" ]
           q `shouldBe` clean p
 
@@ -309,17 +310,17 @@ spec = do
         testCase (P [1,0,2] 1) (P [3,0,0,4] 2) (P [3, 0, 6, 4, 0, 8] 3)
 
       describe "one" $ do
-        it "should be a left identity" $ property $ \p -> do
+        it "should be a left identity" $ properly $ \p -> do
           q <- withPolynomial [ ("a", p) ] [ "return P.make{1} * a" ]
           q `shouldBe` clean p
-        it "should be a right identity" $ property $ \p -> do
+        it "should be a right identity" $ properly $ \p -> do
           q <- withPolynomial [ ("a", p) ] [ "return a * P.make{1}" ]
           q `shouldBe` clean p
 
       describe "zero" $ do
-        it "should be a left zero divisor" $ property $ \p -> do
+        it "should be a left zero divisor" $ properly $ \p -> do
           q <- withPolynomial [ ("a", p) ] [ "return P.make{0} * a" ]
           q `shouldBe` (P [] 0)
-        it "should be a right zero divisor" $ property $ \p -> do
+        it "should be a right zero divisor" $ properly $ \p -> do
           q <- withPolynomial [ ("a", p) ] [ "return a * P.make{0}" ]
           q `shouldBe` (P [] 0)

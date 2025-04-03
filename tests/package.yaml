@@ -18,6 +18,7 @@ default-extensions:
   - FlexibleContexts
   - GADTs
   - LambdaCase
+  - NumericUnderscores
   - OverloadedStrings
   - RankNTypes
   - ScopedTypeVariables

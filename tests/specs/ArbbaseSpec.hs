@@ -1,15 +1,17 @@
 module ArbbaseSpec where
 
-import Data.List ( intercalate, foldl' )
+import Data.List ( intercalate )
 import Text.Printf
 
 import Test.Hspec
 import Test.QuickCheck
 
+import HsLua hiding ( Integer, property, concat )
+
 import LuaBigInt
 import LuaUtils
-
-import HsLua hiding ( Integer, property )
+import Utils
+import Huge
 
 runLua :: RunLuaRun
 runLua = mkRun $ do
@@ -21,25 +23,6 @@ runAndPeek = mkRunAndPeek runLua
 
 evalAndPeek :: EvalLuaAndPeek
 evalAndPeek = mkEvalAndPeek runAndPeek
-
--- TODO move to utils
-digitsInBase :: Integer -> Integer -> [ Integer ]
-digitsInBase _ x | x < 0 = undefined
-digitsInBase _ 0 = [ 0 ]
-digitsInBase base x = f [] x
-  where f acc 0 = acc
-        f acc n = let (q, r) = quotRem n base in f (r:acc) q
-
---newtype Largeish = Largeish Integer
-
---instance Show Largeish where
-  --show (Largeish n) = show n
-
---instance Arbitrary Largeish where
-  --arbitrary = do
-    --ns :: [Positive Integer] <- arbitrary
-    --let n = foldl' (*) 1 $ getPositive <$> ns
-    --return $ Largeish n
 
 spec :: Spec
 spec = do
@@ -60,6 +43,7 @@ spec = do
 
       describe "examples" $ do
         example [] []
+        example [0] []
         example [1] [1]
         example [15] [15]
         example [16] [0, 1]
@@ -71,12 +55,6 @@ spec = do
         let e = expr (reverse $ digitsInBase 10 n) in
         evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)
 
-      it "should work for large integers" $ property $ \(ns :: [Positive Integer]) ->
-        let n = foldl' (*) 1 $ getPositive <$> ns in
-        counterexample ("n := " ++ show n) $
-          let e = expr (reverse $ digitsInBase 10 n) in
-          evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)
-
-      --it "should work for large integers" $ property $ \(Largeish n) ->
-        --let e = expr (reverse $ digitsInBase 10 n) in
-        --evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)
+      it "should work for huge integers" $ properly $ \(Huge {getHuge = n}) ->
+        let e = expr (reverse $ digitsInBase 10 n) in
+        evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)

@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.37.0.
+-- This file has been generated from package.yaml by hpack version 0.38.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -21,6 +21,7 @@ data-files:
 executable sandbox
   main-is: Main.hs
   other-modules:
+      Huge
       LuaUtils
       Paths_lua_bigint
   hs-source-dirs:
@@ -31,6 +32,7 @@ executable sandbox
       FlexibleContexts
       GADTs
       LambdaCase
+      NumericUnderscores
       OverloadedStrings
       RankNTypes
       ScopedTypeVariables
@@ -50,11 +52,14 @@ executable sandbox
 executable specs
   main-is: Main.hs
   other-modules:
+      Huge
       LuaUtils
       ArbbaseSpec
       AsciiSpec
       LuaBigInt
       PolynomialSpec
+      Utils
+      UtilsSpec
       Paths_lua_bigint
   hs-source-dirs:
       src
@@ -64,6 +69,7 @@ executable specs
       FlexibleContexts
       GADTs
       LambdaCase
+      NumericUnderscores
       OverloadedStrings
       RankNTypes
       ScopedTypeVariables
