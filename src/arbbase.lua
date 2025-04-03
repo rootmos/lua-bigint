@@ -7,9 +7,8 @@ local function divrem(a, b)
     return a//b, a%b
 end
 
-local A <const>, B <const> = 10, 16
-
-local function carry_the_one(p)
+-- TODO: mutate p
+local function carry_the_one(p, B)
     local p = p:clone()
     local i = 1
     while true do
@@ -26,17 +25,17 @@ local function carry_the_one(p)
         i = i + 1
     end
     p.n = i
-    return p:clone() -- TODO: should call a mutable p:clean() method
+    return p:clone()
 end
 
-function M.to_hex(a)
-    local b = P.make{v="B"}
-
-    local stencil = P.make{4, 6, v="B"}
+function M.dec_to_hex(a)
+    local A <const>, B <const> = 10, 16
+    local stencil <const> = P.make{4, 6, v="B"}
     assert(stencil.n == 2)
 
-    local o_a = 0
+    local o_a, n_a <const> = 0, #a
     local M = P{1,v="B"}
+    local b = P.make{v="B"}
 
     local function munch()
         local sum = 0
@@ -48,14 +47,34 @@ function M.to_hex(a)
         return sum
     end
 
-    while o_a <= #a do
+    while o_a <= n_a do
         local m = munch()
         local q, r = divrem(m, B)
-        local d = carry_the_one(M*P.make{r, q, v="B"})
-        b = carry_the_one(b + d) -- TODO mutable
-
-        M = carry_the_one(M * stencil)
+        local d = carry_the_one(M*P.make{r, q, v="B"}, B)
+        b = carry_the_one(b + d, B)
+        M = carry_the_one(M * stencil, B)
         o_a = o_a + stencil.n
+    end
+
+    return b:coefficients()
+end
+
+function M.hex_to_dec(a)
+    local A <const>, B <const> = 16, 10
+    local stencil <const> = P.make{6, 1, v="B"}
+    assert(stencil.n == 2)
+
+    local M = P{1,v="B"}
+    local b = P.make{v="B"}
+
+    local o_a, n_a = 0, #a
+    while o_a <= n_a do
+        local m = a[o_a + 1] or 0
+        local q, r = divrem(m, B)
+        local d = carry_the_one(M*P.make{r, q, v="B"}, B)
+        b = carry_the_one(b + d, B)
+        M = carry_the_one(M * stencil, B)
+        o_a = o_a + 1
     end
 
     return b:coefficients()

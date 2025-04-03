@@ -5,6 +5,6 @@ build clean: lua-bigint.cabal
 	stack $@
 
 lua-bigint.cabal: package.yaml
-	hpack
+	stack exec hpack
 
 .PHONY: run build clean
