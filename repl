@@ -3,18 +3,49 @@
 set -o nounset -o pipefail -o errexit
 
 SCRIPT_DIR=$(readlink -f "$0" | xargs dirname)
-
 HISTORY="$SCRIPT_DIR/.history"
 
-LUA=${LUA-$SCRIPT_DIR/lua}
-LUA_SRC="$SCRIPT_DIR/src"
-LUA_PATH="$LUA_SRC/?.lua;$LUA_SRC/?/init.lua;$LUA_PATH"
+usage() {
+    cat <<EOF 1>&2
+Usage: $(basename "$0") [options] (-l | -H) --
 
-OPTS=(-i)
-OPTS+=(-l "P=polynomial")
-OPTS+=(-l "A=ascii")
-OPTS+=(-e "_PROMPT='lua-bigint> '")
-OPTS+=(-e "_PROMPT2='lua-bigint>> '")
+Mode:
+    -l | -H     run in Lua or Haskell mode
 
-rlwrap --history-filename="${HISTORY}.lua" -- \
-    "$LUA" "${OPTS[@]}"
+Options:
+    -h          show this message
+EOF
+    exit "${1-0}"
+}
+
+MODE=lua
+while getopts "lhH-" OPT; do
+    case $OPT in
+        l) MODE=lua ;;
+        H) MODE=haskell ;;
+        -) break ;;
+        h) usage ;;
+        ?) usage 2 ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ "$MODE" = "lua" ]; then
+    LUA=${LUA-$SCRIPT_DIR/lua}
+    LUA_SRC="$SCRIPT_DIR/src"
+    LUA_PATH="$LUA_SRC/?.lua;$LUA_SRC/?/init.lua;$LUA_PATH"
+
+    OPTS=(-i)
+    OPTS+=(-l "P=polynomial")
+    OPTS+=(-l "A=ascii")
+    OPTS+=(-e "_PROMPT='lua-bigint> '")
+    OPTS+=(-e "_PROMPT2='lua-bigint>> '")
+
+    rlwrap --history-filename="${HISTORY}.lua" -- \
+        "$LUA" "${OPTS[@]}"
+elif [ "$MODE" = "haskell" ]; then
+    echo "?"
+else
+    echo 1>&2 "unknown mode: $MODE"
+    exit 1
+fi
