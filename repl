@@ -3,14 +3,18 @@
 set -o nounset -o pipefail -o errexit
 
 SCRIPT_DIR=$(readlink -f "$0" | xargs dirname)
-SRC="$SCRIPT_DIR/src"
 
 HISTORY="$SCRIPT_DIR/.history"
 
-LUA=$SCRIPT_DIR/lua
-LUA_PATH="$SRC/?.lua;$SRC/?/init.lua;$LUA_PATH"
+LUA=${LUA-$SCRIPT_DIR/lua}
+LUA_SRC="$SCRIPT_DIR/src"
+LUA_PATH="$LUA_SRC/?.lua;$LUA_SRC/?/init.lua;$LUA_PATH"
 
 OPTS=(-i)
 OPTS+=(-l "P=polynomial")
+OPTS+=(-l "A=ascii")
+OPTS+=(-e "_PROMPT='lua-bigint> '")
+OPTS+=(-e "_PROMPT2='lua-bigint>> '")
 
-rlwrap --history-filename="${HISTORY}.lua" -- "$LUA" "${OPTS[@]}"
+rlwrap --history-filename="${HISTORY}.lua" -- \
+    "$LUA" "${OPTS[@]}"
