@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -o nounset -o pipefail -o errexit
+
+SCRIPT_DIR=$(readlink -f "$0" | xargs dirname)
+SRC="$SCRIPT_DIR/src"
+
+HISTORY="$SCRIPT_DIR/.history"
+
+LUA=$SCRIPT_DIR/lua
+LUA_PATH="$SRC/?.lua;$SRC/?/init.lua;$LUA_PATH"
+
+OPTS=(-i)
+OPTS+=(-l "P=polynomial")
+
+rlwrap --history-filename="${HISTORY}.lua" -- "$LUA" "${OPTS[@]}"

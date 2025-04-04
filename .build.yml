@@ -4,7 +4,6 @@ packages:
   - xz
   - build-base
   - gmp-dev
-  - lua
   - coreutils
 tasks:
   - specs-accept-cabal-file: |

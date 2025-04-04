@@ -4,7 +4,7 @@ TOOLS ?= $(ROOT)/tools
 FETCH ?= $(TOOLS)/fetch
 export FETCH_MANIFEST ?= $(CURRENT_DIR)/deps.json
 
-all: lua-bint luaunit
+all: lua-bint luaunit lua
 
 lua-bint: lua-bint.tar.gz
 	mkdir $@
@@ -17,9 +17,14 @@ luaunit: luaunit.tar.gz
 luaunit.tar.gz lua-bint.tar.gz: $(FETCH_MANIFEST)
 	$(FETCH) download $@
 
+lua:
+	$(MAKE) -C lua
+
 deepclean:
 	rm -rf lua-bint.tar.gz lua-bint
 	rm -rf luaunit.tar.gz luaunit
+	make -C lua clean
 
 .PHONY: all
+.PHONY: lua
 .PHONY: deepclean
