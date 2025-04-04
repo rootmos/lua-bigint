@@ -18,37 +18,6 @@ data-files:
     lua/sandbox.lua
     lua/sketch.lua
 
-executable sandbox
-  main-is: Main.hs
-  other-modules:
-      Huge
-      LuaUtils
-      Paths_lua_bigint
-  hs-source-dirs:
-      src
-      sandbox
-  default-extensions:
-      DuplicateRecordFields
-      FlexibleContexts
-      GADTs
-      LambdaCase
-      NumericUnderscores
-      OverloadedStrings
-      RankNTypes
-      ScopedTypeVariables
-      TypeApplications
-  ghc-options: -Wall -Werror -fno-warn-name-shadowing
-  build-depends:
-      QuickCheck >=2.14.3 && <3
-    , base >=4.19 && <5
-    , bytestring >=0.12.1.0 && <0.13
-    , filepath >=1.4.301.0 && <2
-    , hslua >=2.3.1 && <3
-    , hslua-marshalling >=2.3.1 && <3
-    , hspec >=2.11.11 && <3
-    , utf8-string >=1.0.2 && <2
-  default-language: Haskell2010
-
 executable specs
   main-is: Main.hs
   other-modules:

@@ -3,7 +3,6 @@
 set -o nounset -o pipefail -o errexit
 
 SCRIPT_DIR=$(readlink -f "$0" | xargs dirname)
-HISTORY="$SCRIPT_DIR/.history"
 
 usage() {
     cat <<EOF 1>&2
@@ -22,9 +21,9 @@ MODE=lua
 while getopts "lhH-" OPT; do
     case $OPT in
         l) MODE=lua ;;
-        H) MODE=haskell ;;
+        h) MODE=haskell ;;
         -) break ;;
-        h) usage ;;
+        H) usage ;;
         ?) usage 2 ;;
     esac
 done
@@ -41,11 +40,12 @@ if [ "$MODE" = "lua" ]; then
     OPTS+=(-e "_PROMPT='lua-bigint> '")
     OPTS+=(-e "_PROMPT2='lua-bigint>> '")
 
-    rlwrap --history-filename="${HISTORY}.lua" -- \
+    rlwrap --history-filename="$SCRIPT_DIR/.history.lua" \
         "$LUA" "${OPTS[@]}"
 elif [ "$MODE" = "haskell" ]; then
-    echo "?"
+    exec env --chdir "$SCRIPT_DIR/tests" \
+        stack ghci --ghci-options="-flocal-ghci-history"
 else
-    echo 1>&2 "unknown mode: $MODE"
+    echo 1>&2 "unknown mode: ${MODE-}"
     exit 1
 fi
