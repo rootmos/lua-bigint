@@ -28,10 +28,25 @@ local function carry_the_one(p, B)
     return p:clone()
 end
 
-function M.dec_to_hex(a)
-    local A <const>, B <const> = 10, 16
-    local stencil <const> = P.make{4, 6, v="B"}
-    assert(stencil.n == 2)
+local function mk_stencil(A, B)
+    local m, s = 1, A
+    while s < B do
+        m = m + 1
+        s = s * A
+    end
+
+    local p, i = {v="B"}, 1
+    while s > 0 do
+        local q, r = divrem(s, B)
+        p[i] = r
+        s = q
+        i = i + 1
+    end
+    return m, P.make(p)
+end
+
+function M.convert(a, A, B)
+    local m <const>, stencil <const> = mk_stencil(A, B)
 
     local o_a, n_a <const> = 0, #a
     local M = P{1,v="B"}
@@ -40,44 +55,25 @@ function M.dec_to_hex(a)
     local function munch()
         local sum = 0
         local pow = 1
-        for j = 1,stencil.n do
+        for j = 1,m do
             sum = sum + (a[o_a + j] or 0)*pow
             pow = pow * A
         end
+        o_a = o_a + m
         return sum
     end
 
     while o_a <= n_a do
-        local m = munch()
-        local q, r = divrem(m, B)
+        local q, r = divrem(munch(), B)
         local d = carry_the_one(M*P.make{r, q, v="B"}, B)
         b = carry_the_one(b + d, B)
         M = carry_the_one(M * stencil, B)
-        o_a = o_a + stencil.n
     end
 
     return b:coefficients()
 end
 
-function M.hex_to_dec(a)
-    local A <const>, B <const> = 16, 10
-    local stencil <const> = P.make{6, 1, v="B"}
-    assert(stencil.n == 2)
-
-    local M = P{1,v="B"}
-    local b = P.make{v="B"}
-
-    local o_a, n_a <const> = 0, #a
-    while o_a <= n_a do
-        local m = a[o_a + 1] or 0
-        local q, r = divrem(m, B)
-        local d = carry_the_one(M*P.make{r, q, v="B"}, B)
-        b = carry_the_one(b + d, B)
-        M = carry_the_one(M * stencil, B)
-        o_a = o_a + 1
-    end
-
-    return b:coefficients()
-end
+M.dec_to_hex = function(a) return M.convert(a, 10, 16) end
+M.hex_to_dec = function(a) return M.convert(a, 16, 10) end
 
 return M
