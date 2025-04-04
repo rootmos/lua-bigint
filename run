@@ -6,8 +6,7 @@ SCRIPT_DIR=$(readlink -f "$0" | xargs dirname)
 SRC=$SCRIPT_DIR/src
 DEPS=$SCRIPT_DIR/deps
 
-LUA=${LUA-lua5.4}
-LUA=$(command -v "$LUA")
+LUA=$(command -v "${LUA-lua5.4}")
 
 RUN_TESTS=
 TIMEOUT=

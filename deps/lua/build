@@ -1,0 +1,44 @@
+#!/bin/bash
+
+set -o nounset -o pipefail -o errexit
+
+MAKE=${MAKE-make -j"$(nproc)"}
+
+SCRIPT_DIR=$(readlink -f "$0" | xargs dirname)
+ROOT=$(realpath "$SCRIPT_DIR/../..")
+TOOLS=${TOOLS-$ROOT/tools}
+FETCH=${FETCH-${TOOLS}/fetch}
+export FETCH_MANIFEST="$SCRIPT_DIR/lua.json"
+DESTDIR=${DESTDIR-$SCRIPT_DIR/root}
+
+if [ -z "${WORKDIR-}" ]; then
+    WORKDIR=$(mktemp -d)
+    trap 'rm -rf $WORKDIR' EXIT
+else
+    mkdir -p "$WORKDIR"
+fi
+WORKDIR=$(readlink -f "$WORKDIR")
+cd "$WORKDIR"
+
+TARBALL="$WORKDIR/lua.tar.gz"
+"$FETCH" download "$(basename "$TARBALL")" >/dev/null
+
+for b in 32 64; do
+    BUILD="$WORKDIR/lua$b"
+    mkdir "$BUILD"
+    cd "$BUILD"
+
+    tar -xf "$TARBALL" --strip-components=1
+
+    if [ "$b" = 32 ]; then
+        sed -i 's,^#define LUA_32BITS\s\+0$,#define LUA_32BITS 1,' "src/luaconf.h"
+    fi
+
+    sed -i 's,^INSTALL_TOP= .*$,INSTALL_TOP='"$DESTDIR/lua$b"',' "Makefile"
+
+    $MAKE clean
+    $MAKE
+    $MAKE install
+
+    test "$("$DESTDIR/lua$b/bin/lua" "$SCRIPT_DIR/bits.lua")" -eq "$b"
+done
