@@ -67,7 +67,7 @@ function M.hex_to_dec(a)
     local M = P{1,v="B"}
     local b = P.make{v="B"}
 
-    local o_a, n_a = 0, #a
+    local o_a, n_a <const> = 0, #a
     while o_a <= n_a do
         local m = a[o_a + 1] or 0
         local q, r = divrem(m, B)

@@ -33,8 +33,3 @@ executables:
       - src
       - specs
     main: Main.hs
-  sandbox:
-    source-dirs:
-      - src
-      - sandbox
-    main: Main.hs

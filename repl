@@ -1,0 +1,51 @@
+#!/bin/bash
+
+set -o nounset -o pipefail -o errexit
+
+SCRIPT_DIR=$(readlink -f "$0" | xargs dirname)
+
+usage() {
+    cat <<EOF 1>&2
+Usage: $(basename "$0") [options] (-l | -H) --
+
+Mode:
+    -l | -H     run in Lua or Haskell mode
+
+Options:
+    -h          show this message
+EOF
+    exit "${1-0}"
+}
+
+MODE=lua
+while getopts "lhH-" OPT; do
+    case $OPT in
+        l) MODE=lua ;;
+        h) MODE=haskell ;;
+        -) break ;;
+        H) usage ;;
+        ?) usage 2 ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ "$MODE" = "lua" ]; then
+    LUA=${LUA-$SCRIPT_DIR/lua}
+    LUA_SRC="$SCRIPT_DIR/src"
+    LUA_PATH="$LUA_SRC/?.lua;$LUA_SRC/?/init.lua;$LUA_PATH"
+
+    OPTS=(-i)
+    OPTS+=(-l "P=polynomial")
+    OPTS+=(-l "A=ascii")
+    OPTS+=(-e "_PROMPT='lua-bigint> '")
+    OPTS+=(-e "_PROMPT2='lua-bigint>> '")
+
+    rlwrap --history-filename="$SCRIPT_DIR/.history.lua" \
+        "$LUA" "${OPTS[@]}"
+elif [ "$MODE" = "haskell" ]; then
+    exec env --chdir "$SCRIPT_DIR/tests" \
+        stack ghci --ghci-options="-flocal-ghci-history"
+else
+    echo 1>&2 "unknown mode: ${MODE-}"
+    exit 1
+fi
