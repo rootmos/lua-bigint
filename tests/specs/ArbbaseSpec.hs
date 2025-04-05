@@ -83,3 +83,20 @@ spec = do
       it "should work for huge integers" $ properly $ \(Huge {getHuge = n}) ->
         let e = expr (digitsInBase 16 n) in
         evalAndPeek e >>= flip shouldBe (digitsInBase 10 n)
+
+  describe "arbitrary" $ do
+    let fn = "M.convert" :: String
+        expr a as b = printf "%s({%s}, %d, %d)" fn (intercalate "," $ fmap show as) a b
+        example (a :: Int) (as :: [Int]) (b :: Int) (bs :: [Int]) =
+          let e = expr a as b in
+          it (e ++ " should evaluate to " ++ show bs) $
+            evalAndPeek e >>= flip shouldBe bs
+
+    describe "examples" $ do
+      -- from UtilsSpec:
+      example 3 [2,0,1,1,2,0,2,0,0,2,1,2] 8 [7,3,3,7,6,5,1]
+      example 7 [6,0,6,2,4,3,1,3,5,1] 4 [1,1,1,3,1,3,3,3,3,1,0,1,0,1]
+
+      -- https://www.wolframalpha.com/input?i=convert+96030592+to+base+22
+      -- https://www.wolframalpha.com/input?i=convert+96030592+to+base+3
+      example 22 [20,6,14,20,13,18] 3 [1,2,1,2,1,0,2,1,2,0,0,2,0,0,2,0,2]
