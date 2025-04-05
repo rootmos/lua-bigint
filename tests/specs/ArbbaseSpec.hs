@@ -52,12 +52,12 @@ spec = do
         example [0, 9, 8, 7, 6, 5, 4, 3, 2, 1] [2, 13, 2, 0, 6, 9, 9, 4]
 
       it "should work for arbitrary positive integers" $ property $ \(Positive (n :: Integer)) ->
-        let e = expr (reverse $ digitsInBase 10 n) in
-        evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)
+        let e = expr (digitsInBase 10 n) in
+        evalAndPeek e >>= flip shouldBe (digitsInBase 16 n)
 
       it "should work for huge integers" $ properly $ \(Huge {getHuge = n}) ->
-        let e = expr (reverse $ digitsInBase 10 n) in
-        evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 16 n)
+        let e = expr (digitsInBase 10 n) in
+        evalAndPeek e >>= flip shouldBe (digitsInBase 16 n)
 
   describe "hex_to_dec" $ do
       let fn = "M.hex_to_dec" :: String
@@ -77,9 +77,9 @@ spec = do
         example [13, 7, 15, 8] [3, 3, 7, 6, 3]
 
       it "should work for arbitrary positive integers" $ property $ \(Positive (n :: Integer)) ->
-        let e = expr (reverse $ digitsInBase 16 n) in
-        evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 10 n)
+        let e = expr (digitsInBase 16 n) in
+        evalAndPeek e >>= flip shouldBe (digitsInBase 10 n)
 
       it "should work for huge integers" $ properly $ \(Huge {getHuge = n}) ->
-        let e = expr (reverse $ digitsInBase 16 n) in
-        evalAndPeek e >>= flip shouldBe (reverse $ digitsInBase 10 n)
+        let e = expr (digitsInBase 16 n) in
+        evalAndPeek e >>= flip shouldBe (digitsInBase 10 n)

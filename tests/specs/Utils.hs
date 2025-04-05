@@ -8,9 +8,9 @@ import Data.Function ( (&) )
 digitsInBase :: Integer -> Integer -> [ Integer ]
 digitsInBase _ x | x < 0 = undefined
 digitsInBase _ 0 = []
-digitsInBase base x = f [] x
-  where f acc 0 = acc
-        f acc n = let (q, r) = quotRem n base in f (r:acc) q
+digitsInBase base x = f x
+  where f 0 = []
+        f n = let (q, r) = quotRem n base in r:f q
 
 evalInBase :: Integer -> [ Integer ] -> Integer
 evalInBase b _ | b < 2 = undefined

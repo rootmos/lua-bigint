@@ -81,5 +81,5 @@ spec = do
 
       it "should work for hexadecimals" $ property $ \(Positive (n :: Integer)) -> do
         let ds = digitsInBase 16 n
-            r = intercalate "," . reverse
+            r = intercalate ","
         testCase (embrace . r $ show <$> ds) (printf "%x" n)

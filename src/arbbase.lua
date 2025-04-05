@@ -1,7 +1,5 @@
-local P <const> = require("polynomial")
-local Ascii <const> = require("ascii")
-
 local M = {}
+local P <const> = require("polynomial")
 
 local function divrem(a, b)
     return a//b, a%b
@@ -28,7 +26,7 @@ local function carry_the_one(p, B)
     return p:clone()
 end
 
-local function mk_stencil(A, B)
+function M.stencil(A, B)
     local m, s = 1, A
     while s < B do
         m = m + 1
@@ -46,7 +44,7 @@ local function mk_stencil(A, B)
 end
 
 function M.convert(a, A, B)
-    local m <const>, stencil <const> = mk_stencil(A, B)
+    local m <const>, stencil <const> = M.stencil(A, B)
 
     local o_a, n_a <const> = 0, #a
     local M = P{1,v="B"}
