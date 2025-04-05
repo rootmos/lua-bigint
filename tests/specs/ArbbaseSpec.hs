@@ -6,7 +6,7 @@ import Text.Printf
 import Test.Hspec
 import Test.QuickCheck
 
-import HsLua hiding ( Integer, property, concat )
+import HsLua hiding ( Integer )
 
 import LuaBigInt
 import LuaUtils
@@ -51,7 +51,7 @@ spec = do
         example [3,2,1] [11, 7]
         example [0, 9, 8, 7, 6, 5, 4, 3, 2, 1] [2, 13, 2, 0, 6, 9, 9, 4]
 
-      it "should work for arbitrary positive integers" $ property $ \(Positive (n :: Integer)) ->
+      it "should work for arbitrary positive integers" $ properly $ \(Positive (n :: Integer)) ->
         let e = expr (digitsInBase 10 n) in
         evalAndPeek e >>= flip shouldBe (digitsInBase 16 n)
 
@@ -76,7 +76,7 @@ spec = do
         example [0,1] [6,1]
         example [13, 7, 15, 8] [3, 3, 7, 6, 3]
 
-      it "should work for arbitrary positive integers" $ property $ \(Positive (n :: Integer)) ->
+      it "should work for arbitrary positive integers" $ properly $ \(Positive (n :: Integer)) ->
         let e = expr (digitsInBase 16 n) in
         evalAndPeek e >>= flip shouldBe (digitsInBase 10 n)
 

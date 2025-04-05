@@ -5,6 +5,11 @@ packages:
   - build-base
   - gmp-dev
   - coreutils
+environment:
+  QUICKCHECK_VERBOSE: 1
+  QUICKCHECK_MAX_SUCCESS: 1000
+  QUICKCHECK_SIZE: 200
+
 tasks:
   - specs-accept-cabal-file: |
       cd lua-bigint/tests
@@ -17,7 +22,7 @@ tasks:
       make deps
   - tests: |
       cd lua-bigint
-      env VERBOSE=1 make tests
+      make tests
 triggers:
   - action: email
     condition: always

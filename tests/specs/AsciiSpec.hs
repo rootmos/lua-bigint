@@ -10,7 +10,7 @@ import Utils
 import LuaBigInt
 import LuaUtils
 
-import HsLua hiding ( Integer, property, concat )
+import HsLua hiding ( Integer )
 
 runLua :: RunLuaRun
 runLua = mkRun $ do
@@ -45,11 +45,11 @@ spec = do
         example "0" [0]
         example "abcdef097" [7, 9, 0, 15, 14, 13, 12, 11, 10]
 
-      it "should work for decimals" $ property $ \(NonNegative n) -> do
+      it "should work for decimals" $ properly $ \(NonNegative n) -> do
         ds <- evalAndPeek $ printf "%s('%d')" fn n
         (evalInBase 10 ds) `shouldBe` n
 
-      it "should work for hexadecimals" $ property $ \(NonNegative n) -> do
+      it "should work for hexadecimals" $ properly $ \(NonNegative n) -> do
         ds <- evalAndPeek $ printf "%s('%x')" fn n
         (evalInBase 16 ds) `shouldBe` n
 
@@ -75,11 +75,11 @@ spec = do
 
       let embrace = printf "{%s}"
 
-      it "should work for decimals" $ property $ \(Positive (n :: Integer)) -> do
+      it "should work for decimals" $ properly $ \(Positive (n :: Integer)) -> do
         let r = intersperse ',' . reverse
         testCase (embrace . r $ show n) (show n)
 
-      it "should work for hexadecimals" $ property $ \(Positive (n :: Integer)) -> do
+      it "should work for hexadecimals" $ properly $ \(Positive (n :: Integer)) -> do
         let ds = digitsInBase 16 n
             r = intercalate ","
         testCase (embrace . r $ show <$> ds) (printf "%x" n)

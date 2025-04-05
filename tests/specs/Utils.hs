@@ -1,7 +1,7 @@
 module Utils where
 
 import System.Environment ( lookupEnv )
-import Test.QuickCheck ( verbose, property, Testable, Property )
+import Test.QuickCheck ( verbose, property, Testable, Property, withMaxSuccess, mapSize )
 import System.IO.Unsafe ( unsafePerformIO )
 import Data.Function ( (&) )
 
@@ -17,7 +17,16 @@ evalInBase b _ | b < 2 = undefined
 evalInBase b ds = sum $ zipWith (*) ds (iterate (* b) 1)
 
 properly :: Testable p => p -> Property
-properly = unsafePerformIO (lookupEnv "VERBOSE") & \case
- Nothing -> property
- Just "" -> property
- _ -> verbose . property
+properly = v . m . s . property
+ where v = unsafePerformIO (lookupEnv "QUICKCHECK_VERBOSE") & \case
+             Nothing -> id
+             Just "" -> id
+             _ -> verbose
+       m = unsafePerformIO (lookupEnv "QUICKCHECK_MAX_SUCCESS") & \case
+             Nothing -> id
+             Just "" -> id
+             Just s -> withMaxSuccess (read s)
+       s = unsafePerformIO (lookupEnv "QUICKCHECK_SIZE") & \case
+             Nothing -> id
+             Just "" -> id
+             Just size -> mapSize (\_ -> read size)
