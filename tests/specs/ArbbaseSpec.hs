@@ -24,6 +24,18 @@ runAndPeek = mkRunAndPeek runLua
 evalAndPeek :: EvalLuaAndPeek
 evalAndPeek = mkEvalAndPeek runAndPeek
 
+
+newtype Base = Base Integer
+
+instance Show Base where
+  show (Base n) = show n
+
+instance Arbitrary Base where
+  --arbitrary = Base . fromIntegral <$> suchThat (arbitrary @(Large Int)) (> 1)
+  arbitrary = Base . fromIntegral <$> suchThat (scale (*10) $ arbitrary @Int) (> 1)
+  shrink (Base b) = fmap Base $ filter (>1) $ shrink b
+
+
 spec :: Spec
 spec = do
   describe "arbbase.lua" $ do
@@ -80,14 +92,14 @@ spec = do
         let e = expr (digitsInBase 16 n) in
         evalAndPeek e >>= flip shouldBe (digitsInBase 10 n)
 
-      it "should work for huge integers" $ properly $ \(Huge {getHuge = n}) ->
+      it "should work for arbitrary huge integers" $ properly $ \(Huge {getHuge = n}) ->
         let e = expr (digitsInBase 16 n) in
         evalAndPeek e >>= flip shouldBe (digitsInBase 10 n)
 
   describe "arbitrary" $ do
     let fn = "M.convert" :: String
         expr a as b = printf "%s({%s}, %d, %d)" fn (intercalate "," $ fmap show as) a b
-        example (a :: Int) (as :: [Int]) (b :: Int) (bs :: [Int]) =
+        example (a :: Integer) (as :: [Integer]) (b :: Integer) (bs :: [Integer]) =
           let e = expr a as b in
           it (e ++ " should evaluate to " ++ show bs) $
             evalAndPeek e >>= flip shouldBe bs
@@ -100,3 +112,11 @@ spec = do
       -- https://www.wolframalpha.com/input?i=convert+96030592+to+base+22
       -- https://www.wolframalpha.com/input?i=convert+96030592+to+base+3
       example 22 [20,6,14,20,13,18] 3 [1,2,1,2,1,0,2,1,2,0,0,2,0,0,2,0,2]
+
+    it "should work for arbitrary non-negative integers" $ properly $
+      \(Base a, Base b, NonNegative (n :: Integer)) ->
+        evalAndPeek (expr a (digitsInBase a n) b) >>= flip shouldBe (digitsInBase b n)
+
+    it "should work for arbitrary huge integers" $ properly $
+      \(Base a, Base b, Huge { getHuge = n }) ->
+        evalAndPeek (expr a (digitsInBase a n) b) >>= flip shouldBe (digitsInBase b n)
