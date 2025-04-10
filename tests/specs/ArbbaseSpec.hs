@@ -122,8 +122,10 @@ spec = do
         evalAndPeek (expr a (digitsInBase a n) b) >>= flip shouldBe (digitsInBase b n)
 
     -- should work for bases b <= B, where B: B + B*B <= max signed int
-    -- so use b=2^31 (or b=2^15 for 32 bits)
-    xit "should work for a base 2^31" $ properly $
-      -- TODO check bit width and choose b accordingly
+    -- so use b=2^31 (or b=2^15 for 32 bits) (TODO check bit-width and choose b accordingly)
+    it "should convert into base 2^31" $ properly $
       \(Base a, Huge { getHuge = n }) -> let b = 2^(31 :: Integer)  in
         evalAndPeek (expr a (digitsInBase a n) b) >>= flip shouldBe (digitsInBase b n)
+    it "should convert from base 2^31" $ properly $
+      \(Base a, Huge { getHuge = n }) -> let b = 2^(31 :: Integer)  in
+        evalAndPeek (expr b (digitsInBase b n) a) >>= flip shouldBe (digitsInBase a n)

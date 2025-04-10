@@ -14,42 +14,16 @@ function M.stencil(A, B)
 
     local p, i = {v="B"}, 1
     while s > 0 do
-        local q, r = divrem(s, B)
-        p[i] = r
-        s = q
+        s, p[i] = divrem(s, B)
         i = i + 1
     end
     return m, P.make(p)
 end
 
-local function carry_the_one(p, B)
-    local p = p:clone()
-    local i = 1
-    while true do
-        local k = p[i]
-        if k == nil then
-            break
-        end
-        if k >= B then
-            local q, r = divrem(k, B)
-            p[i] = r
-            p[i+1] = (p[i+1] or 0) + q
-        end
-
-        i = i + 1
-    end
-    p.n = i
-    return p:clone()
-end
-
-local function carry_the_one_mut(p, i, s, B)
-    assert(s>=0)
+local function carry_the_one(p, i, s, B)
     while true do
         local k = p[i] or 0
-        local q, r = divrem(s + k, B)
-
-        s = q
-        p[i] = r
+        s, p[i] = divrem(s + k, B)
 
         if s > 0 then
             i = i + 1
@@ -62,7 +36,7 @@ local function carry_the_one_mut(p, i, s, B)
     end
 end
 
-local function carry_the_one_add_multiple_of(a, k, b, B)
+local function add(a, b, B)
     local ao <const>, bo <const> = a.o, b.o
     local an <const>, bn <const> = a.n, b.n
     local o <const>, m <const> = math.min(ao, bo), math.max(ao+an, bo+bn)
@@ -70,21 +44,19 @@ local function carry_the_one_add_multiple_of(a, k, b, B)
 
     local sum = {o=o, n=n, v=a.v or b.v}
     for i = o, m do
-        assert((k*(b[i - bo + 1] or 0)) >= 0)
-        local s = (a[i - ao + 1] or 0) + k*(b[i - bo + 1] or 0)
-
-        carry_the_one_mut(sum, i-o+1, s, B)
+        local s = (a[i - ao + 1] or 0) + (b[i - bo + 1] or 0)
+        carry_the_one(sum, i-o+1, s, B)
     end
 
     return P.make(sum)
 end
 
-local function carry_the_one_mul(a, b, B)
+local function mul(a, b, B)
     local ao <const>, bo <const> = a.o, b.o
     local an <const>, bn <const> = a.n, b.n
 
     if an == 0 or bn == 0 then
-        return M.make{}
+        return P.make{}
     end
 
     -- (1 + a.o - 1) + (1 + b.o - 1)
@@ -95,14 +67,10 @@ local function carry_the_one_mul(a, b, B)
     local prod = {o=o, n=n, v=a.v or b.v}
     for i = 1, an do
         local ai = a[i] or 0
-        -- TODO skip if ai == 0
         for j = 1, bn do
             local bj = b[j] or 0
-            -- TODO skip if bj == 0
-
             -- (i + ao - 1) + (j + bo - 1) - o + 1
-            carry_the_one_mut(prod, i+j-1, ai*bj, B)
-            --prod[i + j - 1] = (prod[i + j - 1] or 0) + ai*bj
+            carry_the_one(prod, i+j-1, ai*bj, B)
         end
     end
 
@@ -114,7 +82,7 @@ function M.convert(a, A, B)
 
     local o_a, n_a <const> = 0, #a
     local M = P{1,v="B"}
-    local b = P.make{v="B"}
+    local b = P{v="B"}
 
     local function munch()
         local sum = 0
@@ -124,14 +92,19 @@ function M.convert(a, A, B)
             pow = pow * A
         end
         o_a = o_a + m
-        assert(sum >= 0)
-        assert(sum <= 2^31) -- hmm: so maybe the previous version of munch is the correct way to go
-        return sum
+
+        local p, i = {v="B"}, 1
+        while sum > 0 do
+            sum, p[i] = divrem(sum, B)
+            i = i + 1
+        end
+
+        return P.make(p)
     end
 
     while o_a <= n_a do
-        b = carry_the_one_add_multiple_of(b, munch(), M, B)
-        M = carry_the_one_mul(M, stencil, B)
+        b = add(b, mul(munch(), M, B), B)
+        M = mul(M, stencil, B)
     end
 
     return b:coefficients()
