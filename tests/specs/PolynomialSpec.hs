@@ -86,7 +86,8 @@ inspectPolynomial shouldEvaluateTo name p = context (printf "%s == %s" name (sho
     (printf "P.is_polynomial(%s)" name) `shouldEvaluateTo` True
   it "should have the correct coefficients" $ do
     (printf "%s" name) `shouldEvaluateTo` (coefficients p)
-  it "should have the correct order" $
+  it "should have the expected length" $ do
+    (printf "#%s" name) `shouldEvaluateTo` (length $ coefficients p)
     (printf "%s.n" name) `shouldEvaluateTo` (length $ coefficients p)
   it "should have the correct offset" $
     (printf "%s.o" name) `shouldEvaluateTo` (offset p)

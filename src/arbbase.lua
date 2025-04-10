@@ -5,7 +5,23 @@ local function divrem(a, b)
     return a//b, a%b
 end
 
--- TODO: mutate p
+function M.stencil(A, B)
+    local m, s = 1, A
+    while s < B do
+        m = m + 1
+        s = s * A
+    end
+
+    local p, i = {v="B"}, 1
+    while s > 0 do
+        local q, r = divrem(s, B)
+        p[i] = r
+        s = q
+        i = i + 1
+    end
+    return m, P.make(p)
+end
+
 local function carry_the_one(p, B)
     local p = p:clone()
     local i = 1
@@ -26,21 +42,12 @@ local function carry_the_one(p, B)
     return p:clone()
 end
 
-function M.stencil(A, B)
-    local m, s = 1, A
-    while s < B do
-        m = m + 1
-        s = s * A
-    end
+local function carry_the_one_add_multiple_of(a, k, b, B)
+    return carry_the_one(a + P{k}*b, B)
+end
 
-    local p, i = {v="B"}, 1
-    while s > 0 do
-        local q, r = divrem(s, B)
-        p[i] = r
-        s = q
-        i = i + 1
-    end
-    return m, P.make(p)
+local function carry_the_one_mul(a, b, B)
+    return carry_the_one(a*b, B)
 end
 
 function M.convert(a, A, B)
@@ -62,10 +69,8 @@ function M.convert(a, A, B)
     end
 
     while o_a <= n_a do
-        local q, r = divrem(munch(), B)
-        local d = carry_the_one(M*P.make{r, q, v="B"}, B)
-        b = carry_the_one(b + d, B)
-        M = carry_the_one(M * stencil, B)
+        b = carry_the_one_add_multiple_of(b, munch(), M, B)
+        M = carry_the_one_mul(M, stencil, B)
     end
 
     return b:coefficients()

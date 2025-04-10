@@ -1,3 +1,11 @@
+-- p(x) := \sum_{k=0}^K p_k x^k = p_0 + p_1 x + ... + p_K x^K
+-- local p = make{p_0, p_1, ..., p_K}
+--
+-- p.o := min k such that p_k ~= 0
+-- p.n := max (k+1) such that p_k ~= 0
+-- p_k == p[k - p.o + 1], 0 <= k <= K
+-- p[i] == p_{i + p.o - 1}, 1 <= i <= p.n
+
 local M = {
     space = " ",
 }
@@ -139,11 +147,9 @@ function M.mul(a, b)
         return M.make{}
     end
 
-    -- a[i] ~ x^(i + ao - 1), 1 <= i <= a.n
-    -- min: o := 1 + ao - 1 + 1 + bo - 1
-    -- max: n := an + ao - 1 + bn + bo - 1 - o + 1
-
+    -- (1 + a.o - 1) + (1 + b.o - 1)
     local o <const> = ao + bo
+    -- (a.n + a.o - 1) + (b.n + b.o - 1) - o + 1
     local n <const> = an + bn - 1
 
     local prod = {o=o, n=n, v=a.v or b.v}
