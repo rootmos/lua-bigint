@@ -24,7 +24,7 @@ TARBALL="$WORKDIR/lua.tar.gz"
 "$FETCH" download "$(basename "$TARBALL")" >/dev/null
 
 makefile_eval() {
-    $MAKE -f- do_eval <<EOF
+    $MAKE --no-print-directory -f- do_eval <<EOF
 include Makefile
 .PHONY: do_eval
 do_eval:
