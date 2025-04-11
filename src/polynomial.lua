@@ -45,7 +45,8 @@ function M.tostring(p)
 end
 __mt.__tostring = M.tostring
 
-local function clean(p, q)
+-- TODO tests
+function M.clean(p, q)
     local n <const> = p.n or #p
 
     local mut <const> = p == q
@@ -107,7 +108,7 @@ function M.make(p)
         v = p.v
     }
 
-    clean(p, q)
+    M.clean(p, q)
     return setmetatable(q, __mt)
 end
 
@@ -138,7 +139,7 @@ function M.add(a, b)
         end
     end
 
-    clean(sum, sum)
+    M.clean(sum, sum)
     return setmetatable(sum, __mt)
 end
 __mt.__add = M.add
@@ -184,6 +185,10 @@ function __fn:coefficients()
         cs[o+i] = self[i]
     end
     return cs
+end
+
+function M.coefficients(p)
+    return __fn.coefficients(p)
 end
 
 return setmetatable(M, {

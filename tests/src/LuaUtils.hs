@@ -45,8 +45,8 @@ require modname = ensureStackDiff 1 $ do
 
 requireG :: LuaError e => Name -> String -> LuaE e ()
 requireG g modname = stackNeutral $ do
-    _ <- require modname
-    setglobal g
+  _ <- require modname
+  setglobal g
 
 extendLuaPath :: LuaError e => FilePath -> LuaE e ()
 extendLuaPath dir = stackNeutral $ do

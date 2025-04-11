@@ -82,7 +82,7 @@ function M.convert(a, A, B)
 
     local o_a, n_a <const> = 0, #a
     local M = P{1,v="B"}
-    local b = P{v="B"}
+    local b = P{}
 
     local function munch()
         local sum = 0
