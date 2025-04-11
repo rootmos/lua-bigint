@@ -92,7 +92,7 @@ luaBits = unsafePerformIO $ HsLua.run @HsLua.Exception $
   openlibs >> dostring finderOuter >>= \case
     OK -> b <$> peek top
     _ -> throwErrorAsException
-  where finderOuter = "print('hello') local intmax = 0x7fffffffffffffff\n\
+  where finderOuter = "local intmax = 0x7fffffffffffffff\n\
                       \if math.type(intmax) == 'integer' and intmax + 1 < 0 then return 64 end\n\
                       \intmax = 0x7fffffff\n\
                       \if math.type(intmax) == 'integer' and intmax + 1 < 0 then return 32 end\n\

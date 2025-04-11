@@ -1,6 +1,6 @@
 
 Name: Lua
-Description: Lua (${bits} bits)
+Description: Lua (${lua_bits} bits)
 Version: ${version}
 Requires: 
 Libs: -L${libdir} -llua -lm

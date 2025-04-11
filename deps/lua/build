@@ -48,7 +48,7 @@ for b in 32 64; do
     V=$(makefile_eval V)
 
     $MAKE clean
-    $MAKE
+    $MAKE MYCFLAGS="-fPIC"
     $MAKE install
 
     test "$("$DESTDIR/lua$b/bin/lua" "$SCRIPT_DIR/bits.lua")" -eq "$b"
@@ -58,5 +58,5 @@ for b in 32 64; do
     echo "lua_bits=$b" >>"$PC"
     cat "$SCRIPT_DIR/lua.pc" >>"$PC"
 
-    install -Dm644 lua.pc "$(makefile_eval INSTALL_LIB)/pkgconfig/lua$V.pc"
+    install -Dm644 "$PC" "$(makefile_eval INSTALL_LIB)/pkgconfig/lua$V.pc"
 done

@@ -9,6 +9,7 @@ environment:
   QUICKCHECK_VERBOSE: 1
   QUICKCHECK_MAX_SUCCESS: 1000
   QUICKCHECK_SIZE: 200
+  LUA_BITS: 32
 tasks:
   - specs-accept-cabal-file: |
       cd lua-bigint/tests
