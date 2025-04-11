@@ -21,18 +21,18 @@ data-files:
 executable specs
   main-is: Main.hs
   other-modules:
-      Huge
-      LuaUtils
       ArbbaseSpec
       AsciiSpec
+      Huge
       LuaBigInt
+      LuaUtils
+      LuaUtilsSpec
       PolynomialSpec
       Utils
       UtilsSpec
       Paths_lua_bigint
   hs-source-dirs:
       src
-      specs
   default-extensions:
       DuplicateRecordFields
       FlexibleContexts

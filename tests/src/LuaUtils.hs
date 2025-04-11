@@ -6,6 +6,7 @@ import Control.Monad ( unless )
 import Control.Monad.IO.Class ( MonadIO )
 import Data.List ( intercalate )
 import System.FilePath ( (</>) )
+import System.IO.Unsafe ( unsafePerformIO )
 import Text.Printf ( printf )
 
 --import qualified Data.ByteString as BS
@@ -83,3 +84,19 @@ mkRunAndPeek runner ls = runner $ stackNeutral $ do
 
 mkEvalAndPeek :: RunLuaAndPeek -> EvalLuaAndPeek
 mkEvalAndPeek runner expr = runner [ "return " ++ expr ]
+
+data LuaBits = Lua32 | Lua64 deriving ( Show, Eq )
+
+luaBits :: LuaBits
+luaBits = unsafePerformIO $ HsLua.run @HsLua.Exception $
+  openlibs >> dostring finderOuter >>= \case
+    OK -> b <$> peek top
+    _ -> throwErrorAsException
+  where finderOuter = "print('hello') local intmax = 0x7fffffffffffffff\n\
+                      \if math.type(intmax) == 'integer' and intmax + 1 < 0 then return 64 end\n\
+                      \intmax = 0x7fffffff\n\
+                      \if math.type(intmax) == 'integer' and intmax + 1 < 0 then return 32 end\n\
+                      \error('unknown integer width')"
+        b (32 :: Int) = Lua32
+        b 64 = Lua64
+        b _ = undefined
