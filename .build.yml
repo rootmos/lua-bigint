@@ -9,17 +9,22 @@ environment:
   QUICKCHECK_VERBOSE: 1
   QUICKCHECK_MAX_SUCCESS: 1000
   QUICKCHECK_SIZE: 200
-
 tasks:
   - specs-accept-cabal-file: |
       cd lua-bigint/tests
       touch lua-bigint.cabal
-  - specs-build: |
-      cd lua-bigint
-      make -C tests build
+  - coinflip-lua-bits: |
+      case $((RANDOM%3)) in
+          0) echo "export LUA_BITS=32" | tee -a ~/.buildenv ;;
+          1) echo "export LUA_BITS=64" | tee -a ~/.buildenv ;;
+          2) echo "unset LUA_BITS" | tee -a ~/.buildenv ;;
+      esac
   - deps: |
       cd lua-bigint
       make deps
+  - tests-build: |
+      cd lua-bigint
+      make -C tests build
   - tests: |
       cd lua-bigint
       make tests

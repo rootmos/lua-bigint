@@ -1,0 +1,7 @@
+
+Name: Lua
+Description: Lua (${lua_bits} bits)
+Version: ${version}
+Requires: 
+Libs: -L${libdir} -llua -lm
+Cflags: -I${includedir}
