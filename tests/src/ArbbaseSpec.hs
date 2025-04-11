@@ -122,19 +122,10 @@ spec = do
         evalAndPeek (expr a (digitsInBase a n) b) >>= flip shouldBe (digitsInBase b n)
 
     -- should work for bases b <= B, where B: B + B*B <= max signed int
-    -- so use b=2^31 (or b=2^15 for 32 bits)
-    case luaBits of
-       Lua32 -> do
-         it "should convert into base 2^15" $ properly $
-           \(Base a, Huge { getHuge = n }) -> let b = 2^(15 :: Integer)  in
-             evalAndPeek (expr a (digitsInBase a n) b) >>= flip shouldBe (digitsInBase b n)
-         it "should convert from base 2^15" $ properly $
-           \(Base a, Huge { getHuge = n }) -> let b = 2^(15 :: Integer)  in
-             evalAndPeek (expr b (digitsInBase b n) a) >>= flip shouldBe (digitsInBase a n)
-       Lua64 -> do
-         it "should convert into base 2^31" $ properly $
-           \(Base a, Huge { getHuge = n }) -> let b = 2^(31 :: Integer)  in
-             evalAndPeek (expr a (digitsInBase a n) b) >>= flip shouldBe (digitsInBase b n)
-         it "should convert from base 2^31" $ properly $
-           \(Base a, Huge { getHuge = n }) -> let b = 2^(31 :: Integer)  in
-             evalAndPeek (expr b (digitsInBase b n) a) >>= flip shouldBe (digitsInBase a n)
+    let e :: Int = case luaBits of { Lua32 -> 15; Lua64 -> 31 }
+    it (printf "should convert into base 2^%d" e) $ properly $
+      \(Base a, Huge { getHuge = n }) -> let b = 2^e in
+        evalAndPeek (expr a (digitsInBase a n) b) >>= flip shouldBe (digitsInBase b n)
+    it (printf "should convert from base 2^%d" e) $ properly $
+      \(Base a, Huge { getHuge = n }) -> let b = 2^e in
+        evalAndPeek (expr b (digitsInBase b n) a) >>= flip shouldBe (digitsInBase a n)
