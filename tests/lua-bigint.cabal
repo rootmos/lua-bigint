@@ -11,6 +11,8 @@ data-files:
     lua/arbbase.lua
     lua/arbbase.test.lua
     lua/ascii.lua
+    lua/bignat.lua
+    lua/bits.lua
     lua/lua-bigint.lua
     lua/lua-bigint.test.lua
     lua/main.lua
@@ -23,6 +25,7 @@ executable specs
   other-modules:
       ArbbaseSpec
       AsciiSpec
+      BignatSpec
       Huge
       LuaBigInt
       LuaUtils

@@ -15,6 +15,10 @@ local __mt <const> = {
     __index = __fn,
 }
 
+function M.is_polynomial(x)
+    return getmetatable(x) == __mt
+end
+
 function M.tostring(p)
     local s = ""
     local v <const> = p.v or "x"
@@ -180,10 +184,6 @@ function __fn:coefficients()
         cs[o+i] = self[i]
     end
     return cs
-end
-
-function M.is_polynomial(x)
-    return getmetatable(x) == __mt
 end
 
 return setmetatable(M, {

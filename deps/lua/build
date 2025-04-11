@@ -51,7 +51,8 @@ for b in 32 64; do
     $MAKE MYCFLAGS="-fPIC"
     $MAKE install
 
-    test "$("$DESTDIR/lua$b/bin/lua" "$SCRIPT_DIR/bits.lua")" -eq "$b"
+    LUA="$DESTDIR/lua$b/bin/lua"
+    test "$("$LUA" "$SCRIPT_DIR/bits.lua" -p)" -eq "$b"
 
     PC="lua.pc"
     $MAKE pc >"$PC"
