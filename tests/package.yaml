@@ -17,6 +17,7 @@ default-extensions:
   - DuplicateRecordFields
   - FlexibleContexts
   - GADTs
+  - GeneralizedNewtypeDeriving
   - LambdaCase
   - NumericUnderscores
   - OverloadedStrings
