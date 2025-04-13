@@ -8,7 +8,7 @@ export LUA_BITS=64
 go() {
     #timeout 10 make -C tests
     #make tests
-    cd tests && make build && stack run specs -- -m '/Bignat'
+    cd tests && make build && timeout 5 stack run specs -- -m '/Bignat'
     #./run -e sandbox
     #./run -t
 }

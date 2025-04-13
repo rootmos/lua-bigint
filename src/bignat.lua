@@ -1,6 +1,7 @@
 local Ascii = require("ascii")
 local P = require("polynomial")
 local Arbbase = require("arbbase")
+local I <const> = require("internal")
 
 local M = {}
 
@@ -56,6 +57,20 @@ function __fn:tostring()
     local ds = Arbbase.convert(self, self.base, 10)
     return Ascii.le_digits_to_be_string(ds)
 end
+
+local addB, mulB = I.mk_add(M.make), I.mk_mul(M.make)
+
+function M.add(a, b)
+    assert(a.base == b.base)
+    return addB(a, b, a.base)
+end
+__mt.__add = M.add
+
+function M.mul(a, b)
+    assert(a.base == b.base)
+    return mulB(a, b, a.base)
+end
+__mt.__mul = M.mul
 
 return setmetatable(M, {
     __call = function(N, o)

@@ -13,6 +13,7 @@ data-files:
     lua/ascii.lua
     lua/bignat.lua
     lua/bits.lua
+    lua/internal.lua
     lua/lua-bigint.lua
     lua/lua-bigint.test.lua
     lua/main.lua

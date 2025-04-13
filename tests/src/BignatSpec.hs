@@ -26,15 +26,24 @@ runAndPeek = mkRunAndPeek runLua
 evalAndPeek :: EvalLuaAndPeek
 evalAndPeek = mkEvalAndPeek runAndPeek
 
-newtype BigNat = N Integer deriving ( Show, Eq )
+newtype BigNat = N Integer deriving ( Show, Eq, Num )
 
 instance Arbitrary BigNat where
-  arbitrary = N . getNonNegative <$> arbitrary
+  arbitrary = N . getHuge <$> arbitrary
 
 pushBigNat :: LuaError e => BigNat -> LuaE e ()
 pushBigNat (N n) = ensureStackDiff 1 $ do
   OK <- dostring $ BSUTF8.fromString $ printf "return M.fromstring('%s')" (show n)
   return ()
+
+instance Peekable BigNat where
+  safepeek idx = retrieving "BigNat" $ cleanup $ do
+    liftLua $ do
+      i <- absindex idx
+      TypeFunction <- getfield i "tostring"
+      pushvalue i
+      call 1 1
+    N . read <$> peekString top
 
 withBigNats :: [ (Name, BigNat) ] -> RunLuaAndPeek
 withBigNats ps ls = runLua $ stackNeutral $ do
@@ -65,10 +74,32 @@ spec = do
       evalAndPeek @Integer "M.max_base" >>= flip shouldBe (2^e)
       evalAndPeek @Integer "M.default_base" >>= flip shouldBe (2^e)
 
-    it "build and reproduce decimal strings" $ properly $ \(NonNegative (n :: Integer)) ->
-      evalAndPeek (printf "M.fromstring('%s'):tostring()" (show n)) >>= flip shouldBe (show n)
-    it "build and reproduce decimal strings of huge integers" $ properly $ \(Huge { getHuge = n }) ->
-      evalAndPeek (printf "M.fromstring('%s'):tostring()" (show n)) >>= flip shouldBe (show n)
+    describe "decimal representation" $ do
+      it "should build and reproduce decimal strings" $ properly $ \(NonNegative (n :: Integer)) ->
+        evalAndPeek (printf "M.fromstring('%s'):tostring()" (show n)) >>= flip shouldBe (show n)
+      it "should build and reproduce decimal strings of huge integers" $ properly $ \(Huge { getHuge = n }) ->
+        evalAndPeek (printf "M.fromstring('%s'):tostring()" (show n)) >>= flip shouldBe (show n)
+      it "should produce decimal strings of integers pushed from Haskell" $ properly $ \(a@(N n)) ->
+        withBigNats [ ("a", a) ] [ "return a:tostring()" ] >>= flip shouldBe (show n)
 
-    it "should produce decimal strings of integers pushed from Haskell" $ properly $ \(b@(N n)) ->
-      withBigNats [ ("a", b) ] [ "return a:tostring()" ] >>= flip shouldBe (show n)
+    describe "BigNat" $ do
+      it "should push value of the expected type" $ properly $ \a ->
+        withBigNats [ ("a", a) ] [ "return M.is_bignat(a)" ] >>= flip shouldBe True
+      it "should peek the pushed BigNat" $ properly $ \a ->
+        withBigNats [ ("a", a) ] [ "return a" ] >>= flip shouldBe a
+
+    describe "addition" $ do
+      it "should add integers" $ properly $ \(NonNegative a, NonNegative b) ->
+        withBigNats [ ("a", N a), ("b", N b) ] [ "return M.add(a, b)" ] >>= flip shouldBe (N $ a + b)
+      it "should add huge integers" $ properly $ \(a, b) ->
+        withBigNats [ ("a", a), ("b", b) ] [ "return M.add(a, b)" ] >>= flip shouldBe (a + b)
+      it "should __add integers" $ properly $ \(a, b) ->
+        withBigNats [ ("a", a), ("b", b) ] [ "return a + b" ] >>= flip shouldBe (a + b)
+
+    describe "multiplication" $ do
+      it "should multiply integers" $ properly $ \(NonNegative a, NonNegative b) ->
+        withBigNats [ ("a", N a), ("b", N b) ] [ "return M.mul(a, b)" ] >>= flip shouldBe (N $ a * b)
+      it "should multiply huge integers" $ properly $ \(a, b) ->
+        withBigNats [ ("a", a), ("b", b) ] [ "return M.mul(a, b)" ] >>= flip shouldBe (a * b)
+      it "should __mul integers" $ properly $ \(a, b) ->
+        withBigNats [ ("a", a), ("b", b) ] [ "return a * b" ] >>= flip shouldBe (a * b)
