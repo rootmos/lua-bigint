@@ -60,17 +60,53 @@ end
 
 local addB, mulB = I.mk_add(M.make), I.mk_mul(M.make)
 
+local function binop(a, b)
+    assert(a.base == b.base) -- TODO or convert to max(a.base, b.base)?
+    return a, b
+end
+
 function M.add(a, b)
-    assert(a.base == b.base)
+    local a, b = binop(a, b)
     return addB(a, b, a.base)
 end
 __mt.__add = M.add
 
 function M.mul(a, b)
-    assert(a.base == b.base)
+    local a, b = binop(a, b)
     return mulB(a, b, a.base)
 end
 __mt.__mul = M.mul
+
+function M.compare(a, b)
+    local a, b = binop(a, b)
+
+    local ao <const>, bo <const> = a.o, b.o
+    local an <const>, bn <const> = a.n, b.n
+    local am <const>, bm = ao + an, bo + bn
+
+    if am < bm then
+        return -1
+    elseif am > bm then
+        return 1
+    end
+
+    local ai, bi = an, bn
+
+    while ai > 0 and bi > 0 do
+        local ak, bk = a[ai], b[bi]
+        if ak < bk then
+            return -1
+        elseif ak > bk then
+            return 1
+        end
+
+        ai, bi = ai - 1, bi - 1
+    end
+
+    -- TODO compare amount of trailing zeroes
+
+    return 0
+end
 
 return setmetatable(M, {
     __call = function(N, o)

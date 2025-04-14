@@ -8,7 +8,7 @@ import qualified Data.ByteString.UTF8 as BSUTF8
 import Test.Hspec
 import Test.QuickCheck
 
-import HsLua hiding ( Integer )
+import HsLua hiding ( Integer, compare, RelationalOperator (..) )
 
 import LuaBigInt
 import LuaUtils
@@ -26,7 +26,7 @@ runAndPeek = mkRunAndPeek runLua
 evalAndPeek :: EvalLuaAndPeek
 evalAndPeek = mkEvalAndPeek runAndPeek
 
-newtype BigNat = N Integer deriving ( Show, Eq, Num )
+newtype BigNat = N Integer deriving ( Show, Eq, Ord, Num )
 
 instance Arbitrary BigNat where
   arbitrary = N . getHuge <$> arbitrary
@@ -103,3 +103,19 @@ spec = do
         withBigNats [ ("a", a), ("b", b) ] [ "return M.mul(a, b)" ] >>= flip shouldBe (a * b)
       it "should __mul integers" $ properly $ \(a, b) ->
         withBigNats [ ("a", a), ("b", b) ] [ "return a * b" ] >>= flip shouldBe (a * b)
+
+    describe "comparison" $ do
+      let int LT = -1 :: Int
+          int EQ = 0
+          int GT = 1
+      it "should compare integers" $ properly $ \(NonNegative a, NonNegative b) ->
+        withBigNats [ ("a", N a), ("b", N b) ] [ "return M.compare(a, b)" ] >>= flip shouldBe (int $ a `compare` b)
+      it "should compare huge integers" $ properly $ \(a, b) ->
+        withBigNats [ ("a", a), ("b", b) ] [ "return M.compare(a, b)" ] >>= flip shouldBe (int $ a `compare` b)
+
+      base <- runIO (evalAndPeek @Integer "M.default_base")
+
+      xit "should compare numbers with differing amount of trailing zeroes (example)" $ do
+        let a = N $ evalInBase base [0, 1]
+            b = N $ evalInBase base [1, 1]
+        withBigNats [ ("a", a), ("b", b) ] [ "return M.compare(a, b)" ] >>= flip shouldBe (int $ a `compare` b)

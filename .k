@@ -5,10 +5,10 @@
 #export LUA_BITS=32
 export LUA_BITS=64
 
+TIMEOUT=10s
+
 go() {
-    #timeout 10 make -C tests
-    #make tests
-    cd tests && make build && timeout 5 stack run specs -- -m '/Bignat'
+    # timeout "$TIMEOUT" make tests
+    cd tests && make build && timeout "$TIMEOUT" stack run specs -- -m '/Bignat/bignat.lua/comparison'
     #./run -e sandbox
-    #./run -t
 }
