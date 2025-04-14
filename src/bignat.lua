@@ -107,8 +107,11 @@ function M.compare(a, b)
         ai, bi = ai - 1, bi - 1
     end
 
-    -- TODO compare amount of trailing zeroes
-
+    if ao < bo then
+        return 1
+    elseif ao > bo then
+        return -1
+    end
     return 0
 end
 

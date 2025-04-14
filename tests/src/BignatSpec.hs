@@ -71,7 +71,7 @@ spec = do
 
     do
       let e :: Int = case luaBits of { Lua32 -> 15; Lua64 -> 31 }
-      it (printf "should set the expected max and default bases (2^e = 2^%d = %x)" e ((2 :: Int)^e)) $ do
+      it (printf "should set the expected max and default bases (2^e = 2^%d = 0x%x)" e ((2 :: Int)^e)) $ do
         evalAndPeek @Integer "M.max_base" >>= flip shouldBe (2^e)
         evalAndPeek @Integer "M.default_base" >>= flip shouldBe (2^e)
 
@@ -125,12 +125,12 @@ spec = do
 
       base <- runIO (evalAndPeek @Integer "M.default_base")
 
-      xit "should compare numbers with differing amount of trailing zeroes (example)" $ do
+      it (printf "should compare numbers with differing amount of zeroes in base 0x%x (example)" base) $ do
         let a = N $ evalInBase base [0, 1]
             b = N $ evalInBase base [1, 1]
         withBigNats [ ("a", a), ("b", b) ] [ "return M.compare(a, b)" ] >>= flip shouldBe (int $ a `compare` b)
 
-      xit "should compare numbers with differing amount of trailing zeroes (arbitrary)" $
+      it (printf "should compare numbers with differing amount of zeroes in base 0x%x (arbitrary)" base) $
         let g = do
               n <- getNonNegative <$> arbitrary
               m <- chooseInt (0, n)
