@@ -147,6 +147,10 @@ spec = do
     describe "operators" $ do
       let operators = [ ("==", True, (==), (==))
                       , ("~=", False, (/=), (/=))
+                      , ("<", False, (<), (<))
+                      , ("<=", True, (<=), (<=))
+                      , (">", False, (>), (>))
+                      , (">=", True, (>=), (>=))
                       ]
       forM_ operators $ \(oplua, refl, opi, opb) -> do
         describe oplua $ do

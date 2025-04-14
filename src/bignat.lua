@@ -129,6 +129,24 @@ function __mt.__eq(a, b)
     return M.compare(a, b) == 0
 end
 
+function __mt.__lt(a, b)
+    if rawequal(a, b) then
+        return false
+    end
+
+    local a, b = binop(a, b)
+    return M.compare(a, b) < 0
+end
+
+function __mt.__gt(a, b)
+    if rawequal(a, b) then
+        return false
+    end
+
+    local a, b = binop(a, b)
+    return M.compare(a, b) > 0
+end
+
 return setmetatable(M, {
     __call = function(N, o)
         return N.make(o)
