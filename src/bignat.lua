@@ -1,6 +1,6 @@
-local Ascii = require("ascii")
-local P = require("polynomial")
-local Arbbase = require("arbbase")
+local Ascii <const> = require("ascii")
+local P <const> = require("polynomial")
+local Arbbase <const> = require("arbbase")
 local I <const> = require("internal")
 
 local M = {}
@@ -24,7 +24,7 @@ function M.is_bignat(x)
 end
 
 function M.make(p)
-    local base = p.base
+    local base = p.base or M.default_base
 
     assert(base >= 2)
     assert(base <= M.max_base)
@@ -40,6 +40,7 @@ function M.make(p)
     P.clean(p, q)
     return setmetatable(q, __mt)
 end
+__fn.clone = M.make
 
 __fn.digits = P.coefficients
 M.digits = __fn.digits
@@ -147,6 +148,39 @@ function __mt.__gt(a, b)
     local a, b = binop(a, b)
     return M.compare(a, b) > 0
 end
+
+local function carry_the_negative_one(p, i, s, B)
+    while i >= 1 do
+        local k = p[i] or 0
+        s, p[i] = divrem(k - s, B)
+
+        if s < 0 then
+            i = i - 1
+        else
+            if i > p.o then
+                p.o = i
+            end
+            return
+        end
+    end
+end
+
+function M.sub(a, b)
+    local a, b = binop(a, b)
+
+    local ao <const>, bo <const> = a.o, b.o
+    local an <const>, bn <const> = a.n, b.n
+    local am <const>, bm = ao + an, bo + bn
+
+    if am < bm then
+        return M.make{0}
+    end
+
+    local diff = a:clone()
+
+    return diff
+end
+__mt.__sub = M.sub
 
 return setmetatable(M, {
     __call = function(N, o)

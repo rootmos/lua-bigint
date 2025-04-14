@@ -10,7 +10,7 @@ TIMEOUT=10s
 
 go() {
     #timeout "$TIMEOUT" make tests
-    cd tests && make build && timeout "$TIMEOUT" stack run specs -- -m '/Bignat/bignat.lua/operators'
+    cd tests && make build && timeout "$TIMEOUT" stack run specs -- -m '/Bignat/bignat.lua/truncating subtraction'
     #cd tests && make build && timeout "$TIMEOUT" stack run specs -- --match "/Bignat/bignat.lua/multiplication"
     #cd tests && stack runhaskell go.hs
     #./run -e sandbox
