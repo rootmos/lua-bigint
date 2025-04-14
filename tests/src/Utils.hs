@@ -1,9 +1,20 @@
 module Utils where
 
-import System.Environment ( lookupEnv )
-import Test.QuickCheck ( verbose, property, Testable, Property, withMaxSuccess, mapSize )
-import System.IO.Unsafe ( unsafePerformIO )
 import Data.Function ( (&) )
+import System.Environment ( lookupEnv )
+import System.IO.Unsafe ( unsafePerformIO )
+
+import Test.QuickCheck ( verbose
+                       , property
+                       , Testable
+                       , Property
+                       , withMaxSuccess
+                       , mapSize
+                       , Gen
+                       , chooseInt
+                       , chooseInteger
+                       , infiniteListOf
+                       )
 
 digitsInBase :: Integer -> Integer -> [ Integer ]
 digitsInBase _ x | x < 0 = undefined
@@ -15,6 +26,15 @@ digitsInBase base x = f x
 evalInBase :: Integer -> [ Integer ] -> Integer
 evalInBase b _ | b < 2 = undefined
 evalInBase b ds = sum $ zipWith (*) ds (iterate (* b) 1)
+
+genDigits :: Integer -> Int -> Gen [ Integer ]
+genDigits base n =
+  fmap (take n) $ infiniteListOf $ chooseInteger (0, base - 1)
+
+genDigitsWithLeadingZeroes :: Integer -> Int -> Gen [ Integer ]
+genDigitsWithLeadingZeroes base n = do
+  m <- chooseInt (0, n)
+  (++) (take (n - m) $ repeat 0) <$> genDigits base m
 
 properly :: Testable p => p -> Property
 properly = v . m . s . property

@@ -129,3 +129,16 @@ spec = do
         let a = N $ evalInBase base [0, 1]
             b = N $ evalInBase base [1, 1]
         withBigNats [ ("a", a), ("b", b) ] [ "return M.compare(a, b)" ] >>= flip shouldBe (int $ a `compare` b)
+
+      xit "should compare numbers with differing amount of trailing zeroes (arbitrary)" $
+        let g = do
+              n <- getNonNegative <$> arbitrary
+              m <- chooseInt (0, n)
+              suffix <- genDigits base m
+              a <- genDigitsWithLeadingZeroes base (n-m)
+              b <- genDigitsWithLeadingZeroes base (n-m)
+              return (a ++ suffix, b ++ suffix) in
+        properly $ forAll g $ \(a, b) ->
+          let a' = evalInBase base a in
+          let b' = evalInBase base b in
+          withBigNats [ ("a", N a'), ("b", N b') ] [ "return M.compare(a, b)" ] >>= flip shouldBe (int $ a' `compare` b')

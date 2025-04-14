@@ -8,8 +8,8 @@ export LUA_BITS=32
 TIMEOUT=10s
 
 go() {
-    timeout "$TIMEOUT" make tests
-    #cd tests && make build && timeout "$TIMEOUT" stack run specs -- -m '/Bignat/bignat.lua/comparison'
+    #timeout "$TIMEOUT" make tests
+    cd tests && make build && timeout "$TIMEOUT" stack run specs -- -m '/Bignat/bignat.lua/comparison'
     #cd tests && make build && timeout "$TIMEOUT" stack run specs -- --match "/Bignat/bignat.lua/multiplication"
     #cd tests && stack runhaskell go.hs
     #./run -e sandbox
