@@ -65,6 +65,7 @@ M.tostring = __fn.tostring
 local addB, mulB = I.mk_add(M.make), I.mk_mul(M.make)
 
 local function binop(a, b)
+    assert(M.is_bignat(a), M.is_bignat(b)) -- TODO add tests and better error message
     assert(a.base == b.base) -- TODO or convert to max(a.base, b.base)?
     return a, b
 end
@@ -113,6 +114,19 @@ function M.compare(a, b)
         return -1
     end
     return 0
+end
+
+function __mt.__eq(a, b)
+    if not M.is_bignat(a) or not M.is_bignat(b) then
+        return false
+    end
+
+    if rawequal(a, b) then
+        return true
+    end
+
+    local a, b = binop(a, b)
+    return M.compare(a, b) == 0
 end
 
 return setmetatable(M, {

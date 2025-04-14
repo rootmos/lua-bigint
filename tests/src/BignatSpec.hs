@@ -142,3 +142,38 @@ spec = do
           let a' = evalInBase base a in
           let b' = evalInBase base b in
           withBigNats [ ("a", N a'), ("b", N b') ] [ "return M.compare(a, b)" ] >>= flip shouldBe (int $ a' `compare` b')
+
+    describe "operators" $ do
+      describe "a == b" $ do
+        describe "reflexive" $ do
+          it "should be reflexive for integers (by reference)" $ properly $ \(NonNegative a) ->
+            withBigNats [ ("a", N a) ] [ "return a == a" ] >>= flip shouldBe True
+          it "should be reflexive for huge integers (by reference)" $ properly $ \a ->
+            withBigNats [ ("a", a) ] [ "return a == a" ] >>= flip shouldBe True
+
+          it "should be reflexive for integers (by value)" $ properly $ \(NonNegative a) ->
+            withBigNats [ ("a", N a), ("b", N a) ] [ "return a == b" ] >>= flip shouldBe True
+          it "should be reflexive for huge integers (by value)" $ properly $ \a ->
+            withBigNats [ ("a", a), ("b", a) ] [ "return a == b" ] >>= flip shouldBe True
+
+        it "should work for integers" $ properly $ \(NonNegative a, NonNegative b) ->
+          withBigNats [ ("a", N a), ("b", N b) ] [ "return a == b" ] >>= flip shouldBe (a == b)
+        it "should work for huge integers" $ properly $ \(a, b) ->
+          withBigNats [ ("a", a), ("b", b) ] [ "return a == b" ] >>= flip shouldBe (a == b)
+
+      describe "a ~= b" $ do
+        describe "\"reflexive\"" $ do
+          it "should be reflexive for integers (by reference)" $ properly $ \(NonNegative a) ->
+            withBigNats [ ("a", N a) ] [ "return a ~= a" ] >>= flip shouldBe False
+          it "should be reflexive for huge integers (by reference)" $ properly $ \a ->
+            withBigNats [ ("a", a) ] [ "return a ~= a" ] >>= flip shouldBe False
+
+          it "should be reflexive for integers (by value)" $ properly $ \(NonNegative a) ->
+            withBigNats [ ("a", N a), ("b", N a) ] [ "return a ~= b" ] >>= flip shouldBe False
+          it "should be reflexive for huge integers (by value)" $ properly $ \a ->
+            withBigNats [ ("a", a), ("b", a) ] [ "return a ~= b" ] >>= flip shouldBe False
+
+        it "should work for integers" $ properly $ \(NonNegative a, NonNegative b) ->
+          withBigNats [ ("a", N a), ("b", N b) ] [ "return a ~= b" ] >>= flip shouldBe (a /= b)
+        it "should work for huge integers" $ properly $ \(a, b) ->
+          withBigNats [ ("a", a), ("b", b) ] [ "return a ~= b" ] >>= flip shouldBe (a /= b)
