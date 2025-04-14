@@ -42,10 +42,10 @@ executable specs
       FlexibleContexts
       GADTs
       GeneralizedNewtypeDeriving
+      ImpredicativeTypes
       LambdaCase
       NumericUnderscores
       OverloadedStrings
-      RankNTypes
       ScopedTypeVariables
       TypeApplications
   ghc-options: -Wall -Werror -fno-warn-name-shadowing

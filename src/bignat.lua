@@ -65,6 +65,7 @@ M.tostring = __fn.tostring
 local addB, mulB = I.mk_add(M.make), I.mk_mul(M.make)
 
 local function binop(a, b)
+    -- TODO promote integers
     assert(M.is_bignat(a), M.is_bignat(b)) -- TODO add tests and better error message
     assert(a.base == b.base) -- TODO or convert to max(a.base, b.base)?
     return a, b

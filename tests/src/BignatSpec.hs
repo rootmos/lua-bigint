@@ -145,14 +145,15 @@ spec = do
           withBigNats [ ("a", N a'), ("b", N b') ] [ "return M.compare(a, b)" ] >>= flip shouldBe (int $ a' `compare` b')
 
     describe "operators" $ do
-      let operators = [ ("==", True, (==), (==))
-                      , ("~=", False, (/=), (/=))
-                      , ("<", False, (<), (<))
-                      , ("<=", True, (<=), (<=))
-                      , (">", False, (>), (>))
-                      , (">=", True, (>=), (>=))
+      let operators :: [ (String, Bool, (forall a. (Eq a, Ord a) => a -> a -> Bool)) ]
+          operators = [ ("==", True, (==))
+                      , ("~=", False, (/=))
+                      , ("<", False, (<))
+                      , ("<=", True, (<=))
+                      , (">", False, (>))
+                      , (">=", True, (>=))
                       ]
-      forM_ operators $ \(oplua, refl, opi, opb) -> do
+      forM_ operators $ \(oplua, refl, op) -> do
         describe oplua $ do
           it (printf "should %s reflexive for integers (by reference)" (be refl)) $ properly $ \(NonNegative a) ->
             withBigNats [ ("a", N a) ] [ printf "return a %s a" oplua ] >>= flip shouldBe refl
@@ -165,6 +166,6 @@ spec = do
             withBigNats [ ("a", a), ("b", a) ] [ printf "return a %s b" oplua ] >>= flip shouldBe refl
 
           it "should work for integers" $ properly $ \(NonNegative a, NonNegative b) ->
-            withBigNats [ ("a", N a), ("b", N b) ] [ printf "return a %s b" oplua ] >>= flip shouldBe (opi a b)
+            withBigNats [ ("a", N a), ("b", N b) ] [ printf "return a %s b" oplua ] >>= flip shouldBe (op a b)
           it "should work for huge integers" $ properly $ \(a, b) ->
-            withBigNats [ ("a", a), ("b", b) ] [ printf "return a %s b" oplua ] >>= flip shouldBe (opb a b)
+            withBigNats [ ("a", a), ("b", b) ] [ printf "return a %s b" oplua ] >>= flip shouldBe (op a b)
