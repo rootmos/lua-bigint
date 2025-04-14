@@ -186,10 +186,7 @@ function __fn:coefficients()
     end
     return cs
 end
-
-function M.coefficients(p)
-    return __fn.coefficients(p)
-end
+M.coefficients = __fn.coefficients
 
 return setmetatable(M, {
     __call = function(N, o)

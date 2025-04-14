@@ -41,6 +41,9 @@ function M.make(p)
     return setmetatable(q, __mt)
 end
 
+__fn.digits = P.coefficients
+M.digits = __fn.digits
+
 function M.fromstring(s, from, to)
     local from = from or 10
     local to = to or M.default_base
@@ -54,9 +57,10 @@ function __fn:tostring()
         return "0"
     end
 
-    local ds = Arbbase.convert(self, self.base, 10)
+    local ds = Arbbase.convert(self:digits(), self.base, 10)
     return Ascii.le_digits_to_be_string(ds)
 end
+M.tostring = __fn.tostring
 
 local addB, mulB = I.mk_add(M.make), I.mk_mul(M.make)
 

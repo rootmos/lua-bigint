@@ -69,10 +69,11 @@ spec = do
         peek @String top
       t `shouldBe` "table"
 
-    it "should set the expected max and default bases" $ do
+    do
       let e :: Int = case luaBits of { Lua32 -> 15; Lua64 -> 31 }
-      evalAndPeek @Integer "M.max_base" >>= flip shouldBe (2^e)
-      evalAndPeek @Integer "M.default_base" >>= flip shouldBe (2^e)
+      it (printf "should set the expected max and default bases (2^e = 2^%d = %x)" e ((2 :: Int)^e)) $ do
+        evalAndPeek @Integer "M.max_base" >>= flip shouldBe (2^e)
+        evalAndPeek @Integer "M.default_base" >>= flip shouldBe (2^e)
 
     describe "decimal representation" $ do
       it "should build and reproduce decimal strings" $ properly $ \(NonNegative (n :: Integer)) ->
@@ -103,6 +104,15 @@ spec = do
         withBigNats [ ("a", a), ("b", b) ] [ "return M.mul(a, b)" ] >>= flip shouldBe (a * b)
       it "should __mul integers" $ properly $ \(a, b) ->
         withBigNats [ ("a", a), ("b", b) ] [ "return a * b" ] >>= flip shouldBe (a * b)
+
+      describe "examples" $ do
+        let example a b prod = context ("a := " ++ show a) . context ("b := " ++ show b) . context ("prod := " ++ show prod) $ do
+             it (printf "should compute a * b correctly") $ do
+               withBigNats [ ("a", a), ("b", b) ] [ "return a * b" ] >>= flip shouldBe (N prod)
+        example
+          3205602854067328
+          249372854764725493398502463869928986413831547223573540317414832694304662339311947051439428212576348058279892962899721479168
+          799390334960721315730397095527010617512940211652393567331857812909286440996046838170372310657442173851215723574753731922832154793221423104
 
     describe "comparison" $ do
       let int LT = -1 :: Int

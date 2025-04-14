@@ -56,8 +56,11 @@ function M.mk_mul(f)
             local ai = a[i] or 0
             for j = 1, bn do
                 local bj = b[j] or 0
-                -- (i + ao - 1) + (j + bo - 1) - o + 1
-                carry_the_one(prod, i+j-1, ai*bj, B)
+                local s = ai*bj
+                if s > 0 then
+                    -- (i + a.o - 1) + (j + b.o - 1) - o + 1
+                    carry_the_one(prod, i+j-1, s, B)
+                end
             end
         end
 
