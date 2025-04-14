@@ -1,6 +1,7 @@
 module BignatSpec where
 
 import Text.Printf
+import Control.Monad ( forM_ )
 
 --import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BSUTF8
@@ -144,36 +145,22 @@ spec = do
           withBigNats [ ("a", N a'), ("b", N b') ] [ "return M.compare(a, b)" ] >>= flip shouldBe (int $ a' `compare` b')
 
     describe "operators" $ do
-      describe "a == b" $ do
-        describe "reflexive" $ do
-          it "should be reflexive for integers (by reference)" $ properly $ \(NonNegative a) ->
-            withBigNats [ ("a", N a) ] [ "return a == a" ] >>= flip shouldBe True
-          it "should be reflexive for huge integers (by reference)" $ properly $ \a ->
-            withBigNats [ ("a", a) ] [ "return a == a" ] >>= flip shouldBe True
+      let operators = [ ("==", True, (==), (==))
+                      , ("~=", False, (/=), (/=))
+                      ]
+      forM_ operators $ \(oplua, refl, opi, opb) -> do
+        describe oplua $ do
+          it (printf "should %s reflexive for integers (by reference)" (be refl)) $ properly $ \(NonNegative a) ->
+            withBigNats [ ("a", N a) ] [ printf "return a %s a" oplua ] >>= flip shouldBe refl
+          it (printf "should %s reflexive for huge integers (by reference)" (be refl)) $ properly $ \a ->
+            withBigNats [ ("a", a) ] [ printf "return a %s a" oplua ] >>= flip shouldBe refl
 
-          it "should be reflexive for integers (by value)" $ properly $ \(NonNegative a) ->
-            withBigNats [ ("a", N a), ("b", N a) ] [ "return a == b" ] >>= flip shouldBe True
-          it "should be reflexive for huge integers (by value)" $ properly $ \a ->
-            withBigNats [ ("a", a), ("b", a) ] [ "return a == b" ] >>= flip shouldBe True
+          it (printf "should %s reflexive for integers (by value)" (be refl)) $ properly $ \(NonNegative a) ->
+            withBigNats [ ("a", N a), ("b", N a) ] [ printf "return a %s b" oplua ] >>= flip shouldBe refl
+          it (printf "should %s reflexive for huge integers (by value)" (be refl)) $ properly $ \a ->
+            withBigNats [ ("a", a), ("b", a) ] [ printf "return a %s b" oplua ] >>= flip shouldBe refl
 
-        it "should work for integers" $ properly $ \(NonNegative a, NonNegative b) ->
-          withBigNats [ ("a", N a), ("b", N b) ] [ "return a == b" ] >>= flip shouldBe (a == b)
-        it "should work for huge integers" $ properly $ \(a, b) ->
-          withBigNats [ ("a", a), ("b", b) ] [ "return a == b" ] >>= flip shouldBe (a == b)
-
-      describe "a ~= b" $ do
-        describe "\"reflexive\"" $ do
-          it "should be reflexive for integers (by reference)" $ properly $ \(NonNegative a) ->
-            withBigNats [ ("a", N a) ] [ "return a ~= a" ] >>= flip shouldBe False
-          it "should be reflexive for huge integers (by reference)" $ properly $ \a ->
-            withBigNats [ ("a", a) ] [ "return a ~= a" ] >>= flip shouldBe False
-
-          it "should be reflexive for integers (by value)" $ properly $ \(NonNegative a) ->
-            withBigNats [ ("a", N a), ("b", N a) ] [ "return a ~= b" ] >>= flip shouldBe False
-          it "should be reflexive for huge integers (by value)" $ properly $ \a ->
-            withBigNats [ ("a", a), ("b", a) ] [ "return a ~= b" ] >>= flip shouldBe False
-
-        it "should work for integers" $ properly $ \(NonNegative a, NonNegative b) ->
-          withBigNats [ ("a", N a), ("b", N b) ] [ "return a ~= b" ] >>= flip shouldBe (a /= b)
-        it "should work for huge integers" $ properly $ \(a, b) ->
-          withBigNats [ ("a", a), ("b", b) ] [ "return a ~= b" ] >>= flip shouldBe (a /= b)
+          it "should work for integers" $ properly $ \(NonNegative a, NonNegative b) ->
+            withBigNats [ ("a", N a), ("b", N b) ] [ printf "return a %s b" oplua ] >>= flip shouldBe (opi a b)
+          it "should work for huge integers" $ properly $ \(a, b) ->
+            withBigNats [ ("a", a), ("b", b) ] [ printf "return a %s b" oplua ] >>= flip shouldBe (opb a b)

@@ -50,3 +50,7 @@ properly = v . m . s . property
              Nothing -> id
              Just "" -> id
              Just size -> mapSize (\_ -> read size)
+
+be :: Bool -> String
+be True = "be"
+be False = "not be"
