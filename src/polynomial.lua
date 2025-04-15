@@ -111,6 +111,7 @@ function M.make(p)
     M.clean(p, q)
     return setmetatable(q, __mt)
 end
+
 __fn.clone = M.make
 
 function M.add(a, b)
@@ -183,7 +184,7 @@ function __fn:coefficients()
     for i = 1,n do
         cs[o+i] = self[i]
     end
-    return cs
+    return cs, o + n
 end
 M.coefficients = __fn.coefficients
 

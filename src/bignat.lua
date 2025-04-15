@@ -150,38 +150,63 @@ function __mt.__gt(a, b)
     return M.compare(a, b) > 0
 end
 
-local function carry_the_negative_one(p, i, s, B)
-    while i >= 1 do
-        local k = p[i] or 0
-        if k > s then
-        --s, p[i] = divrem(k - s, B)
-        end
-
-        if s < 0 then
-            i = i - 1
-        else
-            if i > p.o then
-                p.o = i
-            end
-            return
-        end
-    end
-end
-
 function M.sub(a, b)
-    local a, b = binop(a, b)
+    if rawequal(a, b) then
+        return 0
+    end
 
-    local ao <const>, bo <const> = a.o, b.o
-    local an <const>, bn <const> = a.n, b.n
-    local am <const>, bm = ao + an, bo + bn
+    local a, b = binop(a, b)
+    local ao, bo <const> = a.o, b.o
+    local an, bn <const> = a.n, b.n
+    local am <const>, bm <const> = ao + an, bo + bn
 
     if am < bm then
         return M.make{0}
     end
 
-    local diff = a:clone()
+    local base <const> = a.base
+    local a, an = a:digits()
+    a.n = an
+    a.o = 0
+    ao = 0
+    a.base = base
 
-    return diff
+    local function borrow(j)
+        local k = j + 1
+        while true do
+            if k > an then
+                return false
+            end
+
+            local ak = a[k]
+            if ak == 0 then
+                a[k] = base - 1
+                k = k + 1
+            else
+                a[k] = ak - 1
+                break
+            end
+        end
+        return true
+    end
+
+    local j = bn
+    local i = bo + j - ao
+    while j > 0 do
+        local ai, bj = a[i] or 0, b[j]
+
+        if ai < bj then
+            if not borrow(i) then
+                return M.make{0}
+            end
+            ai = ai + base
+        end
+
+        a[i] = ai - bj
+        i, j = i - 1, j - 1
+    end
+
+    return M.make(a)
 end
 __mt.__sub = M.sub
 

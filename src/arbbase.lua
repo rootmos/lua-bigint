@@ -49,7 +49,8 @@ function M.convert(a, A, B)
         M = mul(M, stencil, B)
     end
 
-    return b:coefficients()
+    ds, _ = b:coefficients()
+    return ds
 end
 
 M.dec_to_hex = function(a) return M.convert(a, 10, 16) end

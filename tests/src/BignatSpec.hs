@@ -170,12 +170,12 @@ spec = do
           it "should work for huge integers" $ properly $ \(a, b) ->
             withBigNats [ ("a", a), ("b", b) ] [ printf "return a %s b" oplua ] >>= flip shouldBe (op a b)
 
-    xdescribe "truncating subtraction" $ do
+    describe "truncating subtraction" $ do
       let sub a b | a <= b = 0
                   | otherwise = a - b
       it "should subtract integers" $ properly $ \(NonNegative a, NonNegative b) ->
         withBigNats [ ("a", N a), ("b", N b) ] [ "return M.sub(a, b)" ] >>= flip shouldBe (N $ sub a b)
       it "should subtract huge integers" $ properly $ \(a, b) ->
-        withBigNats [ ("a", a), ("b", b) ] [ "return M.add(a, b)" ] >>= flip shouldBe (sub a b)
+        withBigNats [ ("a", a), ("b", b) ] [ "return M.sub(a, b)" ] >>= flip shouldBe (sub a b)
       it "should __sub integers" $ properly $ \(a, b) ->
         withBigNats [ ("a", a), ("b", b) ] [ "return a - b" ] >>= flip shouldBe (sub a b)
