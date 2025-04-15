@@ -62,6 +62,7 @@ function __fn:tostring()
     return Ascii.le_digits_to_be_string(ds)
 end
 M.tostring = __fn.tostring
+__mt.__tostring = __fn.tostring
 
 local addB, mulB = I.mk_add(M.make), I.mk_mul(M.make)
 
@@ -152,7 +153,9 @@ end
 local function carry_the_negative_one(p, i, s, B)
     while i >= 1 do
         local k = p[i] or 0
-        s, p[i] = divrem(k - s, B)
+        if k > s then
+        --s, p[i] = divrem(k - s, B)
+        end
 
         if s < 0 then
             i = i - 1
