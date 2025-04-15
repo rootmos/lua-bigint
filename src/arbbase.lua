@@ -1,4 +1,4 @@
-local M = {}
+local M <const> = {}
 local P <const> = require("polynomial")
 local I <const> = require("internal")
 

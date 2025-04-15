@@ -11,7 +11,7 @@ import qualified Data.ByteString.UTF8 as BSUTF8
 import Test.Hspec
 import Test.QuickCheck
 
-import HsLua
+import HsLua hiding ( error )
 import HsLua.Marshalling.Peekers
 
 import LuaBigInt
@@ -74,7 +74,7 @@ withPolynomial ps ls = runLua $ stackNeutral $ do
   flip mapM_ ls $ \l -> dostring (BSUTF8.fromString l) >>= \case
     OK -> return ()
     ErrRun -> throwErrorAsException
-    _ -> undefined
+    e -> error $ show (l, e)
 
   a <- peek top
   pop 1
@@ -84,8 +84,10 @@ inspectPolynomial :: (forall a. (Eq a, Show a, Peekable a) => String -> a -> IO 
 inspectPolynomial shouldEvaluateTo name p = context (printf "%s == %s" name (show p)) $ do
   it "should have the correct type" $ do
     (printf "P.is_polynomial(%s)" name) `shouldEvaluateTo` True
-  it "should have the correct coefficients" $ do
-    (printf "%s" name) `shouldEvaluateTo` (coefficients p)
+  it "should have the correct coefficients (wrt offset)" $ do
+    name `shouldEvaluateTo` (coefficients p)
+  it "should have the correct coefficients (wrt 0)" $ do
+    (printf "(function() local xs, _ = %s:coefficients() return xs end)()" name) `shouldEvaluateTo` ((take (offset p) $ repeat 0) ++ coefficients p)
   it "should have the expected length" $ do
     (printf "#%s" name) `shouldEvaluateTo` (length $ coefficients p)
     (printf "%s.n" name) `shouldEvaluateTo` (length $ coefficients p)
@@ -210,7 +212,8 @@ spec = do
       describe "polynomials from inside Lua" $ do
         let testCase e (cs :: [Int]) =
               it (e ++ " should evaluate to " ++ show cs) $
-                evalAndPeek e >>= flip shouldBe cs
+                let f = printf "do local ds, _ = %s return ds end" e in
+                runAndPeek [ f ] >>= flip shouldBe cs
 
         testCase "P.make{}:coefficients()" []
         testCase "P.make{1}:coefficients()" [1]
@@ -220,7 +223,7 @@ spec = do
       describe "polynomials from Haskell" $ do
         let testCase p (cs :: [Int]) =
               it ("the coefficients of " ++ show p ++ " should be " ++ show cs) $ do
-                withPolynomial [ ("p", p) ] [ "return p:coefficients()" ] >>= flip shouldBe cs
+                withPolynomial [ ("p", p) ] [ "ds, _ = p:coefficients()", "return ds" ] >>= flip shouldBe cs
 
         testCase (P [] 0) []
         testCase (P [1] 0) [1]
@@ -228,7 +231,7 @@ spec = do
         testCase (P [1] 2) [0,0,1]
 
       it "should work for arbitrary polynomials" $ properly $ \p -> do
-        cs' <- withPolynomial [ ("p", p) ] [ "return p:coefficients()" ]
+        cs' <- withPolynomial [ ("p", p) ] [ "ds, _ = p:coefficients()", "return ds" ]
         cs' `shouldBe` (let P cs o = clean p in (take o $ repeat 0) ++ cs)
 
     describe "add" $ do

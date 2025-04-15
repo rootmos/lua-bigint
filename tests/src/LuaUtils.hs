@@ -1,13 +1,13 @@
 module LuaUtils where
 
-import HsLua hiding ( Integer )
-
 import Control.Monad ( unless )
 import Control.Monad.IO.Class ( MonadIO )
 import Data.List ( intercalate )
 import System.FilePath ( (</>) )
 import System.IO.Unsafe ( unsafePerformIO )
 import Text.Printf ( printf )
+
+import HsLua hiding ( Integer, error )
 
 --import qualified Data.ByteString as BS
 import Data.ByteString.UTF8 as BSUTF8
@@ -77,7 +77,7 @@ mkRunAndPeek runner ls = runner $ stackNeutral $ do
   flip mapM_ ls $ \l -> dostring (BSUTF8.fromString l) >>= \case
     OK -> return ()
     ErrRun -> throwErrorAsException
-    _ -> undefined
+    _ -> error l
   a <- peek top
   pop 1
   return a

@@ -111,7 +111,6 @@ function M.make(p)
     M.clean(p, q)
     return setmetatable(q, __mt)
 end
-
 __fn.clone = M.make
 
 function M.add(a, b)

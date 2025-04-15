@@ -6,9 +6,9 @@ export QUICKCHECK_SIZE=100
 export LUA_BITS=64
 
 gogo() {
-    #make tests
+    make tests
     #cd tests && make build && stack run specs -- -m '/Bignat/bignat.lua/truncating subtraction'
-    cd tests && make build && stack run specs -- -m '/Arbbase'
+    #cd tests && make build && stack run specs -- -m '/Polynomial/polynomial.lua'
     #cd tests && stack runhaskell go.hs
     #./run -e sandbox
 }
