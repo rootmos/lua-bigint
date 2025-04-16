@@ -152,7 +152,7 @@ end
 
 function M.sub(a, b)
     if rawequal(a, b) then
-        return 0
+        return M.make{0}, false
     end
 
     local a, b = binop(a, b)
@@ -161,7 +161,7 @@ function M.sub(a, b)
     local am <const>, bm <const> = ao + an, bo + bn
 
     if am < bm then
-        return M.make{0}
+        return M.make{0}, true
     end
 
     local base <const> = a.base
@@ -197,7 +197,7 @@ function M.sub(a, b)
 
         if ai < bj then
             if not borrow(i) then
-                return M.make{0}
+                return M.make{0}, true
             end
             ai = ai + base
         end
@@ -206,7 +206,7 @@ function M.sub(a, b)
         i, j = i - 1, j - 1
     end
 
-    return M.make(a)
+    return M.make(a), false
 end
 __mt.__sub = M.sub
 

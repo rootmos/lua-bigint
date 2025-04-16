@@ -173,9 +173,25 @@ spec = do
     describe "truncating subtraction" $ do
       let sub a b | a <= b = 0
                   | otherwise = a - b
-      it "should subtract integers" $ properly $ \(NonNegative a, NonNegative b) ->
-        withBigNats [ ("a", N a), ("b", N b) ] [ "return M.sub(a, b)" ] >>= flip shouldBe (N $ sub a b)
-      it "should subtract huge integers" $ properly $ \(a, b) ->
-        withBigNats [ ("a", a), ("b", b) ] [ "return M.sub(a, b)" ] >>= flip shouldBe (sub a b)
+      it "should subtract integers" $ properly $ \(NonNegative a, NonNegative b) -> do
+        withBigNats [ ("a", N a), ("b", N b) ] [ "d, _ = M.sub(a, b)", "return d" ] >>= flip shouldBe (N $ sub a b)
+        withBigNats [ ("a", N a), ("b", N b) ] [ "_, t = M.sub(a, b)", "return t" ] >>= flip shouldBe (a < b)
+      it "should subtract huge integers" $ properly $ \(a, b) -> do
+        withBigNats [ ("a", a), ("b", b) ] [ "d, _ = M.sub(a, b)", "return d" ] >>= flip shouldBe (sub a b)
+        withBigNats [ ("a", a), ("b", b) ] [ "_, t = M.sub(a, b)", "return t" ] >>= flip shouldBe (a < b)
+
       it "should __sub integers" $ properly $ \(a, b) ->
         withBigNats [ ("a", a), ("b", b) ] [ "return a - b" ] >>= flip shouldBe (sub a b)
+
+      it "should subtract same integer (by value)" $ properly $ \(NonNegative a) -> do
+        withBigNats [ ("a", N a), ("b", N a) ] [ "d, _ = M.sub(a, b)", "return d" ] >>= flip shouldBe (N 0)
+        withBigNats [ ("a", N a), ("b", N a) ] [ "_, t = M.sub(a, b)", "return t" ] >>= flip shouldBe False
+      it "should subtract same huge integer (by value)" $ properly $ \a -> do
+        withBigNats [ ("a", a), ("b", a) ] [ "d, _ = M.sub(a, b)", "return d" ] >>= flip shouldBe (N 0)
+        withBigNats [ ("a", a), ("b", a) ] [ "_, t = M.sub(a, b)", "return t" ] >>= flip shouldBe False
+      it "should subtract same integer (by reference)" $ properly $ \(NonNegative a) -> do
+        withBigNats [ ("a", N a) ] [ "d, _ = M.sub(a, a)", "return d" ] >>= flip shouldBe (N 0)
+        withBigNats [ ("a", N a) ] [ "_, t = M.sub(a, a)", "return t" ] >>= flip shouldBe False
+      it "should subtract same huge integer (by reference)" $ properly $ \a -> do
+        withBigNats [ ("a", a) ] [ "d, _ = M.sub(a, a)", "return d" ] >>= flip shouldBe (N 0)
+        withBigNats [ ("a", a) ] [ "_, t = M.sub(a, a)", "return t" ] >>= flip shouldBe False
