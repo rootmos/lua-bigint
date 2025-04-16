@@ -3,40 +3,60 @@ local A = require"arbbase"
 local N = require"bignat"
 local I = require"internal"
 
-N.default_base = 10
-
-local a = N.fromstring"1260257"
-local b = N.fromstring"37"
+local a <const> = N.fromstring("1260257", 10, 10)
+local b <const> = N.fromstring("37", 10, 10)
 
 assert(a.base == b.base)
-local B = N.make{0,1}
 
-assert(a.o == 0)
-assert(b.o == 0)
+local base <const> = a.base
+local ao, bo <const> = a.o, b.o
+local an, bn <const> = a.n, b.n
 
-local k = a.o + a.n
-local l = b.o + b.n
+local B = N.make{0,1, base=base}
+
+local k <const> = ao + an
+local l <const> = bo + bn
 print(string.format("k=%d l=%d", k, l))
 
 local function alpha(i)
-    return a[a.n - i]
+    return a[an - i]
 end
 
-local function beta(i)
-    return b[b.n - i]
-end
+local q = {base=base}
+local j = k - l + 1
 
-local q = N.make{0}
-print(string.format("q_{-1}=%s", q))
-
-local r = N.make{0}
+local r = N.make{0, base=base}
 for i = 0,l-2 do
-    r = r + N.make{alpha(i), o=l-2-i}
+    r = r + N.make{alpha(i), o=l-2-i, base=base}
 end
 print(string.format("r_{-1}=%s", r))
 
-local i = 0
-print(string.format("i=%d", i))
+local d
 
-local di = B*r + N.make{alpha(i + l - 1)}
-print(di)
+local function f(x)
+    local t
+    r, t = N.sub(d, b*N.make{x, base=base})
+    if t then
+        return -1
+    end
+
+    if r < b then
+        return 0
+    else
+        return 1
+    end
+end
+
+local i = 0
+while j > 0 do
+    print(string.format("\ni=%d", i))
+    d = B*r + N.make{alpha(i + l - 1), base=base}
+    print(string.format("d_%i=%s", i, d))
+    q[j] = I.binsearch(0, base-1, f)
+    print(string.format("r=%s", r))
+    print(string.format("q_%d=%s", j, q[j]))
+    i, j = i + 1, j - 1
+end
+
+q = N.make(q)
+print(q)
