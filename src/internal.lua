@@ -68,4 +68,30 @@ function M.mk_mul(f)
     end
 end
 
+function M.binsearch(a, b, cmp)
+    while true do
+        --print(string.format("\na=%d b=%d", a, b))
+        local d = b - a
+
+        local guess = d//2 + a
+        --print(string.format("guess=%d", guess))
+
+        local c = cmp(guess)
+        --print(string.format("c=%d", c))
+        if c == 0 then
+            return guess
+        end
+
+        if d == 0 then
+            return nil
+        end
+
+        if c < 0 then
+            b = guess - 1
+        else
+            a = guess + 1
+        end
+    end
+end
+
 return M

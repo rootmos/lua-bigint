@@ -28,6 +28,7 @@ executable specs
       AsciiSpec
       BignatSpec
       Huge
+      InternalSpec
       LuaBigInt
       LuaUtils
       LuaUtilsSpec
