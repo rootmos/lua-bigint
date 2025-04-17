@@ -1,7 +1,8 @@
 module BignatSpec where
 
-import Text.Printf
 import Control.Monad ( forM_ )
+import Data.Maybe ( isJust, fromJust )
+import Text.Printf
 
 --import qualified Data.ByteString as BS
 import qualified Data.ByteString.UTF8 as BSUTF8
@@ -241,5 +242,16 @@ spec = do
           withBigNats [ ("a", N a'), ("b", N b') ] [ "q, _ = M.divrem(a, b)", "return q" ] >>= flip shouldBe (N q)
           withBigNats [ ("a", N a'), ("b", N b') ] [ "_, r = M.divrem(a, b)", "return r" ] >>= flip shouldBe (N r)
 
-      -- TODO divide by zero error
+      it "should dislike dividing by zero" $ properly $ \a -> do
+        e <- runLua $ do
+          pushBigNat a
+          setglobal "a"
+          try (dostring "M.divrem(a, M{0})") >>= \case
+            Right ErrRun -> Just <$> popException
+            Right _ -> return Nothing
+            Left _ -> return Nothing
+        e `shouldSatisfy` isJust
+        let Exception msg = fromJust e
+        msg `shouldEndWith` "attempt to divide by zero"
+
       -- TODO same integer

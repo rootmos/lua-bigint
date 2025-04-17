@@ -222,6 +222,10 @@ function M.divrem(a, b)
     local k <const> = ao + an
     local l <const> = bo + bn
 
+    if b == M{0, base=base} then
+        error("attempt to divide by zero")
+    end
+
     if k < l then
         return M.make{0, base=base}, a
     end
