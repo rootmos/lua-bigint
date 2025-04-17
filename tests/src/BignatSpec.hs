@@ -27,7 +27,7 @@ runAndPeek = mkRunAndPeek runLua
 evalAndPeek :: EvalLuaAndPeek
 evalAndPeek = mkEvalAndPeek runAndPeek
 
-newtype BigNat = N Integer deriving ( Show, Eq, Ord, Num )
+newtype BigNat = N Integer deriving ( Show, Eq, Ord, Num, Real, Enum, Integral )
 
 instance Arbitrary BigNat where
   arbitrary = N . getHuge <$> arbitrary
@@ -209,3 +209,14 @@ spec = do
         -- https://en.wikipedia.org/wiki/Long_division#Examples
         example 10 "1260257" "37" "34061" "0"
         example 16 "f412df" "12" "d8f45" "5"
+
+        example 10 "12" "5" "2" "2"
+
+      it "should divide integers" $ properly $ \(NonNegative a, Positive b) -> do
+        let (q, r) = a `divMod` b
+        withBigNats [ ("a", N a), ("b", N b) ] [ "q, _ = M.divrem(a, b)", "return q" ] >>= flip shouldBe (N q)
+        withBigNats [ ("a", N a), ("b", N b) ] [ "_, r = M.divrem(a, b)", "return r" ] >>= flip shouldBe (N r)
+      it "should divide huge integers" $ properly $ \(a, b) -> do
+        let (q, r) = a `divMod` b
+        withBigNats [ ("a", a), ("b", b) ] [ "q, _ = M.divrem(a, b)", "return q" ] >>= flip shouldBe q
+        withBigNats [ ("a", a), ("b", b) ] [ "_, r = M.divrem(a, b)", "return r" ] >>= flip shouldBe r

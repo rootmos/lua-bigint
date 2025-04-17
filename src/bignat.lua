@@ -214,12 +214,16 @@ function M.divrem(a, b)
     local a, b = binop(a, b)
 
     local base <const> = a.base
+    local B <const> = M.make{0,1, base=base}
+
     local ao <const>, bo <const> = a.o, b.o
     local an <const>, bn <const> = a.n, b.n
     local k <const> = ao + an
     local l <const> = bo + bn
 
-    local B = M.make{0,1, base=base}
+    if k < l then
+        return M.make{0, base=base}, a
+    end
 
     local function alpha(i)
         return a[an - i]
@@ -251,12 +255,8 @@ function M.divrem(a, b)
 
     local i = 0
     while j > 0 do
-        --print(string.format("\ni=%d", i))
         d = B*r + M.make{alpha(i + l - 1), base=base}
-        --print(string.format("d_%i=%s", i, d))
         q[j] = I.binsearch(0, base-1, f)
-        --print(string.format("r=%s", r))
-        --print(string.format("q_%d=%s", j, q[j]))
         i, j = i + 1, j - 1
     end
 
