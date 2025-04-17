@@ -15,3 +15,9 @@ jobs:
 
     - name: Prepare Lua dependencies
       run: make -C deps
+
+    - name: Prepare Haskell Tool Stack
+      run: make -C tests prepare
+
+    - name: Prepare Haskell dependencies
+      run: make -C tests deps

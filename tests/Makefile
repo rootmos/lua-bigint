@@ -10,7 +10,11 @@ run: prepare
 build clean: prepare
 	stack $@
 
-prepare: lua-bigint.cabal bits
+prepare: lua-bigint.cabal bits stack.yaml stack.yaml.lock
+	stack setup
+
+deps: lua-bigint.cabal
+	stack build --only-dependencies
 
 lua-bigint.cabal: package.yaml
 	stack exec hpack
