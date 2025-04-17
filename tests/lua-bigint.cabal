@@ -11,6 +11,9 @@ data-files:
     lua/arbbase.lua
     lua/arbbase.test.lua
     lua/ascii.lua
+    lua/bignat.lua
+    lua/bits.lua
+    lua/internal.lua
     lua/lua-bigint.lua
     lua/lua-bigint.test.lua
     lua/main.lua
@@ -23,7 +26,9 @@ executable specs
   other-modules:
       ArbbaseSpec
       AsciiSpec
+      BignatSpec
       Huge
+      InternalSpec
       LuaBigInt
       LuaUtils
       LuaUtilsSpec
@@ -37,10 +42,11 @@ executable specs
       DuplicateRecordFields
       FlexibleContexts
       GADTs
+      GeneralizedNewtypeDeriving
+      ImpredicativeTypes
       LambdaCase
       NumericUnderscores
       OverloadedStrings
-      RankNTypes
       ScopedTypeVariables
       TypeApplications
   ghc-options: -Wall -Werror -fno-warn-name-shadowing

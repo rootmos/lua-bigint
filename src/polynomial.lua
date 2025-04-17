@@ -15,6 +15,10 @@ local __mt <const> = {
     __index = __fn,
 }
 
+function M.is_polynomial(x)
+    return getmetatable(x) == __mt
+end
+
 function M.tostring(p)
     local s = ""
     local v <const> = p.v or "x"
@@ -41,7 +45,8 @@ function M.tostring(p)
 end
 __mt.__tostring = M.tostring
 
-local function clean(p, q)
+-- TODO tests
+function M.clean(p, q)
     local n <const> = p.n or #p
 
     local mut <const> = p == q
@@ -103,10 +108,9 @@ function M.make(p)
         v = p.v
     }
 
-    clean(p, q)
+    M.clean(p, q)
     return setmetatable(q, __mt)
 end
-
 __fn.clone = M.make
 
 function M.add(a, b)
@@ -134,7 +138,7 @@ function M.add(a, b)
         end
     end
 
-    clean(sum, sum)
+    M.clean(sum, sum)
     return setmetatable(sum, __mt)
 end
 __mt.__add = M.add
@@ -179,12 +183,9 @@ function __fn:coefficients()
     for i = 1,n do
         cs[o+i] = self[i]
     end
-    return cs
+    return cs, o + n
 end
-
-function M.is_polynomial(x)
-    return getmetatable(x) == __mt
-end
+M.coefficients = __fn.coefficients
 
 return setmetatable(M, {
     __call = function(N, o)

@@ -37,6 +37,7 @@ if [ "$MODE" = "lua" ]; then
     OPTS=(-i)
     OPTS+=(-l "P=polynomial")
     OPTS+=(-l "A=ascii")
+    OPTS+=(-l "N=bignat")
     OPTS+=(-e "_PROMPT='lua-bigint> '")
     OPTS+=(-e "_PROMPT2='lua-bigint>> '")
 

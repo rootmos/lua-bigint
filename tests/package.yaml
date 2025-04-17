@@ -17,10 +17,11 @@ default-extensions:
   - DuplicateRecordFields
   - FlexibleContexts
   - GADTs
+  - GeneralizedNewtypeDeriving
+  - ImpredicativeTypes
   - LambdaCase
   - NumericUnderscores
   - OverloadedStrings
-  - RankNTypes
   - ScopedTypeVariables
   - TypeApplications
 
