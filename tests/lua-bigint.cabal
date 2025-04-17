@@ -14,12 +14,7 @@ data-files:
     lua/bignat.lua
     lua/bits.lua
     lua/internal.lua
-    lua/lua-bigint.lua
-    lua/lua-bigint.test.lua
-    lua/main.lua
     lua/polynomial.lua
-    lua/sandbox.lua
-    lua/sketch.lua
 
 executable specs
   main-is: Main.hs

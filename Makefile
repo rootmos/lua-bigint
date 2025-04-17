@@ -9,5 +9,9 @@ run: deps
 deps:
 	$(MAKE) -C deps
 
+doc:
+	$(MAKE) -C doc
+
 .PHONY: tests run
 .PHONY: deps
+.PHONY: doc
