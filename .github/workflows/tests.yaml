@@ -1,0 +1,85 @@
+name: Tests
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  readme:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repository code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Check if the README.md is up-to-date
+      run: tools/is-clean --make --root=doc --target=all --remove README.md
+
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        lua_bits: [ 32, 64 ]
+    env:
+      LUA_BITS: ${{ matrix.lua_bits }}
+      #QUICKCHECK_VERBOSE: 1
+      QUICKCHECK_MAX_SUCCESS: ${{ github.ref_name == 'master' && 1000 || 100 }}
+      QUICKCHECK_SIZE: ${{ github.ref_name == 'master' && 200 || 10 }}
+    steps:
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends calc
+
+    - name: Check out repository code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - uses: actions/cache@v4
+      name: Cache Lua dependencies
+      id: cache-lua-deps
+      with:
+        path: |
+          deps/lua/root
+          deps/luaunit
+          deps/luaunit.tar.gz
+        key: ${{ runner.os }}-${{ hashFiles('deps/deps.json', 'deps/lua/lua.json') }}
+
+    - name: Prepare Lua dependencies
+      if: steps.cache-lua-deps.outputs.cache-hit != 'true'
+      run: make -C deps
+
+    - name: Check Lua's bits
+      run: test "$(./run src/bits.lua -p)" -eq "${{ matrix.lua_bits }}"
+
+    # https://github.com/actions/cache/blob/main/examples.md#haskell---stack
+    - uses: actions/cache@v4
+      name: Cache ~/.stack
+      with:
+        path: ~/.stack
+        key: ${{ runner.os }}-stack-global-lua${{ matrix.lua_bits }}-${{ hashFiles('tests/stack.yaml') }}-${{ hashFiles('tests/package.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-stack-global-lua${{ matrix.lua_bits }}-${{ hashFiles('tests/stack.yaml') }}-${{ hashFiles('tests/package.yaml') }}
+          ${{ runner.os }}-stack-global-lua${{ matrix.lua_bits }}-${{ hashFiles('tests/stack.yaml') }}-
+          ${{ runner.os }}-stack-global-lua${{ matrix.lua_bits }}-
+    - uses: actions/cache@v4
+      name: Cache .stack-work
+      with:
+        path: tests/.stack-work
+        key: ${{ runner.os }}-stack-work-lua${{ matrix.lua_bits }}-${{ hashFiles('tests/stack.yaml') }}-${{ hashFiles('tests/package.yaml') }}-${{ hashFiles('tests/**/*.hs') }}
+        restore-keys: |
+          ${{ runner.os }}-stack-work-lua${{ matrix.lua_bits }}-${{ hashFiles('tests/stack.yaml') }}-${{ hashFiles('tests/package.yaml') }}-
+          ${{ runner.os }}-stack-work-lua${{ matrix.lua_bits }}-${{ hashFiles('tests/stack.yaml') }}-
+          ${{ runner.os }}-stack-work-lua${{ matrix.lua_bits }}-
+
+    - name: Prepare Haskell dependencies
+      run: |
+          touch tests/lua-bigint.cabal
+          make -C tests deps
+
+    - name: Build tests
+      run: make -C tests build
+
+    - name: Run tests
+      run: make tests

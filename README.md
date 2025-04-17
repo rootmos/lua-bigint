@@ -1,5 +1,5 @@
 # lua-bigint
-[![builds.sr.ht status](https://builds.sr.ht/~rootmos/lua-bigint.svg)](https://builds.sr.ht/~rootmos/lua-bigint?)
+[![Tests](https://github.com/rootmos/lua-bigint/actions/workflows/tests.yaml/badge.svg)](https://github.com/rootmos/lua-bigint/actions/workflows/tests.yaml)
 
 A small arbitrary precision integer Lua library,
 with an [extensive test suite](tests/src) using Haskell's

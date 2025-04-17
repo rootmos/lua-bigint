@@ -12,6 +12,9 @@ build clean: prepare
 
 prepare: lua-bigint.cabal bits
 
+deps: prepare lua-bigint.cabal stack.yaml
+	stack build --only-dependencies
+
 lua-bigint.cabal: package.yaml
 	stack exec hpack
 
@@ -31,6 +34,6 @@ force-rebuild-lua: FORCE
 	stack exec -- ghc-pkg unregister --force lua
 
 .PHONY: run build clean
-.PHONY: prepare
+.PHONY: prepare deps
 .PHONY: bits force-rebuild-lua
 FORCE:
