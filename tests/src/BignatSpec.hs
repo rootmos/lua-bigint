@@ -195,3 +195,17 @@ spec = do
       it "should subtract same huge integer (by reference)" $ properly $ \a -> do
         withBigNats [ ("a", a) ] [ "d, _ = M.sub(a, a)", "return d" ] >>= flip shouldBe (N 0)
         withBigNats [ ("a", a) ] [ "_, t = M.sub(a, a)", "return t" ] >>= flip shouldBe False
+
+    describe "division" $ do
+      describe "examples" $ do
+        let fromstring base ds = printf "M.fromstring(\"%s\",%d,%d)" ds base base
+        let example (base :: Int) (a :: String) (b :: String) (q :: String) (r :: String) =
+             let a' :: String = fromstring base a in let b' :: String = fromstring base b in
+             let expr = printf "M.divrem(%s, %s)" a' b' in
+             it (printf "%s should be %s, %s" expr q r) $ do
+               runAndPeek [ "q, _ = " ++ expr, printf "return q:tostring(%d)" base ] >>= flip shouldBe q
+               runAndPeek [ "_, r = " ++ expr, printf "return r:tostring(%d)" base ] >>= flip shouldBe r
+
+        -- https://en.wikipedia.org/wiki/Long_division#Examples
+        example 10 "1260257" "37" "34061" "0"
+        example 16 "f412df" "12" "d8f45" "5"

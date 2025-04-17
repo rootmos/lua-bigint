@@ -53,12 +53,12 @@ function M.fromstring(s, from, to)
     return M.make(fs)
 end
 
-function __fn:tostring()
+function __fn:tostring(to)
     if self.n == 0 then
         return "0"
     end
 
-    local ds = Arbbase.convert(self:digits(), self.base, 10)
+    local ds = Arbbase.convert(self:digits(), self.base, to or 10)
     return Ascii.le_digits_to_be_string(ds)
 end
 M.tostring = __fn.tostring
@@ -209,6 +209,59 @@ function M.sub(a, b)
     return M.make(a), false
 end
 __mt.__sub = M.sub
+
+function M.divrem(a, b)
+    local a, b = binop(a, b)
+
+    local base <const> = a.base
+    local ao <const>, bo <const> = a.o, b.o
+    local an <const>, bn <const> = a.n, b.n
+    local k <const> = ao + an
+    local l <const> = bo + bn
+
+    local B = M.make{0,1, base=base}
+
+    local function alpha(i)
+        return a[an - i]
+    end
+
+    local q = {base=base}
+    local j = k - l + 1
+
+    local r = M.make{0, base=base}
+    for i = 0,l-2 do
+        r = r + M.make{alpha(i), o=l-2-i, base=base}
+    end
+
+    local d
+
+    local function f(x)
+        local t
+        r, t = M.sub(d, b*M.make{x, base=base})
+        if t then
+            return -1
+        end
+
+        if r < b then
+            return 0
+        else
+            return 1
+        end
+    end
+
+    local i = 0
+    while j > 0 do
+        --print(string.format("\ni=%d", i))
+        d = B*r + M.make{alpha(i + l - 1), base=base}
+        --print(string.format("d_%i=%s", i, d))
+        q[j] = I.binsearch(0, base-1, f)
+        --print(string.format("r=%s", r))
+        --print(string.format("q_%d=%s", j, q[j]))
+        i, j = i + 1, j - 1
+    end
+
+    return M.make(q), r
+end
 
 return setmetatable(M, {
     __call = function(N, o)

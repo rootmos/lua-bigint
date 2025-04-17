@@ -29,7 +29,6 @@ local r = N.make{0, base=base}
 for i = 0,l-2 do
     r = r + N.make{alpha(i), o=l-2-i, base=base}
 end
-print(string.format("r_{-1}=%s", r))
 
 local d
 
