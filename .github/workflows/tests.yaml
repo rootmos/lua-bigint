@@ -11,6 +11,9 @@ jobs:
         lua_bits: [ 32, 64 ]
     env:
       LUA_BITS: ${{ matrix.lua_bits }}
+      #QUICKCHECK_VERBOSE: 1
+      QUICKCHECK_MAX_SUCCESS: 1000
+      QUICKCHECK_SIZE: 200
     steps:
     - name: Check out repository code
       uses: actions/checkout@v4
