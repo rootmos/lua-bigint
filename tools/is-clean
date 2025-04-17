@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # is-clean
-# https://git.sr.ht/~rootmos/scripts c665305f7f2a3682141fb8bc99ae349c6dd72279
-# 2025-04-18T00:21:36+02:00 SHA-256:09adf69ab23762a45a1506a5f184bdb63e0f2b5872c1e5f78910ca0819dbb6d2
+# https://git.sr.ht/~rootmos/scripts 015464c3e8c25747d9b46153aa9d31d7c1bd56f3
+# 2025-04-18T00:41:36+02:00 SHA-256:1bd66f26681a161b88e179c5c60aff084bf095933a8b92b30f187980e9961b41
 # sed '2,5d' | sha256sum
 
 import argparse
@@ -20,6 +20,9 @@ import logging
 logger = logging.getLogger(whoami)
 
 def is_clean(path, make=False, root=None, target=None, show_diff=False, remove=None):
+    # pylint: disable=too-many-positional-arguments
+    # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-locals
     logger.info("checking: %s", path)
 
     digest = "sha256"
