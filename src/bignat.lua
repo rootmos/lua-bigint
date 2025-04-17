@@ -262,6 +262,16 @@ function M.divrem(a, b)
     return M.make(q), r
 end
 
+function __mt.__idiv(a, b)
+    local q, _ = M.divrem(a, b)
+    return q
+end
+
+function __mt.__mod(a, b)
+    local _, r = M.divrem(a, b)
+    return r
+end
+
 return setmetatable(M, {
     __call = function(N, o)
         return N.make(o)

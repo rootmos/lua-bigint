@@ -221,3 +221,13 @@ spec = do
         let (q, r) = a `divMod` b
         withBigNats [ ("a", a), ("b", b) ] [ "q, _ = M.divrem(a, b)", "return q" ] >>= flip shouldBe q
         withBigNats [ ("a", a), ("b", b) ] [ "_, r = M.divrem(a, b)", "return r" ] >>= flip shouldBe r
+
+      it "should __idiv integers" $ properly $ \(a, b) ->
+        withBigNats [ ("a", a), ("b", b) ] [ "return a // b" ] >>= flip shouldBe (a `div` b)
+
+      it "should __mod integers" $ properly $ \(a, b) ->
+        withBigNats [ ("a", a), ("b", b) ] [ "return a % b" ] >>= flip shouldBe (a `mod` b)
+
+      -- TODO divide by zero error
+      -- TODO same integer
+      -- TODO genDigitsWithLeadingZeroes
