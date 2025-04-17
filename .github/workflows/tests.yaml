@@ -45,3 +45,9 @@ jobs:
       run: |
           touch tests/lua-bigint.cabal
           make -C tests deps
+
+    - name: Build tests
+      run: make -C tests build
+
+    - name: Run tests
+      run: make tests
