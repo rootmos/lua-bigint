@@ -254,4 +254,15 @@ spec = do
         let Exception msg = fromJust e
         msg `shouldEndWith` "attempt to divide by zero"
 
-      -- TODO same integer
+      it "should divide same integer (by value)" $ properly $ \(Positive a) -> do
+        withBigNats [ ("a", N a), ("b", N a) ] [ "q, _ = M.divrem(a, b)", "return q" ] >>= flip shouldBe (N 1)
+        withBigNats [ ("a", N a), ("b", N a) ] [ "_, r = M.divrem(a, b)", "return r" ] >>= flip shouldBe (N 0)
+      it "should divide same huge integer (by value)" $ properly $ \a -> do
+        withBigNats [ ("a", a), ("b", a) ] [ "q, _ = M.divrem(a, b)", "return q" ] >>= flip shouldBe (N 1)
+        withBigNats [ ("a", a), ("b", a) ] [ "_, r = M.divrem(a, b)", "return r" ] >>= flip shouldBe (N 0)
+      it "should divide same integer (by reference)" $ properly $ \(Positive a) -> do
+        withBigNats [ ("a", N a) ] [ "q, _ = M.divrem(a, a)", "return q" ] >>= flip shouldBe (N 1)
+        withBigNats [ ("a", N a) ] [ "_, r = M.divrem(a, a)", "return r" ] >>= flip shouldBe (N 0)
+      it "should divide same huge integer (by reference)" $ properly $ \a -> do
+        withBigNats [ ("a", a) ] [ "q, _ = M.divrem(a, a)", "return q" ] >>= flip shouldBe (N 1)
+        withBigNats [ ("a", a) ] [ "_, r = M.divrem(a, a)", "return r" ] >>= flip shouldBe (N 0)

@@ -217,14 +217,18 @@ function M.divrem(a, b)
     local base <const> = a.base
     local B <const> = M.make{0,1, base=base}
 
+    if b == M{0, base=base} then
+        error("attempt to divide by zero")
+    end
+
+    if rawequal(a, b) or a == b then -- TODO check if checking a == b significantly affects performance
+        return M{1, base=base}, M{0, base=base}
+    end
+
     local ao <const>, bo <const> = a.o, b.o
     local an <const>, bn <const> = a.n, b.n
     local k <const> = ao + an
     local l <const> = bo + bn
-
-    if b == M{0, base=base} then
-        error("attempt to divide by zero")
-    end
 
     if k < l then
         return M.make{0, base=base}, a

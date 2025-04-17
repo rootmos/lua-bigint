@@ -8,7 +8,7 @@ export LUA_BITS=64
 gogo() {
     #make tests
     #cd tests && make build && stack run specs -- -m '/Bignat/bignat.lua/division'
-    cd tests && make build && stack run specs -- -m '/Bignat/bignat.lua/division/should dislike'
+    cd tests && make build && stack run specs -- -m '/Bignat/bignat.lua/division/should divide same'
     #cd tests && make build && stack run specs -- -m '/Polynomial/polynomial.lua'
     #cd tests && make build && stack run specs -- -m '/Internal'
     #cd tests && stack runhaskell go.hs
