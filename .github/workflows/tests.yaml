@@ -17,7 +17,18 @@ jobs:
       with:
         fetch-depth: 0
 
+    - uses: actions/cache@v4
+      name: Cache Lua dependencies
+      id: cache-lua-deps
+      with:
+        path: |
+          deps/lua/root
+          deps/luaunit
+          deps/luaunit.tar.gz
+        key: ${{ runner.os }}-${{ hashFiles('deps/deps.json', 'deps/lua/lua.json') }}
+
     - name: Prepare Lua dependencies
+      if: steps.cache-lua-deps.outputs.cache-hit != 'true'
       run: make -C deps
 
     - name: Check Lua's bits
@@ -30,6 +41,8 @@ jobs:
         path: ~/.stack
         key: ${{ runner.os }}-stack-global-lua${{ matrix.lua_bits }}-${{ hashFiles('tests/stack.yaml') }}-${{ hashFiles('tests/package.yaml') }}
         restore-keys: |
+          ${{ runner.os }}-stack-global-lua${{ matrix.lua_bits }}-${{ hashFiles('tests/stack.yaml') }}-${{ hashFiles('tests/package.yaml') }}
+          ${{ runner.os }}-stack-global-lua${{ matrix.lua_bits }}-${{ hashFiles('tests/stack.yaml') }}-
           ${{ runner.os }}-stack-global-lua${{ matrix.lua_bits }}-
     - uses: actions/cache@v4
       name: Cache .stack-work
