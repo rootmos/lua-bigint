@@ -1,11 +1,5 @@
 [
     {
-        "sha256": "c222ab641954015f5b6091208b606abf3fa228054d7916afd329df9f30a62651",
-        "target": "lua-bint.tar.gz",
-        "timestamp": "2025-03-04T08:10:56+01:00",
-        "url": "https://github.com/edubart/lua-bint/archive/refs/tags/v0.5.1.tar.gz"
-    },
-    {
         "sha256": "b35dd8fadeb6e796aa961c736db5f0a780cd5f94e456460c6e27c2e6b3f98e55",
         "target": "luaunit.tar.gz",
         "timestamp": "2025-03-04T06:40:05+01:00",

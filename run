@@ -60,5 +60,4 @@ if [ -n "${RUN_TESTS-}" ]; then
 fi
 
 LUA_PATH="$SRC/?.lua;$SRC/?/init.lua"
-LUA_PATH="$DEPS/lua-bint/?.lua;$LUA_PATH"
 "${CMD[@]}" LUA_PATH="$LUA_PATH" "$LUA" -W "$@"

@@ -211,6 +211,7 @@ function M.sub(a, b)
 end
 __mt.__sub = M.sub
 
+-- https://en.wikipedia.org/wiki/Long_division#Algorithm_for_arbitrary_base
 function M.divrem(a, b)
     local a, b = binop(a, b)
 
