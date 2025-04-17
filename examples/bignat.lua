@@ -1,10 +1,3 @@
-# lua-bigint
-[![builds.sr.ht status](https://builds.sr.ht/~rootmos/lua-bigint.svg)](https://builds.sr.ht/~rootmos/lua-bigint?)
-
-A work-in-progress, arbitrary precision integer arithmetic, cleanroom Lua library.
-
-## Example
-```lua
 local N = require("bignat")
 
 local a = N.fromstring("78840069980359889583804398923873743190317791505792283599345825435746711")
@@ -14,8 +7,3 @@ local d = N.fromstring("36478175508104055981786356883765957372585495026580881986
 local f = N.fromstring("7319870")
 
 print((a - b)//c + d*f)
-```
-outputs:
-```
-2670155025574697618046118568329646385071709964952686972394605618273230
-```

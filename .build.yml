@@ -28,6 +28,9 @@ tasks:
   - tests: |
       cd lua-bigint
       make tests
+  - check-readme: |
+      cd lua-bigint
+      tools/is-clean --make --root=doc README.md
 triggers:
   - action: email
     condition: always

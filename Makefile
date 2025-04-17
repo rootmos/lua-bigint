@@ -1,6 +1,7 @@
 tests: deps
 	$(MAKE) -C tests
 	./run -t
+	$(MAKE) -C examples
 
 run: deps
 	./run

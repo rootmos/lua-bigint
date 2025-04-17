@@ -10,12 +10,10 @@ LUA=${LUA-$SCRIPT_DIR/lua}
 
 RUN_TESTS=
 TIMEOUT=
-ENTRYPOINT=main
-while getopts "tT:e:h-" OPT; do
+while getopts "tT:h-" OPT; do
     case $OPT in
         t) RUN_TESTS=1 ;;
         T) TIMEOUT=1 ;;
-        e) ENTRYPOINT=$OPTARG ;;
         -) break ;;
         h) usage ;;
         ?) usage 2 ;;
@@ -63,4 +61,4 @@ fi
 
 LUA_PATH="$SRC/?.lua;$SRC/?/init.lua"
 LUA_PATH="$DEPS/lua-bint/?.lua;$LUA_PATH"
-"${CMD[@]}" LUA_PATH="$LUA_PATH" "$LUA" -W "$SRC/$ENTRYPOINT.lua" "$@"
+"${CMD[@]}" LUA_PATH="$LUA_PATH" "$LUA" -W "$@"

@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+# is-clean
+# https://git.sr.ht/~rootmos/scripts 453d141f24be8dd830ebd480283ed41be413b29f
+# 2025-04-17T19:25:56+02:00 SHA-256:05394041ffb0f135286116d07ce933c00d43c35fbc6aae03476b9ada652472a1
+# sed '2,5d' | sha256sum
+
+import argparse
+import hashlib
+import os
+import subprocess
+import sys
+import tempfile
+
+whoami = "is-clean"
+env_prefix = whoami.upper().replace("-", "_") + "_"
+def env(var, default=None):
+    return os.environ.get(env_prefix + var, default)
+
+import logging
+logger = logging.getLogger(whoami)
+
+def is_clean(path, make=False, root=None, target=None, show_diff=False):
+    logger.info("checking: %s", path)
+
+    digest = "sha256"
+    with open(path, "rb") as f:
+        current_digest = hashlib.new(digest, f.read()).hexdigest()
+    logger.info("current; %s: %s", digest.upper(), current_digest)
+
+    if make:
+        root = root or os.path.dirname(path) or os.getcwd()
+        logger.debug("root: %s", root)
+
+        target = target or os.path.relpath(path, root)
+        logger.debug("target: %s", target)
+
+        cmdline = [ os.environ.get("MAKE", "make") ]
+        cmdline += [ "-C", root ]
+        cmdline += [ target ]
+        logger.debug("running: %s", cmdline)
+        subprocess.check_call(cmdline)
+
+        with open(path, "rb") as f:
+            generated_digest = hashlib.new(digest, f.read()).hexdigest()
+        logger.info("generated; %s: %s", digest.upper(), generated_digest)
+        current_digest = generated_digest
+
+    with tempfile.TemporaryDirectory(prefix=f"{whoami}-") as tmp:
+        head = os.path.join(tmp, "head")
+
+        with open(head, "xb") as f:
+            rel = os.path.relpath(path, start=root)
+            cmdline = ["git", "show", "HEAD:./" + rel]
+            logger.debug("running: %s", cmdline)
+            bs = subprocess.check_output(cmdline, cwd=root)
+            head_digest = hashlib.new(digest, bs).hexdigest()
+            f.write(bs)
+
+        logger.info("HEAD; %s: %s", digest.upper(), head_digest)
+
+        if current_digest == head_digest:
+            return True
+
+        if show_diff:
+            subprocess.check_call(["diff", path, head])
+
+        return False
+
+def setup_logger(level, name=None):
+    level = level.upper()
+    if isinstance(name, str):
+        l = logging.getLogger(name=name)
+    else:
+        l = name
+    l.setLevel(level)
+
+    handler = logging.StreamHandler()
+    handler.setLevel(level)
+    l.addHandler(handler)
+
+    fmt = logging.Formatter(
+        fmt="%(asctime)s:%(name)s:%(levelname)s %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S%z"
+    )
+    handler.setFormatter(fmt)
+
+    return l
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Freshness checker",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    parser.add_argument("--log", default=env("LOG_LEVEL", "INFO"), help="set log level")
+
+    parser.add_argument("-m", "--make", action="store_true")
+    parser.add_argument("-r", "--root", metavar="PATH")
+    parser.add_argument("-t", "--target", metavar="TARGET")
+
+    parser.add_argument("-D", "--no-diff", action="store_true")
+
+    parser.add_argument("path", metavar="PATH")
+
+    return parser.parse_args()
+
+def main():
+    args = parse_args()
+    setup_logger(args.log, logger)
+    logger.debug("args: %s", args)
+
+    r = is_clean(
+        path = args.path,
+        make = args.make,
+        root = args.root,
+        target = args.target,
+        show_diff = not args.no_diff,
+    )
+
+    if not r:
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
