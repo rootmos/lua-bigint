@@ -1,6 +1,6 @@
 #export QUICKCHECK_VERBOSE=1
-#export QUICKCHECK_MAX_SUCCESS=1000
-#export QUICKCHECK_SIZE=100
+export QUICKCHECK_MAX_SUCCESS=1000
+export QUICKCHECK_SIZE=100
 
 #export LUA_BITS=32
 export LUA_BITS=64
@@ -14,8 +14,8 @@ gogo() {
     #./run -e sandbox
 }
 
-TIMEOUT=10s
-#TIMEOUT=0
+#TIMEOUT=10s
+TIMEOUT=0
 
 go() {
     timeout "$TIMEOUT" k gogo

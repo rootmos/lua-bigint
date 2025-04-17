@@ -68,7 +68,8 @@ local addB, mulB = I.mk_add(M.make), I.mk_mul(M.make)
 
 local function binop(a, b)
     -- TODO promote integers
-    assert(M.is_bignat(a), M.is_bignat(b)) -- TODO add tests and better error message
+    assert(M.is_bignat(a)) -- TODO add tests and better error message
+    assert(M.is_bignat(b))
     assert(a.base == b.base) -- TODO or convert to max(a.base, b.base)?
     return a, b
 end
@@ -226,11 +227,11 @@ function M.divrem(a, b)
     end
 
     local function alpha(i)
+        if i > an then
+            return 0
+        end
         return a[an - i]
     end
-
-    local q = {base=base}
-    local j = k - l + 1
 
     local r = M.make{0, base=base}
     for i = 0,l-2 do
@@ -238,7 +239,6 @@ function M.divrem(a, b)
     end
 
     local d
-
     local function f(x)
         local t
         r, t = M.sub(d, b*M.make{x, base=base})
@@ -253,11 +253,10 @@ function M.divrem(a, b)
         end
     end
 
-    local i = 0
-    while j > 0 do
-        d = B*r + M.make{alpha(i + l - 1), base=base}
+    local q = {base=base}
+    for j = (k - l + 1),1,-1 do
+        d = B*r + M.make{alpha(k - j), base=base}
         q[j] = I.binsearch(0, base-1, f)
-        i, j = i + 1, j - 1
     end
 
     return M.make(q), r

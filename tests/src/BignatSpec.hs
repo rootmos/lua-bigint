@@ -211,6 +211,7 @@ spec = do
         example 16 "f412df" "12" "d8f45" "5"
 
         example 10 "12" "5" "2" "2"
+        example 10 "1200" "50" "24" "0"
 
       it "should divide integers" $ properly $ \(NonNegative a, Positive b) -> do
         let (q, r) = a `divMod` b
