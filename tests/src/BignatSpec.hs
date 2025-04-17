@@ -76,6 +76,8 @@ spec = do
         evalAndPeek @Integer "M.max_base" >>= flip shouldBe (2^e)
         evalAndPeek @Integer "M.default_base" >>= flip shouldBe (2^e)
 
+    base <- runIO (evalAndPeek @Integer "M.default_base")
+
     describe "decimal representation" $ do
       it "should build and reproduce decimal strings" $ properly $ \(NonNegative (n :: Integer)) ->
         evalAndPeek (printf "M.fromstring('%s'):tostring()" (show n)) >>= flip shouldBe (show n)
@@ -124,7 +126,6 @@ spec = do
       it "should compare huge integers" $ properly $ \(a, b) ->
         withBigNats [ ("a", a), ("b", b) ] [ "return M.compare(a, b)" ] >>= flip shouldBe (int $ a `compare` b)
 
-      base <- runIO (evalAndPeek @Integer "M.default_base")
 
       it (printf "should compare numbers with differing amount of zeroes in base 0x%x (example)" base) $ do
         let a = N $ evalInBase base [0, 1]
@@ -138,8 +139,8 @@ spec = do
               suffix <- genDigits base m
               a <- genDigitsWithLeadingZeroes base (n-m)
               b <- genDigitsWithLeadingZeroes base (n-m)
-              return (a ++ suffix, b ++ suffix) in
-        properly $ forAll g $ \(a, b) ->
+              return (a ++ suffix, b ++ suffix)
+        in properly $ forAll g $ \(a, b) ->
           let a' = evalInBase base a in
           let b' = evalInBase base b in
           withBigNats [ ("a", N a'), ("b", N b') ] [ "return M.compare(a, b)" ] >>= flip shouldBe (int $ a' `compare` b')
@@ -228,6 +229,17 @@ spec = do
       it "should __mod integers" $ properly $ \(a, b) ->
         withBigNats [ ("a", a), ("b", b) ] [ "return a % b" ] >>= flip shouldBe (a `mod` b)
 
+      it (printf "should divide numbers with lots zeroes in base 0x%x" base) $
+        let g = do
+              a <- getNonNegative <$> arbitrary >>= genDigitsWithLeadingZeroes base
+              b <- getNonNegative <$> arbitrary >>= genDigitsWithLeadingZeroes base
+              if sum b == 0 then discard else return (a, b)
+        in properly $ forAll g $ \(a, b) ->
+          let a' = evalInBase base a in
+          let b' = evalInBase base b in
+          let (q, r) = a' `divMod` b' in do
+          withBigNats [ ("a", N a'), ("b", N b') ] [ "q, _ = M.divrem(a, b)", "return q" ] >>= flip shouldBe (N q)
+          withBigNats [ ("a", N a'), ("b", N b') ] [ "_, r = M.divrem(a, b)", "return r" ] >>= flip shouldBe (N r)
+
       -- TODO divide by zero error
       -- TODO same integer
-      -- TODO genDigitsWithLeadingZeroes
