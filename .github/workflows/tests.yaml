@@ -13,7 +13,7 @@ jobs:
         fetch-depth: 0
 
     - name: Check if the README.md is up-to-date
-      run: tools/is-clean --make --root=doc README.md
+      run: tools/is-clean --make --root=doc --target=all --remove README.md
 
   tests:
     runs-on: ubuntu-latest

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # is-clean
-# https://git.sr.ht/~rootmos/scripts 453d141f24be8dd830ebd480283ed41be413b29f
-# 2025-04-17T19:25:56+02:00 SHA-256:05394041ffb0f135286116d07ce933c00d43c35fbc6aae03476b9ada652472a1
+# https://git.sr.ht/~rootmos/scripts c665305f7f2a3682141fb8bc99ae349c6dd72279
+# 2025-04-18T00:21:36+02:00 SHA-256:09adf69ab23762a45a1506a5f184bdb63e0f2b5872c1e5f78910ca0819dbb6d2
 # sed '2,5d' | sha256sum
 
 import argparse
@@ -19,7 +19,7 @@ def env(var, default=None):
 import logging
 logger = logging.getLogger(whoami)
 
-def is_clean(path, make=False, root=None, target=None, show_diff=False):
+def is_clean(path, make=False, root=None, target=None, show_diff=False, remove=None):
     logger.info("checking: %s", path)
 
     digest = "sha256"
@@ -33,6 +33,9 @@ def is_clean(path, make=False, root=None, target=None, show_diff=False):
 
         target = target or os.path.relpath(path, root)
         logger.debug("target: %s", target)
+
+        if remove and os.path.exists(path):
+            os.remove(path)
 
         cmdline = [ os.environ.get("MAKE", "make") ]
         cmdline += [ "-C", root ]
@@ -97,6 +100,7 @@ def parse_args():
     parser.add_argument("-m", "--make", action="store_true")
     parser.add_argument("-r", "--root", metavar="PATH")
     parser.add_argument("-t", "--target", metavar="TARGET")
+    parser.add_argument("-R", "--remove", action="store_true")
 
     parser.add_argument("-D", "--no-diff", action="store_true")
 
@@ -114,6 +118,7 @@ def main():
         make = args.make,
         root = args.root,
         target = args.target,
+        remove = args.remove,
         show_diff = not args.no_diff,
     )
 
