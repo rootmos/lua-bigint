@@ -26,6 +26,11 @@ jobs:
       QUICKCHECK_MAX_SUCCESS: ${{ github.ref_name == 'master' && 1000 || 100 }}
       QUICKCHECK_SIZE: ${{ github.ref_name == 'master' && 200 || 10 }}
     steps:
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends calc
+
     - name: Check out repository code
       uses: actions/checkout@v4
       with:
