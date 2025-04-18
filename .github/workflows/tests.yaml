@@ -83,3 +83,16 @@ jobs:
 
     - name: Run tests
       run: make tests
+
+    - name: Create distribution files
+      run: ./mk-dist
+
+    - name: Check the examples against the distribution files
+      run: make -C examples RUNNER=../lua LUA_PATH="$PWD/dist/?.lua;$PWD/dist/?/init.lua"
+
+    - name: Keep the test artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: tests-lua${{ matrix.lua_bits }}
+        path: |
+            dist

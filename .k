@@ -13,7 +13,8 @@ gogo() {
     #cd tests && make build && stack run specs -- -m '/Internal'
     #cd tests && stack runhaskell go.hs
     #./run src/sandbox.lua
-    ./run examples/bignat.lua
+    #./run examples/bignat.lua
+    ./release
 }
 
 #TIMEOUT=10s

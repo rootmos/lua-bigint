@@ -5,6 +5,10 @@ local I <const> = require("internal")
 
 local M = {}
 
+if _pantry then
+    M.build_info = _pantry("build-info")
+end
+
 if require("bits") == 32 then
     M.max_base = 0x8000
 else
@@ -222,7 +226,8 @@ function M.divrem(a, b)
         error("attempt to divide by zero")
     end
 
-    if rawequal(a, b) or a == b then -- TODO check if checking a == b significantly affects performance
+    -- TODO check if checking a == b significantly affects performance
+    if rawequal(a, b) or a == b then
         return M{1, base=base}, M{0, base=base}
     end
 

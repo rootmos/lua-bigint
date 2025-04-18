@@ -1,1 +1,4 @@
 .history.lua
+
+src/build-info.lua
+dist

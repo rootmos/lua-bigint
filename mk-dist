@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -o nounset -o pipefail -o errexit
+
+SCRIPT_DIR=$(readlink -f "$0" | xargs dirname)
+ROOT=${ROOT-$SCRIPT_DIR}
+TOOLS=${TOOLS-$SCRIPT_DIR/tools}
+SRC=${SRC-$SCRIPT_DIR/src}
+
+OUTPUT_DIR=${1-$ROOT/dist}
+
+mkdir -p "$OUTPUT_DIR"
+
+env ROOT="$ROOT" "$TOOLS/build-info" -l -o "$SRC/build-info.lua"
+
+env --chdir="$SRC" "$TOOLS/bundle" \
+    -o "$OUTPUT_DIR/bignat.lua" "bignat.lua" \
+    "arbbase.lua" \
+    "arbbase.lua" \
+    "ascii.lua" \
+    "bits.lua" \
+    "build-info.lua" \
+    "internal.lua" \
+    "polynomial.lua"

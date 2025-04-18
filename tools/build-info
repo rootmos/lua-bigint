@@ -1,0 +1,258 @@
+#!/bin/bash
+# build-info
+# https://git.sr.ht/~rootmos/scripts 2d319a8671515b6763e526ebaafc7090eebbc0d4
+# 2025-04-18T20:18:19+02:00 SHA-256:d43c0c929793b5fad742c4b21a43344a2ab723ff7387cb4ef7101e198fd33ece
+# sed '2,5d' | sha256sum
+
+set -o nounset -o pipefail -o errexit
+
+ROOT=${ROOT-$(pwd)}
+VERSION_FILE=${VERSION_FILE-$ROOT/.version}
+
+usage() {
+    cat <<EOF 1>&2
+Usage: $(basename "$0") [options]
+Options:
+    -h         show this message
+    -o FILE    write to FILE instead of stdout
+    -p PREFIX  prepend PREFIX to variable names
+
+Output formats:
+    -c  emit C preprocessor definitions
+    -e  emit environment variables ready to be exported
+    -l  emit a Lua module
+    -P  emit a Python module with helpers
+EOF
+    exit "${1-0}"
+}
+
+STYLE="env"
+OUTPUT=
+PREFIX=BUILD_
+TARBALL_SUFFIX=.tar.gz
+while getopts "celPo:p:zh-" OPT; do
+    case $OPT in
+        c) STYLE="c" ;;
+        e) STYLE="env" ;;
+        l) STYLE="lua" ;;
+        P) STYLE="python" ;;
+        o) OUTPUT=$OPTARG ;;
+        p) PREFIX=$OPTARG ;;
+        -) break ;;
+        h) usage ;;
+        ?) usage 2 ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -n "${OUTPUT-}" ]; then
+    rm -rf "$OUTPUT"
+fi
+
+out() {
+    if [ -n "${OUTPUT-}" ]; then
+        cat >> "$OUTPUT"
+    else
+        cat
+    fi
+}
+
+pre() {
+    if [ "$STYLE" = "env" ] || [ "$STYLE" = "c" ] || [ "$STYLE" = "python" ]; then
+        true
+    elif [ "$STYLE" = "lua" ]; then
+        out <<EOF
+local B = {}
+EOF
+    else
+        echo 1>&2 "unknown style: $STYLE"
+        exit 1
+    fi
+}
+
+post() {
+    if [ "$STYLE" = "env" ] || [ "$STYLE" = "c" ]; then
+        true
+    elif [ "$STYLE" = "lua" ]; then
+        out <<EOF
+return B
+EOF
+    elif [ "$STYLE" = "python" ]; then
+        out <<EOF
+
+def to_dict():
+    return {
+EOF
+    for k in "${KEYs[@]}"; do
+        echo "        \"$(lower "$k")\": $(lower "$k")," | out
+    done
+        out <<EOF
+    }
+
+try:
+    import semver as _semver
+    def semver(n=7) -> _semver.version:
+        v0 = _semver.Version.parse(version)
+        build = git_ref[:n]
+        if git_dirty:
+            build += ".dirty"
+        v1 = v0.replace(build = build)
+        return _semver.Version.parse(str(v1))
+except ImportError:
+    pass
+EOF
+
+    else
+        echo 1>&2 "unknown style: $STYLE"
+        exit 1
+    fi
+}
+
+lower() {
+    tr '[:upper:]' '[:lower:]' <<< "$1"
+}
+
+KEYs=()
+
+kv() {
+    local k=$1
+    KEYs+=("$k")
+    if [ "$STYLE" = "env" ]; then
+        out <<EOF
+$PREFIX$k="$2"
+EOF
+    elif [ "$STYLE" = "c" ]; then
+        out <<EOF
+#define $PREFIX$k "$2"
+EOF
+    elif [ "$STYLE" = "lua" ]; then
+        out <<EOF
+B.$(lower "$k") = "$2"
+EOF
+    elif [ "$STYLE" = "python" ]; then
+        out <<EOF
+$(lower "$k") = "$2"
+EOF
+    else
+        echo 1>&2 "unknown style: $STYLE"
+        exit 1
+    fi
+}
+
+bool() {
+    local k=$1
+    KEYs+=("$k")
+    if [ "$STYLE" = "env" ]; then
+        out <<EOF
+$PREFIX$k=$2
+EOF
+    elif [ "$STYLE" = "c" ]; then
+        out <<EOF
+#define $PREFIX$k $([ -n "$2" ] && echo 1 || echo 0)
+EOF
+    elif [ "$STYLE" = "lua" ]; then
+        out <<EOF
+B.$(lower "$k") = $([ -n "$2" ] && echo true || echo false)
+EOF
+    elif [ "$STYLE" = "python" ]; then
+        out <<EOF
+$(lower "$k") = $([ -n "$2" ] && echo True || echo False)
+EOF
+    else
+        echo 1>&2 "unknown style: $STYLE"
+        exit 1
+    fi
+}
+
+if [ -f "$ROOT/.build.env" ]; then
+    # shellcheck source=/dev/null
+    . "$ROOT/.build.env"
+elif command -v git >/dev/null \
+    && git -C "$ROOT" rev-parse --show-toplevel >/dev/null 2>&1; then
+    cd "$ROOT"
+    GIT_REF=$(git rev-parse HEAD)
+    GIT_DIRTY=$([ -n "$(git status --porcelain)" ] && echo "1" || echo)
+
+    if [ -n "$GIT_DIRTY" ]; then
+        GIT_USER_NAME=$(git config user.name)
+        GIT_USER_EMAIL=$(git config user.email)
+    else
+        GIT_USER_NAME=$(git --no-pager log --format=format:'%an' -n 1)
+        GIT_USER_EMAIL=$(git --no-pager log --format=format:'%ae' -n 1)
+    fi
+
+    REMOTE=$(git remote  -v | cut -f1 | uniq | head -n1)
+    if [ -n "$REMOTE" ]; then
+        URL=$(git remote get-url "$REMOTE")
+        if grep -cq "^git@github.com:" <<< "$URL" >/dev/null; then
+            GIT_REPO=$(sed 's/^git@github.com:\(.*\).git$/\1/' <<< "$URL")
+            REPO_URL="https://github.com/$GIT_REPO"
+            SOURCE_TARBALL_URL="$REPO_URL/archive/$GIT_REF$TARBALL_SUFFIX"
+        elif grep -cq "^https://github.com/" <<< "$URL" >/dev/null; then
+            GIT_REPO=$(sed 's,^https://github.com/\(.*\)\(.git\)\?$,\1,' <<< "$URL")
+            REPO_URL="https://github.com/$GIT_REPO"
+            SOURCE_TARBALL_URL="$REPO_URL/archive/$GIT_REF$TARBALL_SUFFIX"
+        elif grep -cq "^git@git.sr.ht" <<< "$URL" >/dev/null; then
+            GIT_REPO=$(sed 's/^git@git.sr.ht:~\(.*\)$/\1/' <<< "$URL")
+            REPO_URL="https://git.sr.ht/~$GIT_REPO"
+        elif grep -cq "^https://git.sr.ht/" <<< "$URL" >/dev/null; then
+            GIT_REPO=$(sed 's,^https://git.sr.ht/~\(.*\)$,\1,' <<< "$URL")
+            REPO_URL="https://git.sr.ht/~$GIT_REPO"
+        elif grep -cq "^/" <<< "$URL" >/dev/null; then
+            GIT_REPO=$(basename "$URL")
+            REPO_URL="file://$URL"
+        else
+            echo 1>&2 "unable to figure out repository url"
+            exit 1
+        fi
+    fi
+else
+    echo 1>&2 "unable to figure out build context"
+    exit 1
+fi
+
+pre
+
+if [ -e "$VERSION_FILE" ]; then
+    # shellcheck source=/dev/null
+    . "$VERSION_FILE"
+
+    kv "VERSION_MAJOR" "$VERSION_MAJOR"
+    kv "VERSION_MINOR" "$VERSION_MINOR"
+    kv "VERSION_PATCH" "$VERSION_PATCH"
+    kv "VERSION" "$VERSION_MAJOR.$VERSION_MINOR.$VERSION_PATCH"
+elif [ -e "$ROOT/pyproject.toml" ]; then
+    VERSION=$(python - "$ROOT" <<EOF
+import tomllib
+import os
+import sys
+with open(os.path.join(sys.argv[1], "pyproject.toml"), "rb") as f:
+    t = tomllib.load(f)
+print(t["project"]["version"])
+EOF
+)
+    kv "VERSION" "$VERSION"
+fi
+
+if [ -n "${GIT_REPO-}" ]; then
+    kv "PROJECT" "$(basename "$GIT_REPO")"
+    kv "GIT_REPO" "$GIT_REPO"
+else
+    kv "PROJECT" "$(basename "$ROOT")"
+fi
+kv "GIT_REF" "$GIT_REF"
+bool "GIT_DIRTY" "$GIT_DIRTY"
+if [ -n "${REPO_URL-}" ]; then
+    kv "REPO_URL" "$REPO_URL"
+fi
+if [ -n "${SOURCE_TARBALL_URL-}" ]; then
+    kv "SOURCE_TARBALL_URL" "$SOURCE_TARBALL_URL"
+fi
+
+kv "TIME" "$(date -Is)"
+kv "TIME_RFC5322" "$(date -R)"
+
+kv "GIT_USER_NAME" "$GIT_USER_NAME"
+kv "GIT_USER_EMAIL" "$GIT_USER_EMAIL"
+
+post
