@@ -59,6 +59,7 @@ def get_release_to_tag(args):
             continue
 
         releases[r.tag_name] = {
+            "tag_name": r.tag_name,
             "name": r.name,
             "prerelease": r.prerelease,
         }
@@ -82,10 +83,22 @@ def sandbox(args):
 
     releases = pickle_expr("releases", lambda: get_release_to_tag(args))
 
+    c2r = {}
     for tag_name, r in releases.items():
-        r["commit"] = repo.tag(tag_name).commit
+        c = repo.tag(tag_name).commit
+        r["commit"] = c
+        c2r[c] = r
 
-    print(releases)
+    head = repo.commit("0a49174efe7d555e4d8a93581958aeb80e9db80b")
+
+    ptr, r = head, c2r.get(head)
+    try:
+        while r is None:
+            ptr = ptr.parents[0]
+            r = c2r.get(ptr)
+    except IndexError:
+        assert(r == None)
+    print(r)
 
 def main():
     args = parse_args()
