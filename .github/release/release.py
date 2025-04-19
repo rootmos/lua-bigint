@@ -39,10 +39,13 @@ def sandbox(args):
     head = repo.get_commit("0a49174efe7d555e4d8a93581958aeb80e9db80b")
     print(head.commit.message)
 
-    # releases = {}
+    releases = {}
     for r in repo.get_releases():
-        print(r.name)
-        print(r.tag_name)
+        commit = repo.get_git_ref(f"tags/{r.tag_name}").object
+        logger.debug("resolved release: %s -> %s", r.tag_name, commit.sha)
+        releases[r.tag_name] = commit
+
+    print(releases)
 
 def main():
     args = parse_args()
