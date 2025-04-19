@@ -1,5 +1,6 @@
 import argparse
 import os
+import pickle
 
 import git
 import github
@@ -50,6 +51,8 @@ def mk_github(args):
 def get_release_to_tag(args):
     repo = mk_github(args).get_repo(args.github_repo)
 
+    logger.info("fetching releases from: %s", repo.full_name)
+
     releases = {}
     for r in repo.get_releases():
         if r.draft:
@@ -59,15 +62,25 @@ def get_release_to_tag(args):
             "name": r.name,
             "prerelease": r.prerelease,
         }
-        break # HACK
     return releases
+
+def pickle_expr(thing, f, force=False, cache_dir=None):
+    path = os.path.join(cache_dir or ".", f"{thing}.pickle")
+    if os.path.exists(path) and not force:
+        with open(path, "rb") as f:
+            return pickle.load(f)
+
+    x = f()
+    with open(path, "wb") as f:
+        pickle.dump(x, f)
+    return x
 
 def sandbox(args):
     if args.local_repo is None:
         raise NotImplementedError("clone repo")
     repo = git.Repo(args.local_repo)
 
-    releases = get_release_to_tag(args)
+    releases = pickle_expr("releases", lambda: get_release_to_tag(args))
 
     for tag_name, r in releases.items():
         r["commit"] = repo.tag(tag_name).commit

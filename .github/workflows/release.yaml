@@ -28,5 +28,4 @@ jobs:
         working-directory: .github/release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_GITHUB_REPOSITORY: rootmos/h
           RELEASE_LOG_LEVEL: DEBUG
