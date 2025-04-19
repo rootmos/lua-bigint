@@ -1,8 +1,9 @@
 import argparse
 import os
 
-import semver
+import git
 import github
+import semver
 
 whoami = "release"
 def env(var, default=None):
@@ -18,6 +19,13 @@ def parse_args():
 
     parser.add_argument("--log", default=env("LOG_LEVEL", "WARN"), help="set log level")
 
+    parser.add_argument("--github-repo", default=env("GITHUB_REPOSITORY", os.environ.get("GITHUB_REPOSITORY")))
+    parser.add_argument("--local-repo", default=env("LOCAL_REPOSITORY", os.environ.get("GITHUB_WORKSPACE")))
+    # ought to be faster to make a local clone:
+    # * want to check the .version files
+    # * my repositories are quite small
+    # * need to traverse down parent, and log and ...
+
     return parser.parse_args()
 
 def setup_logger(level):
@@ -31,19 +39,38 @@ def setup_logger(level):
 
     logger.addHandler(ch)
 
-def sandbox(args):
-    g = github.Github(auth=github.Auth.Token(os.environ["GITHUB_TOKEN"]))
+def mk_github(args):
+    token = os.environ.get("GITHUB_TOKEN")
+    if token is not None:
+        auth = github.Auth.Token(token)
+    else:
+        auth = None
+    return github.Github(auth=auth)
 
-    repo = g.get_repo("rootmos/h")
-
-    head = repo.get_commit("0a49174efe7d555e4d8a93581958aeb80e9db80b")
-    print(head.commit.message)
+def get_release_to_tag(args):
+    repo = mk_github(args).get_repo(args.github_repo)
 
     releases = {}
     for r in repo.get_releases():
-        commit = repo.get_git_ref(f"tags/{r.tag_name}").object
-        logger.debug("resolved release: %s -> %s", r.tag_name, commit.sha)
-        releases[r.tag_name] = commit
+        if r.draft:
+            continue
+
+        releases[r.tag_name] = {
+            "name": r.name,
+            "prerelease": r.prerelease,
+        }
+        break # HACK
+    return releases
+
+def sandbox(args):
+    if args.local_repo is None:
+        raise NotImplementedError("clone repo")
+    repo = git.Repo(args.local_repo)
+
+    releases = get_release_to_tag(args)
+
+    for tag_name, r in releases.items():
+        r["commit"] = repo.tag(tag_name).commit
 
     print(releases)
 

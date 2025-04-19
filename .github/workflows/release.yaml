@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
 
       - name: Install poetry
         run: pipx install poetry
@@ -26,4 +28,5 @@ jobs:
         working-directory: .github/release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_GITHUB_REPOSITORY: rootmos/h
           RELEASE_LOG_LEVEL: DEBUG
