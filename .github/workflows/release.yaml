@@ -26,3 +26,4 @@ jobs:
         working-directory: .github/release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_LOG_LEVEL: DEBUG
