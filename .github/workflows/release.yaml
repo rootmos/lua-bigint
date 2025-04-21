@@ -1,10 +1,9 @@
 name: Release
 on:
-  push:
-    ignore-tags:
-      - "releases/**"
-    branches:
-      - release
+  workflow_run:
+    workflows: [ Tests ]
+    types: [ completed ]
+    branches: [ master ]
   workflow_dispatch:
 
 permissions:

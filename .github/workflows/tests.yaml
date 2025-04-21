@@ -1,8 +1,8 @@
 name: Tests
 on:
   push:
-    branches-ignore:
-      - release
+    ignore-tags:
+      - "releases/**"
   workflow_dispatch:
 
 jobs:
