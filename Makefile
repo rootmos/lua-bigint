@@ -12,6 +12,11 @@ deps:
 doc:
 	$(MAKE) -C doc
 
+clean:
+	$(MAKE) -C tests clean
+	rm -f src/build-info.lua
+
 .PHONY: tests run
 .PHONY: deps
 .PHONY: doc
+.PHONY: clean

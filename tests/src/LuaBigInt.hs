@@ -13,7 +13,10 @@ pickLuaSource = lookupEnv "LUA_BIGINT_SRC" >>= \case
   Nothing -> Paths_lua_bigint.getDataFileName "lua"
 
 prepare :: Prepare
-prepare = do
-    openlibs
-    src <- liftIO pickLuaSource
-    extendLuaPath src
+prepare = stackNeutral $ do
+  openbase >> pop 1
+  openmath >> setglobal "math"
+  openstring >> setglobal "string"
+
+  src <- liftIO pickLuaSource
+  extendLuaPath src

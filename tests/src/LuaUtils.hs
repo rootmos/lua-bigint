@@ -88,8 +88,9 @@ mkEvalAndPeek runner expr = runner [ "return " ++ expr ]
 data LuaBits = Lua32 | Lua64 deriving ( Show, Eq )
 
 luaBits :: LuaBits
-luaBits = unsafePerformIO $ HsLua.run @HsLua.Exception $
-  openlibs >> dostring finderOuter >>= \case
+luaBits = unsafePerformIO $ HsLua.run @HsLua.Exception $ do
+  stackNeutral $ openmath >> setglobal "math"
+  dostring finderOuter >>= \case
     OK -> b <$> peek top
     _ -> throwErrorAsException
   where finderOuter = "local intmax = 0x7fffffffffffffff\n\
