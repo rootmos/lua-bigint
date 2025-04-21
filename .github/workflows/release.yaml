@@ -1,0 +1,30 @@
+name: Release
+on:
+  workflow_run:
+    workflows: [ Tests ]
+    types: [ completed ]
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install release.py
+        run: pipx install git+https://github.com/rootmos/release.py
+
+      - name: Create distribution files
+        run: ./mk-dist
+
+      - name: Create release
+        run: release dist/*.lua
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

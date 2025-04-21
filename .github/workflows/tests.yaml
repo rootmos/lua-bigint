@@ -1,6 +1,8 @@
 name: Tests
 on:
   push:
+    ignore-tags:
+      - "releases/**"
   workflow_dispatch:
 
 jobs:
@@ -10,7 +12,7 @@ jobs:
     - name: Check out repository code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0
+        fetch-depth: 1
 
     - name: Check if the README.md is up-to-date
       run: tools/is-clean --make --root=doc --target=all --remove README.md
@@ -34,7 +36,7 @@ jobs:
     - name: Check out repository code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0
+        fetch-depth: 1
 
     - uses: actions/cache@v4
       name: Cache Lua dependencies
