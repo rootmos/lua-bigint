@@ -28,7 +28,7 @@ spec = do
   describe "internal.lua" $ do
     it "should load properly" $ do
       t <- runLua $ do
-        OK <- dostring "return type(I)"
+        dostring' "return type(I)"
         peek @String top
       t `shouldBe` "table"
 

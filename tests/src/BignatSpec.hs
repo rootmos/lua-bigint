@@ -4,9 +4,6 @@ import Control.Monad ( forM_ )
 import Data.Maybe ( isJust, fromJust )
 import Text.Printf
 
---import qualified Data.ByteString as BS
-import qualified Data.ByteString.UTF8 as BSUTF8
-
 import Test.Hspec
 import Test.QuickCheck
 
@@ -35,7 +32,7 @@ instance Arbitrary BigNat where
 
 pushBigNat :: LuaError e => BigNat -> LuaE e ()
 pushBigNat (N n) = ensureStackDiff 1 $ do
-  OK <- dostring $ BSUTF8.fromString $ printf "return M.fromstring('%s')" (show n)
+  dostring' $ printf "return M.fromstring('%s')" (show n)
   return ()
 
 instance Peekable BigNat where
@@ -53,10 +50,7 @@ withBigNats ps ls = runLua $ stackNeutral $ do
     pushBigNat b
     setglobal n
 
-  flip mapM_ ls $ \l -> dostring (BSUTF8.fromString l) >>= \case
-    OK -> return ()
-    ErrRun -> throwErrorAsException
-    _ -> undefined
+  mapM_ dostring' ls
 
   a <- peek top
   pop 1
@@ -67,7 +61,7 @@ spec = do
   describe "bignat.lua" $ do
     it "should load properly" $ do
       t <- runLua $ do
-        OK <- dostring "return type(M)"
+        dostring' "return type(M)"
         peek @String top
       t `shouldBe` "table"
 
@@ -87,6 +81,7 @@ spec = do
           evalAndPeek (printf "M.fromstring('%s'):tostring()" (show n)) >>= flip shouldBe (show n)
         it "should produce decimal strings of integers pushed from Haskell" $ properly $ \(a@(N n)) ->
           withBigNats [ ("a", a) ] [ "return a:tostring()" ] >>= flip shouldBe (show n)
+
       describe "hexadecimal" $ do
         it "should reproduce hexadecimal strings" $ properly $ \(NonNegative (n :: Integer)) ->
           evalAndPeek (printf "M.fromhex('%s'):tohex()" (toHex n)) >>= flip shouldBe (toHex n)
@@ -94,6 +89,26 @@ spec = do
           evalAndPeek (printf "M.fromhex('%s'):tohex()" (toHex n)) >>= flip shouldBe (toHex n)
         it "should produce hexadecimal strings of integers pushed from Haskell" $ properly $ \(a@(N n)) ->
           withBigNats [ ("a", a) ] [ "return a:tohex()" ] >>= flip shouldBe (toHex n)
+
+      describe "big-endian" $ do
+        it "should parse big-endian bytestrings" $ properly $ \(Huge { getHuge = n }) -> do
+          (N m) <- runLua $ do
+            stackNeutral $ pushstring (toBeBytes n) >> setglobal "a"
+            dostring' "return M.frombigendian(a)"
+            peek top
+          m `shouldBe` n
+        it "should produce big-endian bytestrings" $ properly $ \(Huge { getHuge = n}) -> do
+          withBigNats [ ("a", N n) ] [ "return a:tobigendian()" ] >>= flip shouldBe (toBeBytes n)
+
+      describe "little-endian" $ do
+        it "should parse little-endian bytestrings" $ properly $ \(Huge { getHuge = n }) -> do
+          (N m) <- runLua $ do
+            stackNeutral $ pushstring (toLeBytes n) >> setglobal "a"
+            dostring' "return M.fromlittleendian(a)"
+            peek top
+          m `shouldBe` n
+        it "should produce little-endian bytestrings" $ properly $ \(Huge { getHuge = n}) -> do
+          withBigNats [ ("a", N n) ] [ "return a:tolittleendian()" ] >>= flip shouldBe (toLeBytes n)
 
     describe "BigNat" $ do
       it "should push value of the expected type" $ properly $ \a ->

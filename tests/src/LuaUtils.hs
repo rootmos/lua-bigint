@@ -74,10 +74,7 @@ mkRun prepare m = liftIO . HsLua.run $ stackNeutral prepare >> m
 
 mkRunAndPeek :: RunLuaRun -> RunLuaAndPeek
 mkRunAndPeek runner ls = runner $ stackNeutral $ do
-  flip mapM_ ls $ \l -> dostring (BSUTF8.fromString l) >>= \case
-    OK -> return ()
-    ErrRun -> throwErrorAsException
-    _ -> error l
+  mapM_ dostring' ls
   a <- peek top
   pop 1
   return a
@@ -90,9 +87,8 @@ data LuaBits = Lua32 | Lua64 deriving ( Show, Eq )
 luaBits :: LuaBits
 luaBits = unsafePerformIO $ HsLua.run @HsLua.Exception $ do
   stackNeutral $ openmath >> setglobal "math"
-  dostring finderOuter >>= \case
-    OK -> b <$> peek top
-    _ -> throwErrorAsException
+  dostring' finderOuter
+  b <$> peek top
   where finderOuter = "local intmax = 0x7fffffffffffffff\n\
                       \if math.type(intmax) == 'integer' and intmax + 1 < 0 then return 64 end\n\
                       \intmax = 0x7fffffff\n\
@@ -101,3 +97,9 @@ luaBits = unsafePerformIO $ HsLua.run @HsLua.Exception $ do
         b (32 :: Int) = Lua32
         b 64 = Lua64
         b _ = undefined
+
+dostring' :: LuaError e => String -> LuaE e ()
+dostring' s = dostring (BSUTF8.fromString s) >>= \case
+  OK -> return ()
+  ErrRun -> throwErrorAsException
+  _ -> undefined

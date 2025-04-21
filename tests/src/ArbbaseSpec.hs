@@ -41,7 +41,7 @@ spec = do
   describe "arbbase.lua" $ do
     it "should load properly" $ do
       t <- runLua $ do
-        OK <- dostring "return type(M)"
+        dostring' "return type(M)"
         peek @String top
       t `shouldBe` "table"
   describe "dec_to_hex" $ do

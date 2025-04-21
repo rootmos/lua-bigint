@@ -5,6 +5,8 @@ import System.Environment ( lookupEnv )
 import System.IO.Unsafe ( unsafePerformIO )
 import Text.Printf
 
+import qualified Data.ByteString as BS
+
 import Test.QuickCheck ( verbose
                        , property
                        , Testable
@@ -58,3 +60,9 @@ be False = "not be"
 
 toHex :: Integer -> String
 toHex n = printf "%x" n
+
+toLeBytes :: Integer -> BS.ByteString
+toLeBytes i = BS.pack $ fmap fromIntegral $ digitsInBase 256 i
+
+toBeBytes :: Integer -> BS.ByteString
+toBeBytes = BS.reverse . toLeBytes

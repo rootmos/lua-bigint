@@ -76,6 +76,29 @@ function __fn:tohex()
     return self:tostring(16)
 end
 
+function M.frombigendian(bs)
+    local p = table.pack(string.byte(bs, 1, #bs))
+    local q = {base=256}
+    for i = 1,#p do
+        q[#p - i + 1] = p[i]
+    end
+    return M.make(q)
+end
+
+function __fn:tobigendian()
+    return string.reverse(self:tolittleendian())
+end
+
+function M.fromlittleendian(bs)
+    local p = table.pack(string.byte(bs, 1, #bs))
+    p.base = 256
+    return M.make(p)
+end
+
+function __fn:tolittleendian()
+    return string.char(table.unpack(Arbbase.convert(self:digits(), self.base, 256)))
+end
+
 local addB, mulB = I.mk_add(M.make), I.mk_mul(M.make)
 
 local function binop(a, b)
