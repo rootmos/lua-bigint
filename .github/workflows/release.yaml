@@ -1,9 +1,14 @@
 name: Release
 on:
   push:
+    ignore-tags:
+      - "releases/**"
     branches:
       - release
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   release:
@@ -11,21 +16,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           fetch-tags: true
 
-      - name: Install poetry
-        run: pipx install poetry
+      - name: Install release.py
+        run: pipx install git+https://github.com/rootmos/release.py
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-          cache: "poetry"
+      - name: Create distribution files
+        run: ./mk-dist
 
-      - run: poetry install
-        working-directory: .github/release
-
-      - run: poetry run release
-        working-directory: .github/release
+      - name: Create release
+        run: release dist/*.lua
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_LOG_LEVEL: DEBUG
