@@ -5,6 +5,8 @@ import Test.QuickCheck
 import Text.Printf
 import Data.Char ( digitToInt )
 
+import qualified Data.ByteString as BS
+
 import Utils
 import Huge
 
@@ -43,3 +45,11 @@ spec = do
   describe "toHex" $ do
     it "should convert 34384472 to 0x20caa58" $
       (toHex 34384472) `shouldBe` "20caa58"
+
+  describe "toBeBytes" $ do
+    it "should convert 34384472 to 0x20caa58" $
+      (toBeBytes 34384472) `shouldBe` BS.pack [0x02, 0x0c, 0xaa, 0x58]
+
+  describe "toLeBytes" $ do
+    it "should convert 34384472 to 0x58aa0c02" $
+      (toLeBytes 34384472) `shouldBe` BS.pack [0x58, 0xaa, 0x0c, 0x02]

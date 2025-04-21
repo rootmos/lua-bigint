@@ -17,6 +17,7 @@ prepare = stackNeutral $ do
   openbase >> pop 1
   openmath >> setglobal "math"
   openstring >> setglobal "string"
+  opentable >> setglobal "table"
 
   src <- liftIO pickLuaSource
   extendLuaPath src

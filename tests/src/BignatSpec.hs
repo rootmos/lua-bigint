@@ -87,6 +87,7 @@ spec = do
           evalAndPeek (printf "M.fromstring('%s'):tostring()" (show n)) >>= flip shouldBe (show n)
         it "should produce decimal strings of integers pushed from Haskell" $ properly $ \(a@(N n)) ->
           withBigNats [ ("a", a) ] [ "return a:tostring()" ] >>= flip shouldBe (show n)
+
       describe "hexadecimal" $ do
         it "should reproduce hexadecimal strings" $ properly $ \(NonNegative (n :: Integer)) ->
           evalAndPeek (printf "M.fromhex('%s'):tohex()" (toHex n)) >>= flip shouldBe (toHex n)
@@ -94,6 +95,17 @@ spec = do
           evalAndPeek (printf "M.fromhex('%s'):tohex()" (toHex n)) >>= flip shouldBe (toHex n)
         it "should produce hexadecimal strings of integers pushed from Haskell" $ properly $ \(a@(N n)) ->
           withBigNats [ ("a", a) ] [ "return a:tohex()" ] >>= flip shouldBe (toHex n)
+
+      describe "big-endian" $ do
+        it "should parse big-endian bytestrings" $ properly $ \(NonNegative (n :: Integer)) -> do
+          (N m) <- runLua $ do
+            stackNeutral $ pushstring (toBeBytes n) >> setglobal "a"
+            dostring "return M.frombigendian(a)" >>= \case
+              OK -> return ()
+              ErrRun -> throwErrorAsException
+              _ -> undefined
+            peek @BigNat top
+          m `shouldBe` n
 
     describe "BigNat" $ do
       it "should push value of the expected type" $ properly $ \a ->

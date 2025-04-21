@@ -76,6 +76,12 @@ function __fn:tohex()
     return self:tostring(16)
 end
 
+function M.frombigendian(bs)
+    local q = table.pack(string.byte(bs, 1, #bs))
+    q.base = 256
+    return M.make(q)
+end
+
 local addB, mulB = I.mk_add(M.make), I.mk_mul(M.make)
 
 local function binop(a, b)
