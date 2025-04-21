@@ -2,3 +2,7 @@
 
 src/build-info.lua
 dist
+
+.release*
+ # TODO cache this properly in the release.py script
+releases.*.pickle

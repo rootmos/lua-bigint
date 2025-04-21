@@ -19,12 +19,17 @@ jobs:
           fetch-tags: true
 
       - name: Install release.py
-        run: pipx install git+https://github.com/rootmos/release.py
+        run: pipx install git+https://github.com/rootmos/release.py@releases/v0.1.2
+
+      - name: Prepare release
+        run: release -p
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create distribution files
         run: ./mk-dist
 
       - name: Create release
-        run: release dist/*.lua
+        run: release -R dist/*.lua
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

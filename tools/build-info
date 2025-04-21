@@ -1,13 +1,14 @@
 #!/bin/bash
 # build-info
-# https://git.sr.ht/~rootmos/scripts 2d319a8671515b6763e526ebaafc7090eebbc0d4
-# 2025-04-18T20:18:19+02:00 SHA-256:d43c0c929793b5fad742c4b21a43344a2ab723ff7387cb4ef7101e198fd33ece
+# https://git.sr.ht/~rootmos/scripts f024f941d54e5668840b0775d752c8d35d85c634
+# 2025-04-21T14:52:14+02:00 SHA-256:9fa398fdaf96264c5225bf704f69fcca4dcd2785bb38f102b69ad88e9f63212b
 # sed '2,5d' | sha256sum
 
 set -o nounset -o pipefail -o errexit
 
 ROOT=${ROOT-$(pwd)}
 VERSION_FILE=${VERSION_FILE-$ROOT/.version}
+RELEASE_FILE=${RELEASE_FILE-$ROOT/.release}
 
 usage() {
     cat <<EOF 1>&2
@@ -213,14 +214,24 @@ fi
 
 pre
 
-if [ -e "$VERSION_FILE" ]; then
-    # shellcheck source=/dev/null
-    . "$VERSION_FILE"
+if [ -e "$VERSION_FILE" ] || [ -e "$RELEASE_FILE" ]; then
+    if [ -e "$RELEASE_FILE" ]; then
+        # shellcheck source=/dev/null
+        . "$RELEASE_FILE"
+    else
+        # shellcheck source=/dev/null
+        . "$VERSION_FILE"
+    fi
 
     kv "VERSION_MAJOR" "$VERSION_MAJOR"
     kv "VERSION_MINOR" "$VERSION_MINOR"
     kv "VERSION_PATCH" "$VERSION_PATCH"
-    kv "VERSION" "$VERSION_MAJOR.$VERSION_MINOR.$VERSION_PATCH"
+    if [ -n "${VERSION_PRERELEASE-}" ]; then
+        kv "VERSION_PRERELEASE" "$VERSION_PRERELEASE"
+        kv "VERSION" "$VERSION_MAJOR.$VERSION_MINOR.$VERSION_PATCH-$VERSION_PRERELEASE"
+    else
+        kv "VERSION" "$VERSION_MAJOR.$VERSION_MINOR.$VERSION_PATCH"
+    fi
 elif [ -e "$ROOT/pyproject.toml" ]; then
     VERSION=$(python - "$ROOT" <<EOF
 import tomllib
