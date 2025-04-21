@@ -79,7 +79,7 @@ spec = do
         let r = intersperse ',' . reverse
         testCase (embrace . r $ show n) (show n)
 
-      it "should work for hexadecimals" $ properly $ \(Positive (n :: Integer)) -> do
+      it "should work for hexadecimals" $ properly $ \(Positive n) -> do
         let ds = digitsInBase 16 n
             r = intercalate ","
-        testCase (embrace . r $ show <$> ds) (printf "%x" n)
+        testCase (embrace . r $ show <$> ds) (toHex n)

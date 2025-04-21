@@ -79,13 +79,21 @@ spec = do
 
     base <- runIO (evalAndPeek @Integer "M.default_base")
 
-    describe "decimal representation" $ do
-      it "should build and reproduce decimal strings" $ properly $ \(NonNegative (n :: Integer)) ->
-        evalAndPeek (printf "M.fromstring('%s'):tostring()" (show n)) >>= flip shouldBe (show n)
-      it "should build and reproduce decimal strings of huge integers" $ properly $ \(Huge { getHuge = n }) ->
-        evalAndPeek (printf "M.fromstring('%s'):tostring()" (show n)) >>= flip shouldBe (show n)
-      it "should produce decimal strings of integers pushed from Haskell" $ properly $ \(a@(N n)) ->
-        withBigNats [ ("a", a) ] [ "return a:tostring()" ] >>= flip shouldBe (show n)
+    describe "representations" $ do
+      describe "decimal" $ do
+        it "should reproduce decimal strings" $ properly $ \(NonNegative (n :: Integer)) ->
+          evalAndPeek (printf "M.fromstring('%s'):tostring()" (show n)) >>= flip shouldBe (show n)
+        it "should reproduce decimal strings of huge integers" $ properly $ \(Huge { getHuge = n }) ->
+          evalAndPeek (printf "M.fromstring('%s'):tostring()" (show n)) >>= flip shouldBe (show n)
+        it "should produce decimal strings of integers pushed from Haskell" $ properly $ \(a@(N n)) ->
+          withBigNats [ ("a", a) ] [ "return a:tostring()" ] >>= flip shouldBe (show n)
+      describe "hexadecimal" $ do
+        it "should reproduce hexadecimal strings" $ properly $ \(NonNegative (n :: Integer)) ->
+          evalAndPeek (printf "M.fromhex('%s'):tohex()" (toHex n)) >>= flip shouldBe (toHex n)
+        it "should reproduce hexadecimal strings of huge integers" $ properly $ \(Huge { getHuge = n }) ->
+          evalAndPeek (printf "M.fromhex('%s'):tohex()" (toHex n)) >>= flip shouldBe (toHex n)
+        it "should produce hexadecimal strings of integers pushed from Haskell" $ properly $ \(a@(N n)) ->
+          withBigNats [ ("a", a) ] [ "return a:tohex()" ] >>= flip shouldBe (toHex n)
 
     describe "BigNat" $ do
       it "should push value of the expected type" $ properly $ \a ->

@@ -3,6 +3,7 @@ module Utils where
 import Data.Function ( (&) )
 import System.Environment ( lookupEnv )
 import System.IO.Unsafe ( unsafePerformIO )
+import Text.Printf
 
 import Test.QuickCheck ( verbose
                        , property
@@ -54,3 +55,6 @@ properly = v . m . s . property
 be :: Bool -> String
 be True = "be"
 be False = "not be"
+
+toHex :: Integer -> String
+toHex n = printf "%x" n

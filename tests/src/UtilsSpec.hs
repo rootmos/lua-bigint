@@ -39,3 +39,7 @@ spec = do
   it "(evalInBase b . digitsInBase b $ n) should be n" $ properly $ do
     forAll (arbitrary `suchThat` ((> 1) . fst)) $ \(b, Huge { getHuge = n}) ->
       (evalInBase b . digitsInBase b $ n) `shouldBe` n
+
+  describe "toHex" $ do
+    it "should convert 34384472 to 0x20caa58" $
+      (toHex 34384472) `shouldBe` "20caa58"

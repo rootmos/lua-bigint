@@ -68,6 +68,14 @@ end
 M.tostring = __fn.tostring
 __mt.__tostring = __fn.tostring
 
+function M.fromhex(s)
+    return M.fromstring(s, 16)
+end
+
+function __fn:tohex()
+    return self:tostring(16)
+end
+
 local addB, mulB = I.mk_add(M.make), I.mk_mul(M.make)
 
 local function binop(a, b)
