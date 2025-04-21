@@ -5,9 +5,6 @@ import Data.List ( dropWhileEnd )
 import Data.Maybe ( fromMaybe )
 import Text.Printf
 
---import qualified Data.ByteString as BS
-import qualified Data.ByteString.UTF8 as BSUTF8
-
 import Test.Hspec
 import Test.QuickCheck
 
@@ -71,10 +68,7 @@ withPolynomial ps ls = runLua $ stackNeutral $ do
     pushPolynomial p
     setglobal n
 
-  flip mapM_ ls $ \l -> dostring (BSUTF8.fromString l) >>= \case
-    OK -> return ()
-    ErrRun -> throwErrorAsException
-    e -> error $ show (l, e)
+  mapM_ dostring' ls
 
   a <- peek top
   pop 1
@@ -109,7 +103,7 @@ spec = do
   describe "polynomial.lua" $ do
     it "should load properly" $ do
       t <- runLua $ do
-        OK <- dostring "return type(P)"
+        dostring' "return type(P)"
         peek @String top
       t `shouldBe` "table"
 

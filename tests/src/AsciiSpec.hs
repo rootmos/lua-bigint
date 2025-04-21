@@ -28,7 +28,7 @@ spec = do
   describe "ascii.lua" $ do
     it "should load properly" $ do
       t <- runLua $ do
-        OK <- dostring "return type(A)"
+        dostring' "return type(A)"
         peek @String top
       t `shouldBe` "table"
 
