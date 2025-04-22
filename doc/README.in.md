@@ -10,7 +10,6 @@ and [HsLua](https://hackage.haskell.org/package/hslua).
 ```lua
 @include "examples/bignat.lua"
 ```
-prints
 ```
 @include "examples/bignat.output"
 ```
