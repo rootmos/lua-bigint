@@ -13,7 +13,13 @@ mkdir -p "$OUTPUT_DIR"
 
 env ROOT="$ROOT" "$TOOLS/build-info" -l -o "$SRC/build-info.lua"
 
-env --chdir="$SRC" "$TOOLS/bundle" \
+OPTs=()
+
+if env --chdir="$SRC" lua -l "B=build-info" -e "os.exit(B.version_prerelease and 0 or 1)"; then
+    OPTs+=("--with-line-numbers")
+fi
+
+env --chdir="$SRC" "$TOOLS/bundle" "${OPTs[@]}" \
     -o "$OUTPUT_DIR/bignat.lua" "bignat.lua" \
     "arbbase.lua" \
     "arbbase.lua" \

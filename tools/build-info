@@ -1,7 +1,7 @@
 #!/bin/bash
 # build-info
-# https://git.sr.ht/~rootmos/scripts dd1ebed40e34b09b6a8b5a5f34723b6095c71a6b
-# 2025-04-22T10:44:55+02:00 SHA-256:983afbeb89af2f32816ffb58dc386ff9619e83ddf4c20122a27a64378b0c36be
+# https://git.sr.ht/~rootmos/scripts 19a81cf7565740961cd3a903b881e7d8545329aa
+# 2025-04-22T12:20:43+02:00 SHA-256:334d0c71fb1f83d15812e0501a88f130da3eb8eb75e1e54587b3ea6a5eedbf32
 # sed "2,5d" | sha256sum | cut -f1 -d" "
 
 set -o nounset -o pipefail -o errexit
@@ -221,7 +221,8 @@ if [ -e "$VERSION_FILE" ] || [ -e "$RELEASE_FILE" ]; then
     kv "VERSION_MAJOR" "$VERSION_MAJOR"
     kv "VERSION_MINOR" "$VERSION_MINOR"
     kv "VERSION_PATCH" "$VERSION_PATCH"
-    if [ -n "${VERSION_PRERELEASE-}" ]; then
+    if [[ -v VERSION_PRERELEASE ]]; then
+        VERSION_PRERELEASE=${VERSION_PRERELEASE-}
         kv "VERSION_PRERELEASE" "$VERSION_PRERELEASE"
         VERSION="$VERSION_MAJOR.$VERSION_MINOR.$VERSION_PATCH-$VERSION_PRERELEASE"
     else

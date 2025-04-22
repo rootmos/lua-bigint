@@ -11,10 +11,11 @@ export LUA_BITS=64
 
 gogo() {
     #make tests
-    cd tests && stack run specs
+    #cd tests && stack run specs
     #cd tests && make build && stack run specs -- -m '/Bignat/bignat.lua/representations'
     #cd tests && make build && stack run specs -- -m '/Utils'
     #./run examples/bignat.lua
+    ./mk-dist && tail -n10 dist/bignat.lua
 }
 
 #TIMEOUT=10s
