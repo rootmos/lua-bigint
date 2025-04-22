@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # bundle
-# https://git.sr.ht/~rootmos/lua-hack a09d800da1a2c2ca3f8ae827f720018e24960594
-# 2025-04-18T22:21:16+02:00 SHA-256:840fd499a6a0a5efdf229e232495959fc6876b5e8479ea325549d99b4f87b2fa
-# sed '2,5d' | sha256sum
+# https://git.sr.ht/~rootmos/lua-hack 4c7855800ac73cf91f6c2c1621ef831754cbcf71
+# 2025-04-22T12:27:32+02:00 SHA-256:1d11767ff87bb05a2ce1e22a35b724d20bae8682707a95f2e41cf7e5cc838f69
+# sed "2,5d" | sha256sum | cut -f1 -d" "
 
 import argparse
 import os
@@ -32,6 +32,8 @@ def parse_args():
     parser.add_argument("--log", default=env("LOG_LEVEL", "WARN"), help="set log level")
 
     parser.add_argument("-o", "--output", metavar="OUTPUT", help="write bundle to file instead of stdout")
+
+    parser.add_argument("-l", "--with-line-numbers", action="store_true", help="append filename and line number")
 
     parser.add_argument("main", metavar="MAIN", help="Lua source file to wrap")
     parser.add_argument("dependencies", metavar="DEPENDENCY", nargs="*", help="Lua source file to include in the bundle")
@@ -81,7 +83,7 @@ class Module:
 
         return Module(lines=lines, path=path, digest=digest)
 
-    def emit(self, f, indent=0):
+    def emit(self, f, indent=0, line_numbers=False):
         def do_indent():
             f.write(" " * indent)
 
@@ -98,8 +100,12 @@ class Module:
 
             k = re.sub(r'(\W|^)require(\W|$)', r'\1_pantry\2', l)
             f.write(k)
-            f.write(" "*((m + 2) - len(l)))
-            f.write(f"-- {self.relpath or ""}:{i+1}\n")
+
+            if line_numbers:
+                f.write(" "*((m + 2) - len(l)))
+                f.write(f"-- {self.relpath or ""}:{i+1}\n")
+            else:
+                f.write("\n")
 
 def figure_out_modname_from_path(path):
     return pathlib.Path(path).stem
@@ -121,10 +127,10 @@ def main():
         modname = figure_out_modname_from_path(path)
         o.write(f'_pantry["{modname}"] = function()\n')
         d = Module.from_path(path)
-        d.emit(o, indent=4)
+        d.emit(o, indent=4, line_numbers=args.with_line_numbers)
         o.write("end\n\n")
 
-    Module.from_path(args.main).emit(o)
+    Module.from_path(args.main).emit(o, indent=0, line_numbers=args.with_line_numbers)
 
 if __name__ == "__main__":
     main()
