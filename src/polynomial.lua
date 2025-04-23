@@ -6,6 +6,8 @@
 -- p_k == p[k - p.o + 1], 0 <= k <= K
 -- p[i] == p_{i + p.o - 1}, 1 <= i <= p.n
 
+local I <const> = require("internal")
+
 local M = {
     space = " ",
 }
@@ -45,62 +47,6 @@ function M.tostring(p)
 end
 __mt.__tostring = M.tostring
 
--- TODO tests
-function M.clean(p, q)
-    local n <const> = p.n or #p
-
-    local mut <const> = p == q
-
-    local i, j = 1, 1
-    while i <= n do
-        if j == 1 then -- strip leading zeroes/nils
-            local k <const> = p[i]
-            if k == nil or k == 0 then
-                q.o = q.o + 1
-            else
-                if not mut or i ~= j then
-                    q[j] = k
-                end
-                j = j + 1
-            end
-            i = i + 1
-        else
-            local k = p[i]
-            if k == nil or k == 0 then
-                local i0 = i + 1
-                while true do
-                    if i0 > n then -- trailing zeroes/nils
-                        break
-                    end
-
-                    k = p[i0]
-                    if (k or 0) ~= 0 then
-                        for _ = i,i0 do -- TODO make a "sparse" table?
-                            q[j] = 0
-                            j = j + 1
-                        end
-                        q[j - 1] = k
-                        break
-                    end
-
-                    i0 = i0 + 1
-                end
-                i = i0 + 1
-            else
-                if not mut or i ~= j then
-                    q[j] = k
-                end
-                i = i + 1
-                j = j + 1
-            end
-        end
-    end
-
-    if j == 1 then
-        q.o = 0
-    end
-    q.n = j - 1
-end
 
 function M.make(p)
     local q = {
@@ -108,7 +54,7 @@ function M.make(p)
         v = p.v
     }
 
-    M.clean(p, q)
+    I.clean(p, q)
     return setmetatable(q, __mt)
 end
 __fn.clone = M.make
@@ -138,7 +84,7 @@ function M.add(a, b)
         end
     end
 
-    M.clean(sum, sum)
+    I.clean(sum, sum)
     return setmetatable(sum, __mt)
 end
 __mt.__add = M.add
@@ -169,22 +115,12 @@ function M.mul(a, b)
         end
     end
 
-    -- TODO is clean(prod, prod) necessary?
+    -- TODO is I.clean(prod, prod) necessary?
     return setmetatable(prod, __mt)
 end
 __mt.__mul = M.mul
 
-function __fn:coefficients()
-    local cs = {}
-    local o <const>, n <const> = self.o, self.n
-    for i = 0,o-1 do
-        cs[i+1] = 0
-    end
-    for i = 1,n do
-        cs[o+i] = self[i]
-    end
-    return cs, o + n
-end
+__fn.coefficients = I.coefficients
 M.coefficients = __fn.coefficients
 
 return setmetatable(M, {

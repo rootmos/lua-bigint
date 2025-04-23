@@ -88,7 +88,7 @@ inspectPolynomial shouldEvaluateTo name p = context (printf "%s == %s" name (sho
   it "should have the correct offset" $
     (printf "%s.o" name) `shouldEvaluateTo` (offset p)
 
--- TODO when moving P.clean to I.clean, move this to InternalSpec
+-- TODO move this to an Internal module and test it!
 clean :: Polynomial -> Polynomial
 clean = zo . stripLeadingZeroes . stripTrailingZeroes
   where stripTrailingZeroes (P as o) = P (dropWhileEnd (== 0) as) o

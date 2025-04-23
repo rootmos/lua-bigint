@@ -13,7 +13,7 @@ function M.stencil(A, B)
 
     local p, i = {v="B"}, 1
     while s > 0 do
-        s, p[i] = divrem(s, B)
+        s, p[i] = I.divrem(s, B)
         i = i + 1
     end
     return m, P.make(p)
@@ -37,7 +37,7 @@ function M.convert(a, A, B)
 
         local p, i = {v="B"}, 1
         while sum > 0 do
-            sum, p[i] = divrem(sum, B)
+            sum, p[i] = I.divrem(sum, B)
             i = i + 1
         end
 
