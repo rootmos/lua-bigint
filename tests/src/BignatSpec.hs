@@ -51,10 +51,15 @@ withBigNats ps ls = runLua $ stackNeutral $ do
     setglobal n
 
   mapM_ dostring' ls
+  peek top <* pop 1
 
-  a <- peek top
-  pop 1
-  return a
+withBigNatAndInt :: (Name, BigNat) -> (Name, LuaInt) -> RunLuaAndPeek
+withBigNatAndInt (n, a) (m, LuaInt b) ls = runLua $ stackNeutral $ do
+  pushBigNat a >> setglobal n
+  pushinteger b >> setglobal m
+
+  mapM_ dostring' ls
+  peek top <* pop 1
 
 spec :: Spec
 spec = do
@@ -123,6 +128,11 @@ spec = do
         withBigNats [ ("a", a), ("b", b) ] [ "return M.add(a, b)" ] >>= flip shouldBe (a + b)
       it "should __add integers" $ properly $ \(a, b) ->
         withBigNats [ ("a", a), ("b", b) ] [ "return a + b" ] >>= flip shouldBe (a + b)
+
+      it "should promote integers (left)" $ properly $ \(a, NonNegative b) ->
+        withBigNatAndInt ("a", a) ("b", b) [ "return M.add(a, b)" ] >>= flip shouldBe (a + (N . luaIntToInteger $ b))
+      it "should promote integers (right)" $ properly $ \(a, NonNegative b) ->
+        withBigNatAndInt ("a", a) ("b", b) [ "return M.add(b, a)" ] >>= flip shouldBe (a + (N . luaIntToInteger $ b))
 
     describe "multiplication" $ do
       it "should multiply integers" $ properly $ \(NonNegative a, NonNegative b) ->

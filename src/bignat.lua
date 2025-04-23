@@ -33,6 +33,7 @@ function M.make(p)
     assert(base >= 2)
     assert(base <= M.max_base)
     for _, d in ipairs(p) do
+        assert(math.type(d) == "integer")
         assert(0 <= d)
         assert(d < base)
     end
@@ -101,10 +102,34 @@ end
 
 local addB, mulB = I.mk_add(M.make), I.mk_mul(M.make)
 
+local function promote(n, base)
+    assert(math.type(n) == "integer")
+    assert(n >= 0)
+
+    local o = {base=base}
+    local i = 1
+    while n > 0 do
+        n, o[i] = divrem(n, base)
+        i = i + 1
+    end
+
+    return M.make(o)
+end
+
 local function binop(a, b)
-    -- TODO promote integers
-    assert(M.is_bignat(a)) -- TODO add tests and better error message
-    assert(M.is_bignat(b))
+    local at, bt = M.is_bignat(a), M.is_bignat(b)
+    if at ~= bt then
+        if bt then
+            a = promote(a, b.base)
+        else
+            b = promote(b, a.base)
+        end
+    else
+        if not at then
+            error("bignat binary operation called with unexpected types")
+        end
+    end
+
     assert(a.base == b.base) -- TODO or convert to max(a.base, b.base)?
     return a, b
 end

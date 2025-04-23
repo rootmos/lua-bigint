@@ -7,7 +7,10 @@ import System.FilePath ( (</>) )
 import System.IO.Unsafe ( unsafePerformIO )
 import Text.Printf ( printf )
 
+import Test.QuickCheck
+
 import HsLua hiding ( Integer, error )
+import qualified HsLua
 
 --import qualified Data.ByteString as BS
 import Data.ByteString.UTF8 as BSUTF8
@@ -103,3 +106,15 @@ dostring' s = dostring (BSUTF8.fromString s) >>= \case
   OK -> return ()
   ErrRun -> throwErrorAsException
   _ -> undefined
+
+newtype LuaInt = LuaInt HsLua.Integer deriving ( Show, Num, Eq, Ord )
+
+instance Arbitrary LuaInt where
+  arbitrary = do
+    let e :: Int = case luaBits of Lua32 -> 31; Lua64 -> 63
+    let m :: Int = 2^e
+    i <- chooseInt (-m + 1, m - 1)
+    return (LuaInt . HsLua.Integer . fromIntegral $ i)
+
+luaIntToInteger :: LuaInt -> Integer
+luaIntToInteger (LuaInt (HsLua.Integer i)) = fromIntegral i
