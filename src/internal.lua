@@ -1,6 +1,6 @@
 local M = {}
 
-function divrem(a, b)
+function M.divrem(a, b)
     return a//b, a%b
 end
 
@@ -75,7 +75,7 @@ end
 local function carry_the_one(p, i, s, B)
     while true do
         local k = p[i] or 0
-        s, p[i] = divrem(s + k, B)
+        s, p[i] = M.divrem(s + k, B)
 
         if s > 0 then
             i = i + 1

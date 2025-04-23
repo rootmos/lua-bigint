@@ -108,7 +108,7 @@ local function promote(n, base)
     local o = {base=base}
     local i = 1
     while n > 0 do
-        n, o[i] = divrem(n, base)
+        n, o[i] = I.divrem(n, base)
         i = i + 1
     end
 
