@@ -1,5 +1,4 @@
 local Ascii <const> = require("ascii")
-local P <const> = require("polynomial")
 local Arbbase <const> = require("arbbase")
 local I <const> = require("internal")
 
@@ -42,12 +41,12 @@ function M.make(p)
         o = p.o or 0,
         base = base,
     }
-    P.clean(p, q)
+    I.clean(p, q)
     return setmetatable(q, __mt)
 end
 __fn.clone = M.make
 
-__fn.digits = P.coefficients
+__fn.digits = I.coefficients
 M.digits = __fn.digits
 
 function M.fromstring(s, from, to)
