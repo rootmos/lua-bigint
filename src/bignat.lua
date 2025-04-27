@@ -101,10 +101,13 @@ end
 
 local addB, mulB = I.mk_add(M.make), I.mk_mul(M.make)
 
-local function promote(n, base)
+function M.frominteger(n, base)
     assert(math.type(n) == "integer")
-    assert(n >= 0)
+    if n < 0 then
+        error("unexpected negative integer")
+    end
 
+    local base = base or 10
     local o = {base=base}
     local i = 1
     while n > 0 do
@@ -119,9 +122,9 @@ local function binop(a, b)
     local at, bt = M.is_bignat(a), M.is_bignat(b)
     if at ~= bt then
         if bt then
-            a = promote(a, b.base)
+            a = M.frominteger(a, b.base)
         else
-            b = promote(b, a.base)
+            b = M.frominteger(b, a.base)
         end
     else
         if not at then

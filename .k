@@ -10,9 +10,9 @@ export LUA_BITS=32
 #export LUA_BITS=64
 
 gogo() {
-    make tests
+    #make tests
     #cd tests && stack run specs
-    #cd tests && make build && stack run specs -- -m '/Bignat/bignat.lua/addition'
+    cd tests && stack run specs -- -m '/Bignat/bignat.lua'
     #cd tests && make build && stack run specs -- -m '/Utils'
     #./run examples/bignat.lua
     #./mk-dist && tail -n10 dist/bignat.lua
