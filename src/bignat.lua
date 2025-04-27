@@ -101,10 +101,13 @@ end
 
 local addB, mulB = I.mk_add(M.make), I.mk_mul(M.make)
 
-local function promote(n, base)
+function M.frominteger(n, base)
     assert(math.type(n) == "integer")
-    assert(n >= 0)
+    if n < 0 then
+        error("unexpected negative integer")
+    end
 
+    local base = base or M.default_base
     local o = {base=base}
     local i = 1
     while n > 0 do
@@ -115,13 +118,38 @@ local function promote(n, base)
     return M.make(o)
 end
 
+if require("bits") == 32 then
+    M.maxint = M.frominteger(0x7fffffff)
+else
+    M.maxint = M.frominteger(0x7fffffffffffffff)
+end
+
+function __fn:tointeger()
+    if self > M.maxint then
+        return nil
+    end
+
+    local exp = 1
+    for i = 1,self.o do
+        exp = exp * self.base
+    end
+
+    local sum = 0
+    for i = 1,self.n do
+        assert(exp > 0)
+        sum = sum + exp*self[i]
+        exp = exp * self.base
+    end
+    return sum
+end
+
 local function binop(a, b)
     local at, bt = M.is_bignat(a), M.is_bignat(b)
     if at ~= bt then
         if bt then
-            a = promote(a, b.base)
+            a = M.frominteger(a, b.base)
         else
-            b = promote(b, a.base)
+            b = M.frominteger(b, a.base)
         end
     else
         if not at then

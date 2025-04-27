@@ -78,9 +78,7 @@ mkRun prepare m = liftIO . HsLua.run $ stackNeutral prepare >> m
 mkRunAndPeek :: RunLuaRun -> RunLuaAndPeek
 mkRunAndPeek runner ls = runner $ stackNeutral $ do
   mapM_ dostring' ls
-  a <- peek top
-  pop 1
-  return a
+  peek top <* pop 1
 
 mkEvalAndPeek :: RunLuaAndPeek -> EvalLuaAndPeek
 mkEvalAndPeek runner expr = runner [ "return " ++ expr ]
@@ -118,3 +116,9 @@ instance Arbitrary LuaInt where
 
 luaIntToInteger :: LuaInt -> Integer
 luaIntToInteger (LuaInt (HsLua.Integer i)) = fromIntegral i
+
+expectError :: (LuaError e) => LuaE e Status -> LuaE e (Maybe e)
+expectError expr = try expr >>= \case
+  Right ErrRun -> Just <$> popException
+  Right _ -> return Nothing
+  Left _ -> return Nothing

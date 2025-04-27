@@ -6,13 +6,13 @@
 export QUICKCHECK_MAX_SUCCESS=10
 export QUICKCHECK_SIZE=5
 
-export LUA_BITS=32
-#export LUA_BITS=64
+#export LUA_BITS=32
+export LUA_BITS=64
 
 gogo() {
-    make tests
+    #make tests
     #cd tests && stack run specs
-    #cd tests && make build && stack run specs -- -m '/Bignat/bignat.lua/addition'
+    cd tests && make build && stack run specs -- -m '/Bignat/bignat.lua/integer conversion'
     #cd tests && make build && stack run specs -- -m '/Utils'
     #./run examples/bignat.lua
     #./mk-dist && tail -n10 dist/bignat.lua

@@ -1,7 +1,6 @@
 module BignatSpec where
 
 import Control.Monad ( forM_ )
-import Data.Maybe ( isJust, fromJust )
 import Text.Printf
 
 import Test.Hspec
@@ -29,6 +28,7 @@ newtype BigNat = N Integer deriving ( Show, Eq, Ord, Num, Real, Enum, Integral )
 
 instance Arbitrary BigNat where
   arbitrary = N . getHuge <$> arbitrary
+  shrink (N i) = N <$> shrink i
 
 pushBigNat :: LuaError e => BigNat -> LuaE e ()
 pushBigNat (N n) = ensureStackDiff 1 $ do
@@ -276,15 +276,9 @@ spec = do
           withBigNats [ ("a", N a'), ("b", N b') ] [ "_, r = M.divrem(a, b)", "return r" ] >>= flip shouldBe (N r)
 
       it "should dislike dividing by zero" $ properly $ \a -> do
-        e <- runLua $ do
-          pushBigNat a
-          setglobal "a"
-          try (dostring "M.divrem(a, M{0})") >>= \case
-            Right ErrRun -> Just <$> popException
-            Right _ -> return Nothing
-            Left _ -> return Nothing
-        e `shouldSatisfy` isJust
-        let Exception msg = fromJust e
+        Just (Exception msg) <- runLua $ do
+          pushBigNat a >> setglobal "a"
+          expectError (dostring "M.divrem(a, M{0})")
         msg `shouldEndWith` "attempt to divide by zero"
 
       it "should divide same integer (by value)" $ properly $ \(Positive a) -> do
@@ -299,3 +293,34 @@ spec = do
       it "should divide same huge integer (by reference)" $ properly $ \a -> do
         withBigNats [ ("a", a) ] [ "q, _ = M.divrem(a, a)", "return q" ] >>= flip shouldBe (N 1)
         withBigNats [ ("a", a) ] [ "_, r = M.divrem(a, a)", "return r" ] >>= flip shouldBe (N 0)
+
+    describe "integer conversion" $ do
+      it "should convert from non-negative integers" $ properly $ \(NonNegative a@(LuaInt i)) -> do
+        a' <- runLua $ do
+          pushinteger i >> setglobal "a"
+          dostring' "return M.frominteger(a)"
+          peek top <* pop 1
+        a' `shouldBe` (N $ luaIntToInteger a)
+      it "should refuse to convert negative integers" $ properly $ \(Negative (LuaInt a)) -> do
+        Just (Exception msg) <- runLua $ do
+          pushinteger a >> setglobal "a"
+          expectError (dostring "M.frominteger(a)")
+        msg `shouldEndWith` "unexpected negative integer"
+
+      let maxint = (\b -> 2^b - 1) $ case luaBits of { Lua32 -> 31 :: Integer ; Lua64 -> 63 }
+      it "should safely try converting to native integers" $ properly $ \(N a) -> do
+        a' <- runLua $ do
+          pushBigNat (N a) >> setglobal "a"
+          dostring' "return a:tointeger()"
+          isnil top >>= \case
+            True -> return Nothing
+            False -> Just <$> peek @Integer top
+        a' `shouldBe` (if a <= maxint then Just a else Nothing)
+      it "should safely try converting huge integers to native integers" $ properly $ \(N a) -> do
+        a' <- runLua $ do
+          pushBigNat (N a) >> setglobal "a"
+          dostring' "return a:tointeger()"
+          isnil top >>= \case
+            True -> return Nothing
+            False -> Just <$> peek @Integer top
+        a' `shouldBe` (if a <= maxint then Just a else Nothing)
