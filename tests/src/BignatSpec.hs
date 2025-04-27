@@ -28,6 +28,7 @@ newtype BigNat = N Integer deriving ( Show, Eq, Ord, Num, Real, Enum, Integral )
 
 instance Arbitrary BigNat where
   arbitrary = N . getHuge <$> arbitrary
+  shrink (N i) = N <$> shrink i
 
 pushBigNat :: LuaError e => BigNat -> LuaE e ()
 pushBigNat (N n) = ensureStackDiff 1 $ do
@@ -297,12 +298,29 @@ spec = do
       it "should convert from non-negative integers" $ properly $ \(NonNegative a@(LuaInt i)) -> do
         a' <- runLua $ do
           pushinteger i >> setglobal "a"
-          OK <- dostring "return M.frominteger(a)"
+          dostring' "return M.frominteger(a)"
           peek top <* pop 1
         a' `shouldBe` (N $ luaIntToInteger a)
-
       it "should refuse to convert negative integers" $ properly $ \(Negative (LuaInt a)) -> do
         Just (Exception msg) <- runLua $ do
           pushinteger a >> setglobal "a"
           expectError (dostring "M.frominteger(a)")
         msg `shouldEndWith` "unexpected negative integer"
+
+      let maxint = (\b -> 2^b - 1) $ case luaBits of { Lua32 -> 31 :: Integer ; Lua64 -> 63 }
+      it "should safely try converting to native integers" $ properly $ \(N a) -> do
+        a' <- runLua $ do
+          pushBigNat (N a) >> setglobal "a"
+          dostring' "return a:tointeger()"
+          isnil top >>= \case
+            True -> return Nothing
+            False -> Just <$> peek @Integer top
+        a' `shouldBe` (if a <= maxint then Just a else Nothing)
+      it "should safely try converting huge integers to native integers" $ properly $ \(N a) -> do
+        a' <- runLua $ do
+          pushBigNat (N a) >> setglobal "a"
+          dostring' "return a:tointeger()"
+          isnil top >>= \case
+            True -> return Nothing
+            False -> Just <$> peek @Integer top
+        a' `shouldBe` (if a <= maxint then Just a else Nothing)
