@@ -15,7 +15,7 @@ env ROOT="$ROOT" "$TOOLS/build-info" -l -o "$SRC/build-info.lua"
 
 OPTs=()
 
-if env --chdir="$SRC" lua -l "B=build-info" -e "os.exit(B.version_prerelease and 0 or 1)"; then
+if env --chdir="$SRC" "${LUA-lua}" -l "B=build-info" -e "os.exit(B.version_prerelease and 0 or 1)"; then
     OPTs+=("--with-line-numbers")
 fi
 
