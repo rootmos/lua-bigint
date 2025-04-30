@@ -21,6 +21,7 @@ executable specs
   other-modules:
       ArbbaseSpec
       AsciiSpec
+      Bignat2Spec
       BignatSpec
       Huge
       InternalSpec

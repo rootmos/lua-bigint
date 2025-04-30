@@ -12,7 +12,7 @@ pickLuaSource = lookupEnv "LUA_BIGINT_SRC" >>= \case
   Just p -> return p
   Nothing -> Paths_lua_bigint.getDataFileName "lua"
 
-prepare :: Prepare
+prepare :: LuaError e => LuaE e ()
 prepare = stackNeutral $ do
   openbase >> pop 1
   openmath >> setglobal "math"

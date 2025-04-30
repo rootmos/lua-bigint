@@ -15,6 +15,9 @@ instance Show Huge where
   show (Huge n _) = show n
   --show (Huge n fs) = printf "%d=%s" n (show fs)
 
+instance Eq Huge where
+  a == b = getHuge a == getHuge b
+
 instance Arbitrary Huge where
   arbitrary = sized $ \size -> do
     n <- arbitrary

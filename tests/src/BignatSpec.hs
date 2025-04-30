@@ -307,7 +307,6 @@ spec = do
           expectError (dostring "M.frominteger(a)")
         msg `shouldEndWith` "unexpected negative integer"
 
-      let maxint = (\b -> 2^b - 1) $ case luaBits of { Lua32 -> 31 :: Integer ; Lua64 -> 63 }
       it "should safely try converting to native integers" $ properly $ \(N a) -> do
         a' <- runLua $ do
           pushBigNat (N a) >> setglobal "a"
