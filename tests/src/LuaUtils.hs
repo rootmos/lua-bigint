@@ -39,8 +39,8 @@ stackNeutral f = do
   if after == before then return a
   else failLua $ printf "not stack-netural! %d" (fromIntegral @_ @Int $ after - before)
 
-bind :: LuaError e => Name -> LuaE e () -> LuaE e ()
-bind n f = stackNeutral $ f >> setglobal n
+bind :: (LuaError e, Pushable a) => Name -> a -> LuaE e ()
+bind n a = stackNeutral $ push a >> setglobal n
 
 require :: LuaError e => String -> LuaE e ()
 require modname = ensureStackDiff 1 $ do
@@ -50,7 +50,7 @@ require modname = ensureStackDiff 1 $ do
   call 1 1
 
 requireG :: LuaError e => Name -> String -> LuaE e ()
-requireG g modname = g `bind` require modname
+requireG g modname = stackNeutral $ require modname >> setglobal g
 
 extendLuaPath :: LuaError e => FilePath -> LuaE e ()
 extendLuaPath dir = stackNeutral $ do

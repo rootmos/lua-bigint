@@ -17,7 +17,7 @@ import LuaBigInt
 runLua :: RunLuaRun
 runLua = mkRun $ do
   prepare
-  "N" `bind` require "bignat"
+  "N" `requireG` "bignat"
 
 type Base = Integer
 
@@ -34,6 +34,14 @@ operandToInteger _ = undefined
 
 instance Eq Operand where
   a == b = operandToInteger a == operandToInteger b
+
+instance Num Operand where
+  a + b = OpI Nothing $ operandToInteger a + operandToInteger b
+  a * b = OpI Nothing $ operandToInteger a * operandToInteger b
+  abs a = OpI Nothing $ abs $ operandToInteger a
+  signum a = OpI Nothing $ signum $ operandToInteger a
+  negate = undefined
+  fromInteger i = OpI Nothing i
 
 instance Peekable Operand where
   safepeek idx = retrieving "operand" $ do
@@ -79,8 +87,16 @@ spec = describe "Bignat2" $ do
 
   it "should add properly" $ properly $ \(a :: Operand, b :: Operand) -> do
     s <- runLua $ do
-      "a" `LuaUtils.bind` (push a)
-      "b" `LuaUtils.bind` (push b)
+      "a" `bind` a
+      "b" `bind` b
       dostring' "return a + b"
       peek top
-    s `shouldBe` (OpI Nothing $ operandToInteger a + operandToInteger b)
+    s `shouldBe` a + b
+
+  it "should multiply properly" $ properly $ \(a :: Operand, b :: Operand) -> do
+    s <- runLua $ do
+      "a" `bind` a
+      "b" `bind` b
+      dostring' "return a * b"
+      peek top
+    s `shouldBe` a * b
