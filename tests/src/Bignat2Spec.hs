@@ -44,8 +44,12 @@ instance Peekable Operand where
     b <- peekFieldRaw peekIntegral "base" idx
     return $ OpI (Just b) $ (* b^o) $ evalInBase b as
 
-maxBase :: Integer
-maxBase = 2^(case luaBits of { Lua32 -> 15 :: Integer; Lua64 -> 31 })
+instance Pushable Operand where
+  push (OpI Nothing i) = dostring' (printf "return N.fromstring('%s')" (show i))
+  push (OpI (Just b) i) = dostring' (printf "return N.fromstring('%s', 10, %d)" (show i) b)
+  push (OpH Nothing h) = dostring' (printf "return N.fromstring('%s')" (show $ getHuge h))
+  push (OpH (Just b) h) = dostring' (printf "return N.fromstring('%s', 10, %d)" (show $ getHuge h) b)
+  push _ = undefined
 
 genBase :: Gen (Maybe Base)
 genBase = oneof [ return Nothing, Just <$> chooseInteger (2, maxBase) ]
@@ -57,21 +61,26 @@ instance Arbitrary Operand where
     where genI = OpI <$> genBase <*> (getNonNegative <$> arbitrary)
           genH = OpH <$> genBase <*> arbitrary
 
-instance Pushable Operand where
-  push (OpI Nothing i) = dostring' (printf "return N.fromstring('%s')" (show i))
-  push (OpI (Just b) i) = dostring' (printf "return N.fromstring('%s', 10, %d)" (show i) b)
-  push (OpH Nothing h) = dostring' (printf "return N.fromstring('%s')" (show $ getHuge h))
-  push (OpH (Just b) h) = dostring' (printf "return N.fromstring('%s', 10, %d)" (show $ getHuge h) b)
-  push _ = undefined
+  shrink (OpI mb i) = OpI mb <$> shrink i
+  shrink (OpH mb h) = OpH mb <$> shrink h
+  shrink _ = undefined
 
 spec :: Spec
 spec = describe "Bignat2" $ do
-  --it "should work" $ properly $ \(a :: Operand) -> do
-    --a `shouldBe` b
+  it "should have the expected max_base" $ do
+    b <- runLua $ dostring' "return N.max_base" >> peek top
+    b `shouldBe` maxBase
 
   it "should survive a push/peek roundtrip" $ properly $ \(a :: Operand) -> do
     b <- runLua $ do
-      --"a" `LuaUtils.bind` (HsLua.push a)
       HsLua.push a
-      peek @Operand top
+      peek top
     a `shouldBe` b
+
+  it "should add properly" $ properly $ \(a :: Operand, b :: Operand) -> do
+    s <- runLua $ do
+      "a" `LuaUtils.bind` (push a)
+      "b" `LuaUtils.bind` (push b)
+      dostring' "return a + b"
+      peek top
+    s `shouldBe` (OpI Nothing $ operandToInteger a + operandToInteger b)

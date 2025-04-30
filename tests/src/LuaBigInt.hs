@@ -2,7 +2,7 @@ module LuaBigInt where
 
 import System.Environment ( lookupEnv )
 
-import HsLua
+import HsLua hiding ( Integer )
 
 import LuaUtils
 import Paths_lua_bigint
@@ -21,3 +21,6 @@ prepare = stackNeutral $ do
 
   src <- liftIO pickLuaSource
   extendLuaPath src
+
+maxBase :: Integer
+maxBase = 2^(case luaBits of { Lua32 -> 15 :: Integer; Lua64 -> 31 })
