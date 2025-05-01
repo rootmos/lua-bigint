@@ -9,7 +9,7 @@ import Text.Printf
 import Test.Hspec
 import Test.QuickCheck
 
-import HsLua hiding ( Integer )
+import HsLua hiding ( Integer, compare )
 import HsLua.Marshalling.Peekers
 
 import Huge
@@ -28,7 +28,10 @@ data Operand = OpI (Maybe Base) Integer
              | OpL LuaInt
              | OpH (Maybe Base) Huge
              | OpO Base Int Integer
+
              deriving ( Show )
+--instance Show Operand where
+  --show = show . operandToInteger
 
 operandToInteger :: Operand -> Integer
 operandToInteger (OpI _ i) = i
@@ -38,6 +41,9 @@ operandToInteger _ = undefined
 
 instance Eq Operand where
   a == b = operandToInteger a == operandToInteger b
+
+instance Ord Operand where
+  compare a b = compare (operandToInteger a) (operandToInteger b)
 
 instance Num Operand where
   a + b = OpI Nothing $ operandToInteger a + operandToInteger b
@@ -135,3 +141,25 @@ spec = do
       "b" `bind` b
       return' "a * b"
     s `shouldBe` a * b
+
+  describe "relational operators" $ do
+    let operators :: [ (String, Bool, (forall a. (Eq a, Ord a) => a -> a -> Bool)) ]
+        operators = [ ("==", True, (==))
+                    , ("~=", False, (/=))
+                    , ("<", False, (<))
+                    , ("<=", True, (<=))
+                    , (">", False, (>))
+                    , (">=", True, (>=))
+                    ]
+    flip mapM_ operators $ \(oplua, refl, op) -> do
+      it (printf "(%s) should %s be reflexive (by reference)" oplua (be refl)) $ properly $ \(a :: Operand) -> do
+        s <- runLua $ do
+          "a" `bind` a
+          return' $ printf "a %s a" oplua
+        s `shouldBe` op a a
+      it (printf "(%s) should %s be reflexive (by value)" oplua (be refl)) $ properly $ \(a :: Operand) -> do
+        s <- runLua $ do
+          "a" `bind` a
+          "b" `bind` a
+          return' $ printf "a %s b" oplua
+        s `shouldBe` op a a
