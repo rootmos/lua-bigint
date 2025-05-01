@@ -128,38 +128,50 @@ spec = do
     b <- runLua $ push a >> peek'
     b `shouldBe` a
 
-  it "should add properly" $ properly $ \(a :: Operand, b :: Operand) -> do
-    s <- runLua $ do
-      "a" `bind` a
-      "b" `bind` b
-      return' "a + b"
-    s `shouldBe` a + b
-
-  it "should multiply properly" $ properly $ \(a :: Operand, b :: Operand) -> do
-    s <- runLua $ do
-      "a" `bind` a
-      "b" `bind` b
-      return' "a * b"
-    s `shouldBe` a * b
-
   describe "relational operators" $ do
-    let operators :: [ (String, Bool, (forall a. (Eq a, Ord a) => a -> a -> Bool)) ]
-        operators = [ ("==", True, (==))
-                    , ("~=", False, (/=))
-                    , ("<", False, (<))
-                    , ("<=", True, (<=))
-                    , (">", False, (>))
-                    , (">=", True, (>=))
-                    ]
-    flip mapM_ operators $ \(oplua, refl, op) -> do
-      it (printf "(%s) should %s be reflexive (by reference)" oplua (be refl)) $ properly $ \(a :: Operand) -> do
+    let ops :: [ (String, Bool, (forall a. (Eq a, Ord a) => a -> a -> Bool)) ]
+        ops = [ ("==", True, (==))
+              , ("~=", False, (/=))
+              , ("<", False, (<))
+              , ("<=", True, (<=))
+              , (">", False, (>))
+              , (">=", True, (>=))
+              ]
+    flip mapM_ ops $ \(oplua, refl, op) -> describe oplua $ do
+      it (printf "should %s be reflexive (by reference)" (be refl)) $ properly $ \(a :: Operand) -> do
         s <- runLua $ do
           "a" `bind` a
           return' $ printf "a %s a" oplua
         s `shouldBe` op a a
-      it (printf "(%s) should %s be reflexive (by value)" oplua (be refl)) $ properly $ \(a :: Operand) -> do
+      it (printf "should %s be reflexive (by value)" (be refl)) $ properly $ \(a :: Operand) -> do
         s <- runLua $ do
           "a" `bind` a
           "b" `bind` a
           return' $ printf "a %s b" oplua
         s `shouldBe` op a a
+      it "should adhere to the reference implementation" $ properly $ \(a :: Operand, b :: Operand) -> do
+        s <- runLua $ do
+          "a" `bind` a
+          "b" `bind` b
+          return' $ printf "a %s b" oplua
+        s `shouldBe` op a b
+
+  describe "binary operators" $ do
+    let ops :: [ (String, Bool, (forall a. (Eq a, Ord a, Num a) => a -> a -> a)) ]
+        ops = [ ("+", True, (+))
+              , ("*", True, (*))
+              ]
+    flip mapM_ ops $ \(oplua, comm, op) -> describe oplua $ do
+      it "should adhere to the reference implementation" $ properly $ \(a :: Operand, b :: Operand) -> do
+        s <- runLua $ do
+          "a" `bind` a
+          "b" `bind` b
+          return' $ printf "a %s b" oplua
+        s `shouldBe` op a b
+
+      when comm $ it "should be commutative" $ properly $ \(a :: Operand, b :: Operand) -> do
+        s <- runLua $ do
+          "a" `bind` a
+          "b" `bind` b
+          return' $ printf "a %s b == b %s a" oplua oplua
+        s `shouldBe` True
