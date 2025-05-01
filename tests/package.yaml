@@ -15,6 +15,7 @@ dependencies:
 ghc-options: -Wall -Werror -fno-warn-name-shadowing
 
 default-extensions:
+  - BangPatterns
   - DuplicateRecordFields
   - FlexibleContexts
   - GADTs

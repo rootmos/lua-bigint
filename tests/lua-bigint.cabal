@@ -35,6 +35,7 @@ executable specs
   hs-source-dirs:
       src
   default-extensions:
+      BangPatterns
       DuplicateRecordFields
       FlexibleContexts
       GADTs

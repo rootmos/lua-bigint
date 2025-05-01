@@ -181,7 +181,7 @@ spec = do
               ]
     flip mapM_ ops $ \(oplua, comm, op) -> describe oplua $ do
       it "should adhere to the reference implementation" $ properly $ \(a :: Operand, b :: Operand) -> do
-        let t = op a b
+        let !t = op a b
         s <- runLua $ do
           "a" `bind` a
           "b" `bind` b
