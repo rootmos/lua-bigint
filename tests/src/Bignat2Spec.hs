@@ -15,7 +15,7 @@ import Utils
 import LuaBigInt
 
 runLua :: RunLuaRun
-runLua = mkRun $ do
+runLua = flip (.) stackNeutral $ mkRun $ do
   prepare
   "N" `requireG` "bignat"
 
@@ -76,27 +76,23 @@ instance Arbitrary Operand where
 spec :: Spec
 spec = describe "Bignat2" $ do
   it "should have the expected max_base" $ do
-    b <- runLua $ dostring' "return N.max_base" >> peek top
+    b <- runLua $ dostring' "return N.max_base" >> peek top <* pop 1
     b `shouldBe` maxBase
 
   it "should survive a push/peek roundtrip" $ properly $ \(a :: Operand) -> do
-    b <- runLua $ do
-      HsLua.push a
-      peek top
+    b <- runLua $ push a >> peek'
     a `shouldBe` b
 
   it "should add properly" $ properly $ \(a :: Operand, b :: Operand) -> do
     s <- runLua $ do
       "a" `bind` a
       "b" `bind` b
-      dostring' "return a + b"
-      peek top
+      return' "a + b"
     s `shouldBe` a + b
 
   it "should multiply properly" $ properly $ \(a :: Operand, b :: Operand) -> do
     s <- runLua $ do
       "a" `bind` a
       "b" `bind` b
-      dostring' "return a * b"
-      peek top
+      return' "a * b"
     s `shouldBe` a * b

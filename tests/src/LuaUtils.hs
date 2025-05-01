@@ -108,6 +108,14 @@ handleStatus  _ = undefined
 dostring' :: LuaError e => String -> LuaE e ()
 dostring' s = dostring (BSUTF8.fromString s) >>= handleStatus
 
+peek' :: (LuaError e, Peekable a) => LuaE e a
+peek' = ensureStackDiff (-1) $ peek top <* pop 1
+
+return' :: (LuaError e, Peekable a) => String -> LuaE e a
+return' expr = stackNeutral $ do
+  dostring' $ "return " ++ expr
+  peek'
+
 newtype LuaInt = LuaInt HsLua.Integer deriving ( Show, Num, Eq, Ord )
 
 maxint :: Integral a => a
