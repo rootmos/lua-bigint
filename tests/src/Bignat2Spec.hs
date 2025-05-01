@@ -50,7 +50,7 @@ instance Num Operand where
   a * b = OpI Nothing $ operandToInteger a * operandToInteger b
   abs a = OpI Nothing $ abs $ operandToInteger a
   signum a = OpI Nothing $ signum $ operandToInteger a
-  negate = undefined
+  negate o = OpI Nothing (negate $ operandToInteger o)
   fromInteger i = OpI Nothing i
 
 instance Peekable Operand where
@@ -159,6 +159,7 @@ spec = do
   describe "binary operators" $ do
     let ops :: [ (String, Bool, (forall a. (Eq a, Ord a, Num a) => a -> a -> a)) ]
         ops = [ ("+", True, (+))
+              , ("-", False, curry $ \(a, b) -> max 0 (a - b))
               , ("*", True, (*))
               ]
     flip mapM_ ops $ \(oplua, comm, op) -> describe oplua $ do
