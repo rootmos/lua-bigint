@@ -54,5 +54,6 @@ executable specs
     , hslua >=2.3.1 && <3
     , hslua-marshalling >=2.3.1 && <3
     , hspec >=2.11.11 && <3
+    , random >=1.2.1.3 && <2
     , utf8-string >=1.0.2 && <2
   default-language: Haskell2010

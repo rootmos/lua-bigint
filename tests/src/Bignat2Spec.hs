@@ -1,6 +1,9 @@
 module Bignat2Spec where
 
+import Control.Monad ( when )
 import Data.Maybe ( fromMaybe )
+import System.IO.Unsafe ( unsafePerformIO )
+import System.Random ( randomIO )
 import Text.Printf
 
 import Test.Hspec
@@ -30,6 +33,7 @@ data Operand = OpI (Maybe Base) Integer
 operandToInteger :: Operand -> Integer
 operandToInteger (OpI _ i) = i
 operandToInteger (OpH _ h) = getHuge h
+operandToInteger (OpO b o i) = (b^o) * i
 operandToInteger _ = undefined
 
 instance Eq Operand where
@@ -57,31 +61,66 @@ instance Pushable Operand where
   push (OpI (Just b) i) = dostring' (printf "return N.fromstring('%s', 10, %d)" (show i) b)
   push (OpH Nothing h) = dostring' (printf "return N.fromstring('%s')" (show $ getHuge h))
   push (OpH (Just b) h) = dostring' (printf "return N.fromstring('%s', 10, %d)" (show $ getHuge h) b)
+  push (OpO b o i) = ensureStackDiff 1 $ do
+    dostring' "return N.make"
+
+    let ds = digitsInBase b i
+        n = length ds
+
+    createtable n 3
+    t <- gettop
+
+    pushinteger $ fromIntegral b
+    setfield t "base"
+
+    flip mapM_ (zip ds [1..]) $ \(a, k) -> stackNeutral $ do
+      pushinteger (fromIntegral a)
+      rawseti t k
+
+    when (o /= 0 || unsafePerformIO randomIO) $ stackNeutral $ do
+      pushinteger $ fromIntegral o
+      setfield t "o"
+
+    when (unsafePerformIO randomIO) $ stackNeutral $ do
+      pushinteger $ fromIntegral n
+      setfield t "n"
+
+    call 1 1
   push _ = undefined
 
-genBase :: Gen (Maybe Base)
-genBase = oneof [ return Nothing, Just <$> chooseInteger (2, maxBase) ]
-
 instance Arbitrary Operand where
-  arbitrary = frequency [ (60, genI)
-                        , (40, genH)
+  arbitrary = frequency [ (50, genI)
+                        , (30, genH)
+                        , (20, genO)
                         ]
-    where genI = OpI <$> genBase <*> (getNonNegative <$> arbitrary)
-          genH = OpH <$> genBase <*> arbitrary
+    where genBase = chooseInteger (2, maxBase)
+          genBaseM = oneof [ return Nothing, Just <$> genBase ]
+          genI = OpI <$> genBaseM <*> (getNonNegative <$> arbitrary)
+          genH = OpH <$> genBaseM <*> arbitrary
+          genO = do
+            b <- genBase
+            o <- getNonNegative <$> arbitrary
+            i <- operandToInteger <$> oneof [ genI, genH ]
+            return $ OpO b o i
 
   shrink (OpI mb i) = OpI mb <$> shrink i
   shrink (OpH mb h) = OpH mb <$> shrink h
+  shrink (OpO b o i) = do
+    o' <- shrink o
+    i' <- shrink i
+    b' <- filter (>= 2) $ shrink b
+    return $ OpO b' o' i'
   shrink _ = undefined
 
 spec :: Spec
-spec = describe "Bignat2" $ do
+spec = do
   it "should have the expected max_base" $ do
-    b <- runLua $ dostring' "return N.max_base" >> peek top <* pop 1
+    b <- runLua $ return' "N.max_base"
     b `shouldBe` maxBase
 
-  it "should survive a push/peek roundtrip" $ properly $ \(a :: Operand) -> do
+  it "should survive a push and peek roundtrip" $ properly $ \(a :: Operand) -> do
     b <- runLua $ push a >> peek'
-    a `shouldBe` b
+    b `shouldBe` a
 
   it "should add properly" $ properly $ \(a :: Operand, b :: Operand) -> do
     s <- runLua $ do
