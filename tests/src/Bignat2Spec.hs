@@ -5,6 +5,7 @@ import Data.Maybe ( fromMaybe )
 import System.IO.Unsafe ( unsafePerformIO )
 import System.Random ( randomIO )
 import Text.Printf
+import Data.Ratio ( (%) )
 
 import Test.Hspec
 import Test.QuickCheck
@@ -52,6 +53,19 @@ instance Num Operand where
   signum a = OpI Nothing $ signum $ operandToInteger a
   negate o = OpI Nothing (negate $ operandToInteger o)
   fromInteger i = OpI Nothing i
+
+instance Real Operand where
+  toRational op = operandToInteger op % 1
+
+instance Enum Operand where
+  toEnum = fromInteger . fromIntegral
+  fromEnum = undefined
+
+instance Integral Operand where
+  toInteger = operandToInteger
+  quotRem a b =
+    let (q, r) = operandToInteger a `quotRem` operandToInteger b in
+    (fromInteger q, fromInteger r)
 
 instance Peekable Operand where
   safepeek idx = retrieving "operand" $ do
@@ -157,18 +171,22 @@ spec = do
         s `shouldBe` op a b
 
   describe "binary operators" $ do
-    let ops :: [ (String, Bool, (forall a. (Eq a, Ord a, Num a) => a -> a -> a)) ]
+    let discardByZero f a b = if toInteger b == 0 then discard else f a b
+        ops :: [ (String, Bool, (forall a. (Eq a, Ord a, Num a, Integral a) => a -> a -> a)) ]
         ops = [ ("+", True, (+))
               , ("-", False, curry $ \(a, b) -> max 0 (a - b))
               , ("*", True, (*))
+              , ("//", False, discardByZero div)
+              , ("%", False, discardByZero mod)
               ]
     flip mapM_ ops $ \(oplua, comm, op) -> describe oplua $ do
       it "should adhere to the reference implementation" $ properly $ \(a :: Operand, b :: Operand) -> do
+        let t = op a b
         s <- runLua $ do
           "a" `bind` a
           "b" `bind` b
           return' $ printf "a %s b" oplua
-        s `shouldBe` op a b
+        s `shouldBe` t
 
       when comm $ it "should be commutative" $ properly $ \(a :: Operand, b :: Operand) -> do
         s <- runLua $ do
