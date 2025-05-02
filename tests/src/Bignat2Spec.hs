@@ -26,8 +26,8 @@ runLua = flip (.) stackNeutral $ mkRun $ do
 type Base = Integer
 
 data Operand = OpI (Maybe Base) Integer
-             | OpL LuaInt
              | OpH (Maybe Base) Huge
+             | OpL LuaInt
              | OpO Base Int Integer
 
              deriving ( Show )
@@ -37,8 +37,8 @@ data Operand = OpI (Maybe Base) Integer
 operandToInteger :: Operand -> Integer
 operandToInteger (OpI _ i) = i
 operandToInteger (OpH _ h) = getHuge h
+operandToInteger (OpL li) = luaIntToInteger li
 operandToInteger (OpO b o i) = (b^o) * i
-operandToInteger _ = undefined
 
 instance Eq Operand where
   a == b = operandToInteger a == operandToInteger b
@@ -81,6 +81,7 @@ instance Pushable Operand where
   push (OpI (Just b) i) = dostring' (printf "return N.fromstring('%s', 10, %d)" (show i) b)
   push (OpH Nothing h) = dostring' (printf "return N.fromstring('%s')" (show $ getHuge h))
   push (OpH (Just b) h) = dostring' (printf "return N.fromstring('%s', 10, %d)" (show $ getHuge h) b)
+  push (OpL (LuaInt li)) = pushinteger li
   push (OpO b o i) = ensureStackDiff 1 $ do
     dostring' "return N.make"
 
@@ -106,17 +107,18 @@ instance Pushable Operand where
       setfield t "n"
 
     call 1 1
-  push _ = undefined
 
 instance Arbitrary Operand where
   arbitrary = frequency [ (50, genI)
-                        , (30, genH)
+                        , (20, genH)
+                        , (10, genL)
                         , (20, genO)
                         ]
     where genBase = chooseInteger (2, maxBase)
           genBaseM = oneof [ return Nothing, Just <$> genBase ]
           genI = OpI <$> genBaseM <*> (getNonNegative <$> arbitrary)
           genH = OpH <$> genBaseM <*> arbitrary
+          genL = OpL <$> getNonNegative <$> arbitrary
           genO = do
             b <- genBase
             o <- getNonNegative <$> arbitrary
@@ -125,12 +127,16 @@ instance Arbitrary Operand where
 
   shrink (OpI mb i) = OpI mb <$> shrink i
   shrink (OpH mb h) = OpH mb <$> shrink h
+  shrink (OpL li) = OpL <$> shrink li
   shrink (OpO b o i) = do
     o' <- shrink o
     i' <- shrink i
     b' <- filter (>= 2) $ shrink b
     return $ OpO b' o' i'
-  shrink _ = undefined
+
+discardNative :: Monad m => [ Operand ] -> m ()
+discardNative [] = return ()
+discardNative os = when (all (\case (OpL _) -> True; _ -> False) os) discard
 
 spec :: Spec
 spec = do
@@ -139,12 +145,12 @@ spec = do
     b `shouldBe` maxBase
 
   it "should survive a push and peek roundtrip" $ properly $ \(a :: Operand) -> do
+    discardNative [ a ]
     b <- runLua $ push a >> peek'
     b `shouldBe` a
 
   describe "relational operators" $ do
-    let ops :: [ (String, Bool, (forall a. (Eq a, Ord a) => a -> a -> Bool)) ]
-        ops = [ ("==", True, (==))
+    let ops = [ ("==", True, (==))
               , ("~=", False, (/=))
               , ("<", False, (<))
               , ("<=", True, (<=))
@@ -159,11 +165,12 @@ spec = do
         s `shouldBe` op a a
       it (printf "should %s be reflexive (by value)" (be refl)) $ properly $ \(a :: Operand) -> do
         s <- runLua $ do
-          "a" `bind` a
-          "b" `bind` a
-          return' $ printf "a %s b" oplua
+          "a0" `bind` a
+          "a1" `bind` a
+          return' $ printf "a0 %s a1" oplua
         s `shouldBe` op a a
       it "should adhere to the reference implementation" $ properly $ \(a :: Operand, b :: Operand) -> do
+        discardNative [ a, b ]
         s <- runLua $ do
           "a" `bind` a
           "b" `bind` b
@@ -172,7 +179,6 @@ spec = do
 
   describe "binary operators" $ do
     let discardByZero f a b = if toInteger b == 0 then discard else f a b
-        ops :: [ (String, Bool, (forall a. (Eq a, Ord a, Num a, Integral a) => a -> a -> a)) ]
         ops = [ ("+", True, (+))
               , ("-", False, curry $ \(a, b) -> max 0 (a - b))
               , ("*", True, (*))
@@ -181,6 +187,7 @@ spec = do
               ]
     flip mapM_ ops $ \(oplua, comm, op) -> describe oplua $ do
       it "should adhere to the reference implementation" $ properly $ \(a :: Operand, b :: Operand) -> do
+        discardNative [ a, b ]
         let !t = op a b
         s <- runLua $ do
           "a" `bind` a
@@ -188,7 +195,16 @@ spec = do
           return' $ printf "a %s b" oplua
         s `shouldBe` t
 
+      it "should behave as expected when called with the same operand" $ properly $ \(a :: Operand) -> do
+        discardNative [ a ]
+        let !t = op a a
+        s <- runLua $ do
+          "a" `bind` a
+          return' $ printf "a %s a" oplua
+        s `shouldBe` t
+
       when comm $ it "should be commutative" $ properly $ \(a :: Operand, b :: Operand) -> do
+        discardNative [ a, b ]
         s <- runLua $ do
           "a" `bind` a
           "b" `bind` b
