@@ -24,6 +24,7 @@ executable specs
       Bignat2Spec
       BignatSpec
       Huge
+      IntegerLike
       InternalSpec
       LuaBigInt
       LuaUtils
@@ -42,6 +43,7 @@ executable specs
       GeneralizedNewtypeDeriving
       ImpredicativeTypes
       LambdaCase
+      NamedFieldPuns
       NumericUnderscores
       OverloadedStrings
       ScopedTypeVariables

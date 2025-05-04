@@ -22,6 +22,7 @@ default-extensions:
   - GeneralizedNewtypeDeriving
   - ImpredicativeTypes
   - LambdaCase
+  - NamedFieldPuns
   - NumericUnderscores
   - OverloadedStrings
   - ScopedTypeVariables
