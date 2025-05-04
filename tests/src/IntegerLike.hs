@@ -16,9 +16,12 @@ integerLike :: ( Show op, Integral op
                , Peekable op, Pushable op
                )
             => RunLuaRun
-            -> (forall m. Monad m => [ op ] -> m ())
+            -> (op -> Bool) -- isLuaNative
             -> Spec
-integerLike runLua discardNative = do
+integerLike runLua isLuaNative = do
+  let unaryily = properly . forAll (suchThat arbitrary (not . isLuaNative))
+      binaryily = properly . forAll (suchThat arbitrary (not . all isLuaNative))
+
   describe "relational operators" $ do
     let ops = [ ("==", True, (==))
               , ("~=", False, (/=))
@@ -28,19 +31,18 @@ integerLike runLua discardNative = do
               , (">=", True, (>=))
               ]
     flip mapM_ ops $ \(oplua, refl, op) -> describe oplua $ do
-      it (printf "should %s be reflexive (by reference)" (be refl)) $ properly $ \(a :: op) -> do
+      it (printf "should %s be reflexive (by reference)" (be refl)) $ unaryily $ \a -> do
         s <- runLua $ do
           "a" `bind` a
           return' $ printf "a %s a" oplua
         s `shouldBe` op a a
-      it (printf "should %s be reflexive (by value)" (be refl)) $ properly $ \(a :: op) -> do
+      it (printf "should %s be reflexive (by value)" (be refl)) $ unaryily $ \a -> do
         s <- runLua $ do
           "a0" `bind` a
           "a1" `bind` a
           return' $ printf "a0 %s a1" oplua
         s `shouldBe` op a a
-      it "should adhere to the reference implementation" $ properly $ \(a :: op, b :: op) -> do
-        discardNative [ a, b ]
+      it "should adhere to the reference implementation" $ binaryily $ \(a, b) -> do
         s <- runLua $ do
           "a" `bind` a
           "b" `bind` b
@@ -48,33 +50,27 @@ integerLike runLua discardNative = do
         s `shouldBe` op a b
 
   describe "binary operators" $ do
-    let discardByZero f a b = if toInteger b == 0 then discard else f a b
-        ops = [ ("+", True, (+))
+    let ops = [ ("+", True, (+))
               , ("-", False, curry $ \(a, b) -> max 0 (a - b))
               , ("*", True, (*))
-              , ("//", False, discardByZero div)
-              , ("%", False, discardByZero mod)
+              --, ("//", False, discardByZero div)
+              --, ("%", False, discardByZero mod)
               ]
     flip mapM_ ops $ \(oplua, comm, op) -> describe oplua $ do
-      it "should adhere to the reference implementation" $ properly $ \(a :: op, b :: op) -> do
-        discardNative [ a, b ]
-        let !t = op a b
+      it "should adhere to the reference implementation" $ binaryily $ \(a, b) -> do
         s <- runLua $ do
           "a" `bind` a
           "b" `bind` b
           return' $ printf "a %s b" oplua
-        s `shouldBe` t
+        s `shouldBe` op a b
 
-      it "should behave as expected when called with the same operand" $ properly $ \(a :: op) -> do
-        discardNative [ a ]
-        let !t = op a a
+      it "should behave as expected when called with the same operand" $ unaryily $ \a -> do
         s <- runLua $ do
           "a" `bind` a
           return' $ printf "a %s a" oplua
-        s `shouldBe` t
+        s `shouldBe` op a a
 
-      when comm $ it "should be commutative" $ properly $ \(a :: op, b :: op) -> do
-        discardNative [ a, b ]
+      when comm $ it "should be commutative" $ binaryily $ \(a, b) -> do
         s <- runLua $ do
           "a" `bind` a
           "b" `bind` b

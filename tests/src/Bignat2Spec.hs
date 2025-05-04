@@ -135,9 +135,9 @@ instance Arbitrary Operand where
     b' <- filter (>= 2) $ shrink b
     return $ OpO b' o' i'
 
-discardNative :: Monad m => [ Operand ] -> m ()
-discardNative [] = return ()
-discardNative os = when (all (\case (OpL _) -> True; _ -> False) os) discard
+isLuaNative :: Operand -> Bool
+isLuaNative (OpL _) = True
+isLuaNative _ = False
 
 spec :: Spec
 spec = do
@@ -145,9 +145,8 @@ spec = do
     b <- runLua $ return' "N.max_base"
     b `shouldBe` maxBase
 
-  it "should survive a push and peek roundtrip" $ properly $ \(a :: Operand) -> do
-    discardNative [ a ]
+  it "should survive a push and peek roundtrip" $ properly $ forAll (suchThat arbitrary (not . isLuaNative)) $ \a -> do
     b <- runLua $ push a >> peek'
     b `shouldBe` a
 
-  integerLike runLua discardNative
+  integerLike runLua isLuaNative
