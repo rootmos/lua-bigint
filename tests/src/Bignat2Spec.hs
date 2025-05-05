@@ -20,7 +20,7 @@ import LuaUtils
 import Utils
 
 runLua :: RunLuaRun
-runLua = flip (.) stackNeutral $ mkRun $ do
+runLua = mkRun $ do
   prepare
   "N" `requireG` "bignat"
 

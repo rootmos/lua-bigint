@@ -3,6 +3,8 @@ module IntegerLike where
 import Control.Monad ( when )
 import Text.Printf
 
+import Data.ByteString.UTF8 as BSUTF8
+
 import Test.Hspec
 import Test.QuickCheck
 
@@ -79,10 +81,10 @@ integerLike runLua isLuaNative = do
         s `shouldBe` True
 
   describe "partial binary operators" $ do
-    let ops = [ ("//", (\(_, b) -> b /= 0), div)
-              , ("%", (\(_, b) -> b /= 0), rem)
+    let ops = [ ("//", div, (\(_, b) -> b /= 0), "attempt to divide by zero")
+              , ("%", rem, \(_, b) -> b /= 0, "attempt to divide by zero" )
               ]
-    flip mapM_ ops $ \(oplua, def, op) -> describe oplua $ do
+    flip mapM_ ops $ \(oplua, op, def, msg) -> describe oplua $ do
       describe "when defined" $ do
         it "should adhere to the reference implementation" $ properly $ binary' def $ \(a, b) -> do
           s <- runLua $ do
@@ -91,8 +93,23 @@ integerLike runLua isLuaNative = do
             return' $ printf "a %s b" oplua
           s `shouldBe` op a b
 
-        it "should behave as expected when called with the same operand" $ properly $ unary' def $ \a -> do
+        it "should behave as expected when called with the same operand (by reference)" $ properly $ unary' def $ \a -> do
           s <- runLua $ do
             "a" `bind` a
             return' $ printf "a %s a" oplua
           s `shouldBe` op a a
+
+        it "should behave as expected when called with the same operand (by value)" $ properly $ unary' def $ \a -> do
+          s <- runLua $ do
+            "a" `bind` a
+            "b" `bind` a
+            return' $ printf "a %s b" oplua
+          s `shouldBe` op a a
+
+      describe "when not defined" $ do
+        it "should complain" $ properly $ binary' (not . def) $ \(a, b) -> do
+          Just (Exception msg') <- runLua $ do
+            "a" `bind` a
+            "b" `bind` b
+            expectError (dostring . BSUTF8.fromString $ printf "return a %s b" oplua)
+          msg' `shouldEndWith` msg
