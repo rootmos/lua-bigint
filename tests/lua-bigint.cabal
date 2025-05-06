@@ -39,6 +39,7 @@ executable specs
       BangPatterns
       DuplicateRecordFields
       FlexibleContexts
+      FlexibleInstances
       GADTs
       GeneralizedNewtypeDeriving
       ImpredicativeTypes
@@ -48,6 +49,7 @@ executable specs
       OverloadedStrings
       ScopedTypeVariables
       TypeApplications
+      UndecidableInstances
   ghc-options: -Wall -Werror -fno-warn-name-shadowing
   build-depends:
       QuickCheck >=2.14.3 && <3

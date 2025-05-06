@@ -19,6 +19,7 @@ default-extensions:
   - BangPatterns
   - DuplicateRecordFields
   - FlexibleContexts
+  - FlexibleInstances
   - GADTs
   - GeneralizedNewtypeDeriving
   - ImpredicativeTypes
@@ -28,6 +29,7 @@ default-extensions:
   - OverloadedStrings
   - ScopedTypeVariables
   - TypeApplications
+  - UndecidableInstances
 
 data-files:
   - lua/**/*.lua

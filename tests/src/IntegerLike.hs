@@ -33,10 +33,14 @@ class IsLuaNative a where
 instance IsLuaNative a => IsLuaNative (NonNegative a) where
   isLuaNative = isLuaNative . getNonNegative
 
+class (Show a, Integral a, IsLuaNative a, Arbitrary a, Peekable a, Pushable a) => IntegerLike a where
+instance (Show a, Integral a, IsLuaNative a, Arbitrary a, Peekable a, Pushable a) => IntegerLike a where
+
+data Bin a = forall b. (Peekable b, Show b, Eq b) => MkBin (a -> a -> b)
 
 type RelationalOperator a = ( String, Bool, a -> a -> Bool )
-type BinaryOperator a = ( String, Bool, a -> a -> a )
-type PartialBinaryOperator a = ( String, a -> a -> a, (a, a) -> Bool, String )
+type BinaryOperator a = ( String, Bool, Bin a)
+type PartialBinaryOperator a = ( String, Bin a, (a, a) -> Bool, String )
 
 data Spec a = Spec { relationalOps :: [ RelationalOperator a ]
                    , binaryOps :: [ BinaryOperator a ]
@@ -52,7 +56,7 @@ instance Semigroup (Spec a) where
 instance Monoid (Spec a) where
   mempty = Spec [] [] []
 
-syntacticOperators :: Integral a => Spec a
+syntacticOperators :: IntegerLike a => Spec a
 syntacticOperators = Spec { relationalOps = [ ("%a == %b", True, (==))
                                             , ("%a ~= %b", False, (/=))
                                             , ("%a < %b", False, (<))
@@ -60,30 +64,40 @@ syntacticOperators = Spec { relationalOps = [ ("%a == %b", True, (==))
                                             , ("%a > %b", False, (>))
                                             , ("%a >= %b", True, (>=))
                                             ]
-                          , binaryOps = [ ("%a + %b", True, (+))
-                                        , ("%a * %b", True, (*))
+                          , binaryOps = [ ("%a + %b", True, MkBin (+))
+                                        , ("%a * %b", True, MkBin (*))
                                         ]
-                          , partialOps = [ ("%a // %b", div, \(_, b) -> b /= 0, "attempt to divide by zero")
-                                         , ("%a % %b", rem, \(_, b) -> b /= 0, "attempt to divide by zero" )
+                          , partialOps = [ ("%a // %b", MkBin div, \(_, b) -> b /= 0, "attempt to divide by zero")
+                                         , ("%a % %b", MkBin rem, \(_, b) -> b /= 0, "attempt to divide by zero" )
                                          ]
                           }
 
-truncatingSubtraction :: (Num a, Ord a) => Spec a
-truncatingSubtraction = mempty { binaryOps = [ ("%a - %b", False, \a b -> max 0 (a - b)) ] }
+truncatingSubtraction :: IntegerLike a => String -> Spec a
+truncatingSubtraction expr = mempty { binaryOps = [ ("%a - %b", False, MkBin $ ref)
+                                                  , (mk "d", False, MkBin $ ref)
+                                                  , (mk "t", False, MkBin $ trunc)
+                                                  , (printf "{%s(%%a, %%b)}", False, MkBin $ \a b -> (ref a b, trunc a b))
+                                                  ]
+                                    }
+  where mk v = printf "(function() local d, t = %s(%%a, %%b); return %s end)()" expr (v :: String)
+        ref a b = max 0 (a - b)
+        trunc = (<)
 
-divrem :: Integral a => String -> Spec a
-divrem expr = mempty { partialOps = [ (mk "q", div, isdef, "attempt to divide by zero")
-                                    , (mk "r", rem, isdef, "attempt to divide by zero")
+divrem :: IntegerLike a => String -> Spec a
+divrem expr = mempty { partialOps = [ (mk "q", MkBin div, isdef, msg)
+                                    , (mk "r", MkBin rem, isdef, msg)
+                                    , (printf "{%s(%%a, %%b)}" expr, MkBin divMod, isdef, msg)
                                     ]
-                        }
+                     }
   where isdef (_, b) = b /= 0
         mk v = printf "(function() local q, r = %s(%%a, %%b); return %s end)()" expr (v :: String)
+        msg = "attempt to divide by zero"
 
-add :: Num a => String -> Spec a
-add expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, True, (+)) ] }
+add :: IntegerLike a => String -> Spec a
+add expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, True, MkBin (+)) ] }
 
-mul :: Num a => String -> Spec a
-mul expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, True, (*)) ] }
+mul :: IntegerLike a => String -> Spec a
+mul expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, True, MkBin (*)) ] }
 
 binaryExpr :: String -> String -> String -> String
 binaryExpr template a b = T.unpack $ T.replace "%b" (T.pack b) $ T.replace "%a" (T.pack a) (T.pack template)
@@ -104,13 +118,7 @@ unary' :: (Show op, Arbitrary op, IsLuaNative op)
         => (op -> Bool) -> (op -> IO ()) -> Test.QuickCheck.Property
 unary' def = forAll $ suchThat arbitrary $ \a -> def a && not (isLuaNative a)
 
-integerLike :: forall op.
-               ( Show op, Integral op
-               , Eq op
-               , IsLuaNative op
-               , Arbitrary op
-               , Peekable op, Pushable op
-               )
+integerLike :: forall op. IntegerLike op
             => RunLuaRun
             -> Spec op
             -> Hspec.Spec
@@ -138,7 +146,7 @@ integerLike runLua (Spec { relationalOps, binaryOps, partialOps }) = do
         s `shouldBe` ref a b
 
   describe "binary operators" $ do
-    flip mapM_ binaryOps $ \(expr, comm, ref) -> describe (binaryExpr expr "a" "b") $ do
+    flip mapM_ binaryOps $ \(expr, comm, MkBin ref) -> describe (binaryExpr expr "a" "b") $ do
       it "should adhere to the reference implementation" $ properly $ binary $ \(a, b) -> do
         s <- runLua $ do
           "a" `bind` a
@@ -167,7 +175,7 @@ integerLike runLua (Spec { relationalOps, binaryOps, partialOps }) = do
         s `shouldBe` True
 
   describe "partial binary operators" $ do
-    flip mapM_ partialOps $ \(expr, ref, def, msg) -> describe (binaryExpr expr "a" "b") $ do
+    flip mapM_ partialOps $ \(expr, MkBin ref, def, msg) -> describe (binaryExpr expr "a" "b") $ do
       describe "when defined" $ do
         it "should adhere to the reference implementation" $ properly $ binary' def $ \(a, b) -> do
           s <- runLua $ do
