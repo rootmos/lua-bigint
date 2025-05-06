@@ -14,7 +14,7 @@ import HsLua hiding ( Integer, compare )
 import HsLua.Marshalling.Peekers
 
 import Huge
-import IntegerLike
+import qualified IntegerLike as I
 import LuaBigInt
 import LuaUtils
 import Utils
@@ -135,7 +135,7 @@ instance Arbitrary Operand where
     b' <- filter (>= 2) $ shrink b
     return $ OpO b' o' i'
 
-instance IsLuaNative Operand where
+instance I.IsLuaNative Operand where
   isLuaNative (OpL _) = True
   isLuaNative _ = False
 
@@ -149,11 +149,14 @@ spec = do
     b <- runLua $ return' "N.default_base"
     b `shouldBe` maxBase
 
-  it "should survive a push and peek roundtrip" $ properly $ unary $ \(a :: Operand) -> do
+  it "should survive a push and peek roundtrip" $ properly $ I.unary $ \(a :: Operand) -> do
       b <- runLua $ push a >> peek'
       b `shouldBe` a
 
-  integerLike @Operand runLua (syntacticOperators <> truncatingSubtraction <> divremFunction "N.divrem")
+  I.integerLike @Operand runLua $ mempty
+    <>  I.syntacticOperators <> I.truncatingSubtraction
+    <> I.add "N.add" <> I.mul "N.mul"
+    <> I.divrem "N.divrem"
 
   describe "integer conversion" $ do
     it "should convert from non-negative integers" $ properly $ \(NonNegative a) -> do
@@ -168,7 +171,7 @@ spec = do
         expectError (dostring "N.frominteger(a)")
       msg `shouldEndWith` "unexpected negative integer"
 
-    it "should safely try converting to native integers" $ properly $ unary $ \(a :: Operand) -> do
+    it "should safely try converting to native integers" $ properly $ I.unary $ \(a :: Operand) -> do
       a' <- runLua $ do
         "a" `bind` a
         dostring' "return a:tointeger()"
@@ -179,7 +182,7 @@ spec = do
 
   describe "representations" $ do
     describe "decimal" $ do
-      it "should render decimal strings" $ properly $ unary $ \(a :: Operand) -> do
+      it "should render decimal strings" $ properly $ I.unary $ \(a :: Operand) -> do
         s <- runLua $ do
           "a" `bind` a
           return' "a:tostring()"
@@ -190,7 +193,7 @@ spec = do
         a' `shouldBe` a
 
     describe "hexadecimal" $ do
-      it "should render hexadecimal strings" $ properly $ unary $ \(a :: Operand) -> do
+      it "should render hexadecimal strings" $ properly $ I.unary $ \(a :: Operand) -> do
         s <- runLua $ do
           "a" `bind` a
           return' "a:tohex()"
@@ -201,7 +204,7 @@ spec = do
         a' `shouldBe` a
 
     describe "big-endian" $ do
-      it "should render big-endian bytestrings" $ properly $ unary $ \(a :: Operand) -> do
+      it "should render big-endian bytestrings" $ properly $ I.unary $ \(a :: Operand) -> do
         s <- runLua $ do
           "a" `bind` a
           return' "a:tobigendian()"
@@ -214,7 +217,7 @@ spec = do
         a' `shouldBe` a
 
     describe "little-endian" $ do
-      it "should render little-endian bytestrings" $ properly $ unary $ \(a :: Operand) -> do
+      it "should render little-endian bytestrings" $ properly $ I.unary $ \(a :: Operand) -> do
         s <- runLua $ do
           "a" `bind` a
           return' "a:tolittleendian()"

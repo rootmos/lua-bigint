@@ -1,4 +1,16 @@
-module IntegerLike where
+module IntegerLike ( IsLuaNative (..)
+
+                   , Spec (..)
+                   , syntacticOperators
+                   , truncatingSubtraction
+                   , add, mul
+                   , divrem
+
+                   , unary
+                   , binary
+
+                   , integerLike
+                   ) where
 
 import Control.Monad ( when )
 import qualified Data.Text as T
@@ -6,7 +18,8 @@ import Text.Printf
 
 import Data.ByteString.UTF8 as BSUTF8
 
-import Test.Hspec
+import Test.Hspec hiding ( Spec )
+import qualified Test.Hspec as Hspec
 import Test.QuickCheck
 
 import HsLua hiding ( Integer, compare, RelationalOperator )
@@ -17,53 +30,60 @@ import Utils
 class IsLuaNative a where
   isLuaNative :: a -> Bool
 
+instance IsLuaNative a => IsLuaNative (NonNegative a) where
+  isLuaNative = isLuaNative . getNonNegative
+
+
 type RelationalOperator a = ( String, Bool, a -> a -> Bool )
 type BinaryOperator a = ( String, Bool, a -> a -> a )
 type PartialBinaryOperator a = ( String, a -> a -> a, (a, a) -> Bool, String )
 
-data IntegerLike a = IntegerLike { relationalOps :: [ RelationalOperator a ]
-                                 , binaryOps :: [ BinaryOperator a ]
-                                 , partialOps :: [ PartialBinaryOperator a ]
-                                 }
+data Spec a = Spec { relationalOps :: [ RelationalOperator a ]
+                   , binaryOps :: [ BinaryOperator a ]
+                   , partialOps :: [ PartialBinaryOperator a ]
+                   }
 
-instance Semigroup (IntegerLike a) where
-  a <> b = IntegerLike { relationalOps = relationalOps a ++ relationalOps b
-                       , binaryOps = binaryOps a ++ binaryOps b
-                       , partialOps = partialOps a ++ partialOps b
-                       }
+instance Semigroup (Spec a) where
+  a <> b = Spec { relationalOps = relationalOps a ++ relationalOps b
+                , binaryOps = binaryOps a ++ binaryOps b
+                , partialOps = partialOps a ++ partialOps b
+                }
 
-instance Monoid (IntegerLike a) where
-  mempty = IntegerLike [] [] []
+instance Monoid (Spec a) where
+  mempty = Spec [] [] []
 
-instance IsLuaNative a => IsLuaNative (NonNegative a) where
-  isLuaNative = isLuaNative . getNonNegative
+syntacticOperators :: Integral a => Spec a
+syntacticOperators = Spec { relationalOps = [ ("%a == %b", True, (==))
+                                            , ("%a ~= %b", False, (/=))
+                                            , ("%a < %b", False, (<))
+                                            , ("%a <= %b", True, (<=))
+                                            , ("%a > %b", False, (>))
+                                            , ("%a >= %b", True, (>=))
+                                            ]
+                          , binaryOps = [ ("%a + %b", True, (+))
+                                        , ("%a * %b", True, (*))
+                                        ]
+                          , partialOps = [ ("%a // %b", div, \(_, b) -> b /= 0, "attempt to divide by zero")
+                                         , ("%a % %b", rem, \(_, b) -> b /= 0, "attempt to divide by zero" )
+                                         ]
+                          }
 
-syntacticOperators :: Integral a => IntegerLike a
-syntacticOperators = IntegerLike { relationalOps = [ ("%a == %b", True, (==))
-                                                   , ("%a ~= %b", False, (/=))
-                                                   , ("%a < %b", False, (<))
-                                                   , ("%a <= %b", True, (<=))
-                                                   , ("%a > %b", False, (>))
-                                                   , ("%a >= %b", True, (>=))
-                                                   ]
-                                 , binaryOps = [ ("%a + %b", True, (+))
-                                               , ("%a * %b", True, (*))
-                                               ]
-                                 , partialOps = [ ("%a // %b", div, \(_, b) -> b /= 0, "attempt to divide by zero")
-                                                , ("%a % %b", rem, \(_, b) -> b /= 0, "attempt to divide by zero" )
-                                                ]
-                                 }
-
-truncatingSubtraction :: (Num a, Ord a) => IntegerLike a
+truncatingSubtraction :: (Num a, Ord a) => Spec a
 truncatingSubtraction = mempty { binaryOps = [ ("%a - %b", False, \a b -> max 0 (a - b)) ] }
 
-divremFunction :: Integral a => String -> IntegerLike a
-divremFunction modname = mempty { partialOps = [ (mk "q", div, isdef, "attempt to divide by zero")
-                                               , (mk "r", rem, isdef, "attempt to divide by zero")
-                                               ]
-                                }
+divrem :: Integral a => String -> Spec a
+divrem expr = mempty { partialOps = [ (mk "q", div, isdef, "attempt to divide by zero")
+                                    , (mk "r", rem, isdef, "attempt to divide by zero")
+                                    ]
+                        }
   where isdef (_, b) = b /= 0
-        mk v = printf "(function() local q, r = %s(%%a, %%b); return %s end)()" modname (v :: String)
+        mk v = printf "(function() local q, r = %s(%%a, %%b); return %s end)()" expr (v :: String)
+
+add :: Num a => String -> Spec a
+add expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, True, (+)) ] }
+
+mul :: Num a => String -> Spec a
+mul expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, True, (*)) ] }
 
 binaryExpr :: String -> String -> String -> String
 binaryExpr template a b = T.unpack $ T.replace "%b" (T.pack b) $ T.replace "%a" (T.pack a) (T.pack template)
@@ -92,9 +112,9 @@ integerLike :: forall op.
                , Peekable op, Pushable op
                )
             => RunLuaRun
-            -> IntegerLike op
-            -> Spec
-integerLike runLua (IntegerLike { relationalOps, binaryOps, partialOps }) = do
+            -> Spec op
+            -> Hspec.Spec
+integerLike runLua (Spec { relationalOps, binaryOps, partialOps }) = do
   describe "relational operators" $ do
     flip mapM_ relationalOps $ \(expr, refl, ref) -> describe (binaryExpr expr "a" "b") $ do
       it (printf "should %s be reflexive (by reference)" (be refl)) $ properly $ unary $ \a -> do
@@ -102,12 +122,14 @@ integerLike runLua (IntegerLike { relationalOps, binaryOps, partialOps }) = do
           "a" `bind` a
           return' $ binaryExpr expr "a" "a"
         s `shouldBe` ref a a
+
       it (printf "should %s be reflexive (by value)" (be refl)) $ properly $ unary $ \a -> do
         s <- runLua $ do
           "a0" `bind` a
           "a1" `bind` a
           return' $ binaryExpr expr "a0" "a1"
         s `shouldBe` ref a a
+
       it "should adhere to the reference implementation" $ properly $ binary $ \(a, b) -> do
         s <- runLua $ do
           "a" `bind` a
