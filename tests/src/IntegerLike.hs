@@ -5,12 +5,16 @@ module IntegerLike ( IsLuaNative (..)
                    , truncatingSubtraction
                    , add, mul
                    , divrem
+                   , compare
 
                    , unary
                    , binary
 
                    , integerLike
                    ) where
+
+import Prelude hiding ( compare )
+import qualified Prelude as P
 
 import Control.Monad ( when )
 import qualified Data.Text as T
@@ -22,7 +26,7 @@ import Test.Hspec hiding ( Spec )
 import qualified Test.Hspec as Hspec
 import Test.QuickCheck
 
-import HsLua hiding ( Integer, compare, RelationalOperator )
+import HsLua hiding ( Integer, compare, RelationalOperator (..) )
 
 import LuaUtils
 import Utils
@@ -56,6 +60,9 @@ instance Semigroup (Spec a) where
 instance Monoid (Spec a) where
   mempty = Spec [] [] []
 
+divByZeroMsg :: String
+divByZeroMsg = "attempt to divide by zero"
+
 syntacticOperators :: IntegerLike a => Spec a
 syntacticOperators = Spec { relationalOps = [ ("%a == %b", True, (==))
                                             , ("%a ~= %b", False, (/=))
@@ -67,31 +74,37 @@ syntacticOperators = Spec { relationalOps = [ ("%a == %b", True, (==))
                           , binaryOps = [ ("%a + %b", True, MkBin (+))
                                         , ("%a * %b", True, MkBin (*))
                                         ]
-                          , partialOps = [ ("%a // %b", MkBin div, \(_, b) -> b /= 0, "attempt to divide by zero")
-                                         , ("%a % %b", MkBin rem, \(_, b) -> b /= 0, "attempt to divide by zero" )
+                          , partialOps = [ ("%a // %b", MkBin div, \(_, b) -> b /= 0, divByZeroMsg)
+                                         , ("%a % %b", MkBin rem, \(_, b) -> b /= 0, divByZeroMsg)
                                          ]
                           }
 
 truncatingSubtraction :: IntegerLike a => String -> Spec a
-truncatingSubtraction expr = mempty { binaryOps = [ ("%a - %b", False, MkBin $ ref)
-                                                  , (mk "d", False, MkBin $ ref)
-                                                  , (mk "t", False, MkBin $ trunc)
-                                                  , (printf "{%s(%%a, %%b)}", False, MkBin $ \a b -> (ref a b, trunc a b))
+truncatingSubtraction expr = mempty { binaryOps = [ ("%a - %b", False, MkBin ref)
+                                                  , (mk "d", False, MkBin ref)
+                                                  , (mk "t", False, MkBin trunc)
+                                                  , (printf "{%s(%%a, %%b)}" expr, False, MkBin $ \a b -> (ref a b, trunc a b))
                                                   ]
                                     }
   where mk v = printf "(function() local d, t = %s(%%a, %%b); return %s end)()" expr (v :: String)
         ref a b = max 0 (a - b)
         trunc = (<)
 
+compare :: IntegerLike a => String -> Spec a
+compare expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, False, MkBin ref) ] }
+  where ref a b = case P.compare a b of
+                    LT -> -1 :: Int
+                    EQ -> 0
+                    GT -> 1
+
 divrem :: IntegerLike a => String -> Spec a
-divrem expr = mempty { partialOps = [ (mk "q", MkBin div, isdef, msg)
-                                    , (mk "r", MkBin rem, isdef, msg)
-                                    , (printf "{%s(%%a, %%b)}" expr, MkBin divMod, isdef, msg)
+divrem expr = mempty { partialOps = [ (mk "q", MkBin div, isdef, divByZeroMsg)
+                                    , (mk "r", MkBin rem, isdef, divByZeroMsg)
+                                    , (printf "{%s(%%a, %%b)}" expr, MkBin divMod, isdef, divByZeroMsg)
                                     ]
                      }
   where isdef (_, b) = b /= 0
         mk v = printf "(function() local q, r = %s(%%a, %%b); return %s end)()" expr (v :: String)
-        msg = "attempt to divide by zero"
 
 add :: IntegerLike a => String -> Spec a
 add expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, True, MkBin (+)) ] }

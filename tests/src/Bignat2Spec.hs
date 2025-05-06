@@ -157,6 +157,7 @@ spec = do
     <>  I.syntacticOperators <> I.truncatingSubtraction "N.sub"
     <> I.add "N.add" <> I.mul "N.mul"
     <> I.divrem "N.divrem"
+    <> I.compare "N.compare"
 
   describe "integer conversion" $ do
     it "should convert from non-negative integers" $ properly $ \(NonNegative a) -> do
