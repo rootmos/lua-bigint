@@ -1,326 +1,231 @@
 module BignatSpec where
 
-import Control.Monad ( forM_ )
+import Control.Monad ( when )
+import Data.Maybe ( fromMaybe )
+import Data.Ratio ( (%) )
+import System.IO.Unsafe ( unsafePerformIO )
+import System.Random ( randomIO )
 import Text.Printf
 
 import Test.Hspec
 import Test.QuickCheck
 
-import HsLua hiding ( Integer, compare, RelationalOperator (..) )
+import HsLua hiding ( Integer, compare )
+import HsLua.Marshalling.Peekers
 
+import Huge
+import qualified IntegerLike as I
 import LuaBigInt
 import LuaUtils
-import Huge
 import Utils
 
 runLua :: RunLuaRun
 runLua = mkRun $ do
   prepare
-  "M" `requireG` "bignat"
+  "N" `requireG` "bignat"
 
-runAndPeek :: RunLuaAndPeek
-runAndPeek = mkRunAndPeek runLua
+type Base = Integer
 
-evalAndPeek :: EvalLuaAndPeek
-evalAndPeek = mkEvalAndPeek runAndPeek
+data Operand = OpI (Maybe Base) Integer
+             | OpH (Maybe Base) Huge
+             | OpL LuaInt
+             | OpO Base Int Integer
 
-newtype BigNat = N Integer deriving ( Show, Eq, Ord, Num, Real, Enum, Integral )
+             deriving ( Show )
+--instance Show Operand where
+  --show = show . operandToInteger
 
-instance Arbitrary BigNat where
-  arbitrary = N . getHuge <$> arbitrary
-  shrink (N i) = N <$> shrink i
+operandToInteger :: Operand -> Integer
+operandToInteger (OpI _ i) = i
+operandToInteger (OpH _ h) = getHuge h
+operandToInteger (OpL li) = luaIntToInteger li
+operandToInteger (OpO b o i) = (b^o) * i
 
-pushBigNat :: LuaError e => BigNat -> LuaE e ()
-pushBigNat (N n) = ensureStackDiff 1 $ do
-  dostring' $ printf "return M.fromstring('%s')" (show n)
-  return ()
+instance Eq Operand where
+  a == b = operandToInteger a == operandToInteger b
 
-instance Peekable BigNat where
-  safepeek idx = retrieving "BigNat" $ cleanup $ do
-    liftLua $ do
-      i <- absindex idx
-      TypeFunction <- getfield i "tostring"
-      pushvalue i
-      call 1 1
-    N . read <$> peekString top
+instance Ord Operand where
+  compare a b = compare (operandToInteger a) (operandToInteger b)
 
-withBigNats :: [ (Name, BigNat) ] -> RunLuaAndPeek
-withBigNats ps ls = runLua $ stackNeutral $ do
-  flip mapM_ ps $ \(n, b) -> stackNeutral $ do
-    pushBigNat b
-    setglobal n
+instance Num Operand where
+  a + b = OpI Nothing $ operandToInteger a + operandToInteger b
+  a * b = OpI Nothing $ operandToInteger a * operandToInteger b
+  abs a = OpI Nothing $ abs $ operandToInteger a
+  signum a = OpI Nothing $ signum $ operandToInteger a
+  negate o = OpI Nothing (negate $ operandToInteger o)
+  fromInteger i = OpI Nothing i
 
-  mapM_ dostring' ls
-  peek top <* pop 1
+instance Real Operand where
+  toRational op = operandToInteger op % 1
 
-withBigNatAndInt :: (Name, BigNat) -> (Name, LuaInt) -> RunLuaAndPeek
-withBigNatAndInt (n, a) (m, LuaInt b) ls = runLua $ stackNeutral $ do
-  pushBigNat a >> setglobal n
-  pushinteger b >> setglobal m
+instance Enum Operand where
+  toEnum = fromInteger . fromIntegral
+  fromEnum = undefined
 
-  mapM_ dostring' ls
-  peek top <* pop 1
+instance Integral Operand where
+  toInteger = operandToInteger
+  quotRem a b =
+    let (q, r) = operandToInteger a `quotRem` operandToInteger b in
+    (fromInteger q, fromInteger r)
+
+instance Peekable Operand where
+  safepeek idx = retrieving "operand" $ do
+    n <- peekFieldRaw peekIntegral "n" idx
+    as <- flip mapM [1..n] $ \i -> do
+      peekIndexRaw i (\idx -> fromMaybe 0 <$> peekNilOr peekIntegral idx) idx
+    o :: Integer <- peekFieldRaw peekIntegral "o" idx
+    b <- peekFieldRaw peekIntegral "base" idx
+    return $ OpI (Just b) $ (* b^o) $ evalInBase b as
+
+instance Pushable Operand where
+  push (OpI Nothing i) = dostring' (printf "return N.fromstring('%s')" (show i))
+  push (OpI (Just b) i) = dostring' (printf "return N.fromstring('%s', 10, %d)" (show i) b)
+  push (OpH Nothing h) = dostring' (printf "return N.fromstring('%s')" (show $ getHuge h))
+  push (OpH (Just b) h) = dostring' (printf "return N.fromstring('%s', 10, %d)" (show $ getHuge h) b)
+  push (OpL (LuaInt li)) = pushinteger li
+  push (OpO b o i) = ensureStackDiff 1 $ do
+    dostring' "return N.make"
+
+    let ds = digitsInBase b i
+        n = length ds
+
+    createtable n 3
+    t <- gettop
+
+    pushinteger $ fromIntegral b
+    setfield t "base"
+
+    flip mapM_ (zip ds [1..]) $ \(a, k) -> stackNeutral $ do
+      pushinteger (fromIntegral a)
+      rawseti t k
+
+    when (o /= 0 || unsafePerformIO randomIO) $ stackNeutral $ do
+      pushinteger $ fromIntegral o
+      setfield t "o"
+
+    when (unsafePerformIO randomIO) $ stackNeutral $ do
+      pushinteger $ fromIntegral n
+      setfield t "n"
+
+    call 1 1
+
+instance Arbitrary Operand where
+  arbitrary = frequency [ (50, genI)
+                        , (20, genH)
+                        , (10, genL)
+                        , (20, genO)
+                        ]
+    where genBase = chooseInteger (2, maxBase)
+          genBaseM = oneof [ return Nothing, Just <$> genBase ]
+          genI = OpI <$> genBaseM <*> (getNonNegative <$> arbitrary)
+          genH = OpH <$> genBaseM <*> arbitrary
+          genL = OpL <$> getNonNegative <$> arbitrary
+          genO = do
+            b <- genBase
+            o <- getNonNegative <$> arbitrary
+            i <- operandToInteger <$> oneof [ genI, genH ]
+            return $ OpO b o i
+
+  shrink (OpI mb i) = OpI mb <$> shrink i
+  shrink (OpH mb h) = OpH mb <$> shrink h
+  shrink (OpL li) = OpL <$> shrink li
+  shrink (OpO b o i) = do
+    o' <- shrink o
+    i' <- shrink i
+    b' <- filter (>= 2) $ shrink b
+    return $ OpO b' o' i'
+
+instance I.IsLuaNative Operand where
+  isLuaNative (OpL _) = True
+  isLuaNative _ = False
 
 spec :: Spec
 spec = do
-  describe "bignat.lua" $ do
-    it "should load properly" $ do
-      t <- runLua $ do
-        dostring' "return type(M)"
-        peek @String top
-      t `shouldBe` "table"
+  it "should have the expected max_base" $ do
+    b <- runLua $ return' "N.max_base"
+    b `shouldBe` maxBase
 
-    do
-      let e :: Int = case luaBits of { Lua32 -> 15; Lua64 -> 31 }
-      it (printf "should set the expected max and default bases (2^e = 2^%d = 0x%x)" e ((2 :: Int)^e)) $ do
-        evalAndPeek @Integer "M.max_base" >>= flip shouldBe (2^e)
-        evalAndPeek @Integer "M.default_base" >>= flip shouldBe (2^e)
+  it "should have the expected default_base" $ do
+    b <- runLua $ return' "N.default_base"
+    b `shouldBe` maxBase
 
-    base <- runIO (evalAndPeek @Integer "M.default_base")
+  it "should survive a push and peek roundtrip" $ properly $ I.unary $ \(a :: Operand) -> do
+      b <- runLua $ push a >> peek'
+      b `shouldBe` a
 
-    describe "representations" $ do
-      describe "decimal" $ do
-        it "should reproduce decimal strings" $ properly $ \(NonNegative (n :: Integer)) ->
-          evalAndPeek (printf "M.fromstring('%s'):tostring()" (show n)) >>= flip shouldBe (show n)
-        it "should reproduce decimal strings of huge integers" $ properly $ \(Huge { getHuge = n }) ->
-          evalAndPeek (printf "M.fromstring('%s'):tostring()" (show n)) >>= flip shouldBe (show n)
-        it "should produce decimal strings of integers pushed from Haskell" $ properly $ \(a@(N n)) ->
-          withBigNats [ ("a", a) ] [ "return a:tostring()" ] >>= flip shouldBe (show n)
+  I.integerLike @Operand runLua $ mempty
+    <>  I.syntacticOperators <> I.truncatingSubtraction "N.sub"
+    <> I.add "N.add" <> I.mul "N.mul"
+    <> I.divrem "N.divrem"
+    <> I.compare "N.compare"
 
-      describe "hexadecimal" $ do
-        it "should reproduce hexadecimal strings" $ properly $ \(NonNegative (n :: Integer)) ->
-          evalAndPeek (printf "M.fromhex('%s'):tohex()" (toHex n)) >>= flip shouldBe (toHex n)
-        it "should reproduce hexadecimal strings of huge integers" $ properly $ \(Huge { getHuge = n }) ->
-          evalAndPeek (printf "M.fromhex('%s'):tohex()" (toHex n)) >>= flip shouldBe (toHex n)
-        it "should produce hexadecimal strings of integers pushed from Haskell" $ properly $ \(a@(N n)) ->
-          withBigNats [ ("a", a) ] [ "return a:tohex()" ] >>= flip shouldBe (toHex n)
+  describe "integer conversion" $ do
+    it "should convert from non-negative integers" $ properly $ \(NonNegative a) -> do
+      a' <- runLua $ do
+        "a" `bind` a
+        return' "N.frominteger(a)"
+      a' `shouldBe` OpL a
 
-      describe "big-endian" $ do
-        it "should parse big-endian bytestrings" $ properly $ \(Huge { getHuge = n }) -> do
-          (N m) <- runLua $ do
-            stackNeutral $ pushstring (toBeBytes n) >> setglobal "a"
-            dostring' "return M.frombigendian(a)"
-            peek top
-          m `shouldBe` n
-        it "should produce big-endian bytestrings" $ properly $ \(Huge { getHuge = n}) -> do
-          withBigNats [ ("a", N n) ] [ "return a:tobigendian()" ] >>= flip shouldBe (toBeBytes n)
+    it "should refuse to convert negative integers" $ properly $ \(Negative (a :: LuaInt)) -> do
+      Just (Exception msg) <- runLua $ do
+        "a" `bind` a
+        expectError (dostring "N.frominteger(a)")
+      msg `shouldEndWith` "unexpected negative integer"
 
-      describe "little-endian" $ do
-        it "should parse little-endian bytestrings" $ properly $ \(Huge { getHuge = n }) -> do
-          (N m) <- runLua $ do
-            stackNeutral $ pushstring (toLeBytes n) >> setglobal "a"
-            dostring' "return M.fromlittleendian(a)"
-            peek top
-          m `shouldBe` n
-        it "should produce little-endian bytestrings" $ properly $ \(Huge { getHuge = n}) -> do
-          withBigNats [ ("a", N n) ] [ "return a:tolittleendian()" ] >>= flip shouldBe (toLeBytes n)
+    it "should safely try converting to native integers" $ properly $ I.unary $ \(a :: Operand) -> do
+      a' <- runLua $ do
+        "a" `bind` a
+        dostring' "return a:tointeger()"
+        isnil top >>= \case
+          True -> return Nothing
+          False -> Just <$> peek' @Integer
+      a' `shouldBe` (if a <= maxint then Just (toInteger a) else Nothing)
 
-    describe "BigNat" $ do
-      it "should push value of the expected type" $ properly $ \a ->
-        withBigNats [ ("a", a) ] [ "return M.is_bignat(a)" ] >>= flip shouldBe True
-      it "should peek the pushed BigNat" $ properly $ \a ->
-        withBigNats [ ("a", a) ] [ "return a" ] >>= flip shouldBe a
+  describe "representations" $ do
+    describe "decimal" $ do
+      it "should render decimal strings" $ properly $ I.unary $ \(a :: Operand) -> do
+        s <- runLua $ do
+          "a" `bind` a
+          return' "a:tostring()"
+        s `shouldBe` (show $ toInteger a)
 
-    describe "addition" $ do
-      it "should add integers" $ properly $ \(NonNegative a, NonNegative b) ->
-        withBigNats [ ("a", N a), ("b", N b) ] [ "return M.add(a, b)" ] >>= flip shouldBe (N $ a + b)
-      it "should add huge integers" $ properly $ \(a, b) ->
-        withBigNats [ ("a", a), ("b", b) ] [ "return M.add(a, b)" ] >>= flip shouldBe (a + b)
-      it "should __add integers" $ properly $ \(a, b) ->
-        withBigNats [ ("a", a), ("b", b) ] [ "return a + b" ] >>= flip shouldBe (a + b)
+      it "should parse decimal strings" $ properly $ \(a :: Operand) -> do
+        a' <- runLua $ return' $ printf "N.fromstring('%s')" (show $ toInteger a)
+        a' `shouldBe` a
 
-      it "should promote integers (left)" $ properly $ \(a, NonNegative b) ->
-        withBigNatAndInt ("a", a) ("b", b) [ "return M.add(a, b)" ] >>= flip shouldBe (a + (N . luaIntToInteger $ b))
-      it "should promote integers (right)" $ properly $ \(a, NonNegative b) ->
-        withBigNatAndInt ("a", a) ("b", b) [ "return M.add(b, a)" ] >>= flip shouldBe (a + (N . luaIntToInteger $ b))
+    describe "hexadecimal" $ do
+      it "should render hexadecimal strings" $ properly $ I.unary $ \(a :: Operand) -> do
+        s <- runLua $ do
+          "a" `bind` a
+          return' "a:tohex()"
+        s `shouldBe` (toHex $ toInteger a)
 
-    describe "multiplication" $ do
-      it "should multiply integers" $ properly $ \(NonNegative a, NonNegative b) ->
-        withBigNats [ ("a", N a), ("b", N b) ] [ "return M.mul(a, b)" ] >>= flip shouldBe (N $ a * b)
-      it "should multiply huge integers" $ properly $ \(a, b) ->
-        withBigNats [ ("a", a), ("b", b) ] [ "return M.mul(a, b)" ] >>= flip shouldBe (a * b)
-      it "should __mul integers" $ properly $ \(a, b) ->
-        withBigNats [ ("a", a), ("b", b) ] [ "return a * b" ] >>= flip shouldBe (a * b)
+      it "should parse hexadecimal strings" $ properly $ \(a :: Operand) -> do
+        a' <- runLua $ return' $ printf "N.fromhex('%s')" (toHex $ toInteger a)
+        a' `shouldBe` a
 
-      describe "examples" $ do
-        let example a b prod = context ("a := " ++ show a) . context ("b := " ++ show b) . context ("prod := " ++ show prod) $ do
-             it (printf "should compute a * b correctly") $ do
-               withBigNats [ ("a", a), ("b", b) ] [ "return a * b" ] >>= flip shouldBe (N prod)
-        example
-          3205602854067328
-          249372854764725493398502463869928986413831547223573540317414832694304662339311947051439428212576348058279892962899721479168
-          799390334960721315730397095527010617512940211652393567331857812909286440996046838170372310657442173851215723574753731922832154793221423104
+    describe "big-endian" $ do
+      it "should render big-endian bytestrings" $ properly $ I.unary $ \(a :: Operand) -> do
+        s <- runLua $ do
+          "a" `bind` a
+          return' "a:tobigendian()"
+        s `shouldBe` (toBeBytes $ toInteger a)
 
-    describe "comparison" $ do
-      let int LT = -1 :: Int
-          int EQ = 0
-          int GT = 1
-      it "should compare integers" $ properly $ \(NonNegative a, NonNegative b) ->
-        withBigNats [ ("a", N a), ("b", N b) ] [ "return M.compare(a, b)" ] >>= flip shouldBe (int $ a `compare` b)
-      it "should compare huge integers" $ properly $ \(a, b) ->
-        withBigNats [ ("a", a), ("b", b) ] [ "return M.compare(a, b)" ] >>= flip shouldBe (int $ a `compare` b)
-
-
-      it (printf "should compare numbers with differing amount of zeroes in base 0x%x (example)" base) $ do
-        let a = N $ evalInBase base [0, 1]
-            b = N $ evalInBase base [1, 1]
-        withBigNats [ ("a", a), ("b", b) ] [ "return M.compare(a, b)" ] >>= flip shouldBe (int $ a `compare` b)
-
-      it (printf "should compare numbers with differing amount of zeroes in base 0x%x (arbitrary)" base) $
-        let g = do
-              n <- getNonNegative <$> arbitrary
-              m <- chooseInt (0, n)
-              suffix <- genDigits base m
-              a <- genDigitsWithLeadingZeroes base (n-m)
-              b <- genDigitsWithLeadingZeroes base (n-m)
-              return (a ++ suffix, b ++ suffix)
-        in properly $ forAll g $ \(a, b) ->
-          let a' = evalInBase base a in
-          let b' = evalInBase base b in
-          withBigNats [ ("a", N a'), ("b", N b') ] [ "return M.compare(a, b)" ] >>= flip shouldBe (int $ a' `compare` b')
-
-    describe "operators" $ do
-      let operators :: [ (String, Bool, (forall a. (Eq a, Ord a) => a -> a -> Bool)) ]
-          operators = [ ("==", True, (==))
-                      , ("~=", False, (/=))
-                      , ("<", False, (<))
-                      , ("<=", True, (<=))
-                      , (">", False, (>))
-                      , (">=", True, (>=))
-                      ]
-      forM_ operators $ \(oplua, refl, op) -> do
-        describe oplua $ do
-          it (printf "should %s reflexive for integers (by reference)" (be refl)) $ properly $ \(NonNegative a) ->
-            withBigNats [ ("a", N a) ] [ printf "return a %s a" oplua ] >>= flip shouldBe refl
-          it (printf "should %s reflexive for huge integers (by reference)" (be refl)) $ properly $ \a ->
-            withBigNats [ ("a", a) ] [ printf "return a %s a" oplua ] >>= flip shouldBe refl
-
-          it (printf "should %s reflexive for integers (by value)" (be refl)) $ properly $ \(NonNegative a) ->
-            withBigNats [ ("a", N a), ("b", N a) ] [ printf "return a %s b" oplua ] >>= flip shouldBe refl
-          it (printf "should %s reflexive for huge integers (by value)" (be refl)) $ properly $ \a ->
-            withBigNats [ ("a", a), ("b", a) ] [ printf "return a %s b" oplua ] >>= flip shouldBe refl
-
-          it "should work for integers" $ properly $ \(NonNegative a, NonNegative b) ->
-            withBigNats [ ("a", N a), ("b", N b) ] [ printf "return a %s b" oplua ] >>= flip shouldBe (op a b)
-          it "should work for huge integers" $ properly $ \(a, b) ->
-            withBigNats [ ("a", a), ("b", b) ] [ printf "return a %s b" oplua ] >>= flip shouldBe (op a b)
-
-    describe "truncating subtraction" $ do
-      let sub a b | a <= b = 0
-                  | otherwise = a - b
-      it "should subtract integers" $ properly $ \(NonNegative a, NonNegative b) -> do
-        withBigNats [ ("a", N a), ("b", N b) ] [ "d, _ = M.sub(a, b)", "return d" ] >>= flip shouldBe (N $ sub a b)
-        withBigNats [ ("a", N a), ("b", N b) ] [ "_, t = M.sub(a, b)", "return t" ] >>= flip shouldBe (a < b)
-      it "should subtract huge integers" $ properly $ \(a, b) -> do
-        withBigNats [ ("a", a), ("b", b) ] [ "d, _ = M.sub(a, b)", "return d" ] >>= flip shouldBe (sub a b)
-        withBigNats [ ("a", a), ("b", b) ] [ "_, t = M.sub(a, b)", "return t" ] >>= flip shouldBe (a < b)
-
-      it "should __sub integers" $ properly $ \(a, b) ->
-        withBigNats [ ("a", a), ("b", b) ] [ "return a - b" ] >>= flip shouldBe (sub a b)
-
-      it "should subtract same integer (by value)" $ properly $ \(NonNegative a) -> do
-        withBigNats [ ("a", N a), ("b", N a) ] [ "d, _ = M.sub(a, b)", "return d" ] >>= flip shouldBe (N 0)
-        withBigNats [ ("a", N a), ("b", N a) ] [ "_, t = M.sub(a, b)", "return t" ] >>= flip shouldBe False
-      it "should subtract same huge integer (by value)" $ properly $ \a -> do
-        withBigNats [ ("a", a), ("b", a) ] [ "d, _ = M.sub(a, b)", "return d" ] >>= flip shouldBe (N 0)
-        withBigNats [ ("a", a), ("b", a) ] [ "_, t = M.sub(a, b)", "return t" ] >>= flip shouldBe False
-      it "should subtract same integer (by reference)" $ properly $ \(NonNegative a) -> do
-        withBigNats [ ("a", N a) ] [ "d, _ = M.sub(a, a)", "return d" ] >>= flip shouldBe (N 0)
-        withBigNats [ ("a", N a) ] [ "_, t = M.sub(a, a)", "return t" ] >>= flip shouldBe False
-      it "should subtract same huge integer (by reference)" $ properly $ \a -> do
-        withBigNats [ ("a", a) ] [ "d, _ = M.sub(a, a)", "return d" ] >>= flip shouldBe (N 0)
-        withBigNats [ ("a", a) ] [ "_, t = M.sub(a, a)", "return t" ] >>= flip shouldBe False
-
-    describe "division" $ do
-      describe "examples" $ do
-        let fromstring base ds = printf "M.fromstring(\"%s\",%d,%d)" ds base base
-        let example (base :: Int) (a :: String) (b :: String) (q :: String) (r :: String) =
-             let a' :: String = fromstring base a in let b' :: String = fromstring base b in
-             let expr = printf "M.divrem(%s, %s)" a' b' in
-             it (printf "%s should be %s, %s" expr q r) $ do
-               runAndPeek [ "q, _ = " ++ expr, printf "return q:tostring(%d)" base ] >>= flip shouldBe q
-               runAndPeek [ "_, r = " ++ expr, printf "return r:tostring(%d)" base ] >>= flip shouldBe r
-
-        -- https://en.wikipedia.org/wiki/Long_division#Examples
-        example 10 "1260257" "37" "34061" "0"
-        example 16 "f412df" "12" "d8f45" "5"
-
-        example 10 "12" "5" "2" "2"
-        example 10 "1200" "50" "24" "0"
-
-      it "should divide integers" $ properly $ \(NonNegative a, Positive b) -> do
-        let (q, r) = a `divMod` b
-        withBigNats [ ("a", N a), ("b", N b) ] [ "q, _ = M.divrem(a, b)", "return q" ] >>= flip shouldBe (N q)
-        withBigNats [ ("a", N a), ("b", N b) ] [ "_, r = M.divrem(a, b)", "return r" ] >>= flip shouldBe (N r)
-      it "should divide huge integers" $ properly $ \(a, b) -> do
-        let (q, r) = a `divMod` b
-        withBigNats [ ("a", a), ("b", b) ] [ "q, _ = M.divrem(a, b)", "return q" ] >>= flip shouldBe q
-        withBigNats [ ("a", a), ("b", b) ] [ "_, r = M.divrem(a, b)", "return r" ] >>= flip shouldBe r
-
-      it "should __idiv integers" $ properly $ \(a, b) ->
-        withBigNats [ ("a", a), ("b", b) ] [ "return a // b" ] >>= flip shouldBe (a `div` b)
-
-      it "should __mod integers" $ properly $ \(a, b) ->
-        withBigNats [ ("a", a), ("b", b) ] [ "return a % b" ] >>= flip shouldBe (a `mod` b)
-
-      it (printf "should divide numbers with lots zeroes in base 0x%x" base) $
-        let g = do
-              a <- getNonNegative <$> arbitrary >>= genDigitsWithLeadingZeroes base
-              b <- getNonNegative <$> arbitrary >>= genDigitsWithLeadingZeroes base
-              if sum b == 0 then discard else return (a, b)
-        in properly $ forAll g $ \(a, b) ->
-          let a' = evalInBase base a in
-          let b' = evalInBase base b in
-          let (q, r) = a' `divMod` b' in do
-          withBigNats [ ("a", N a'), ("b", N b') ] [ "q, _ = M.divrem(a, b)", "return q" ] >>= flip shouldBe (N q)
-          withBigNats [ ("a", N a'), ("b", N b') ] [ "_, r = M.divrem(a, b)", "return r" ] >>= flip shouldBe (N r)
-
-      it "should dislike dividing by zero" $ properly $ \a -> do
-        Just (Exception msg) <- runLua $ do
-          pushBigNat a >> setglobal "a"
-          expectError (dostring "M.divrem(a, M{0})")
-        msg `shouldEndWith` "attempt to divide by zero"
-
-      it "should divide same integer (by value)" $ properly $ \(Positive a) -> do
-        withBigNats [ ("a", N a), ("b", N a) ] [ "q, _ = M.divrem(a, b)", "return q" ] >>= flip shouldBe (N 1)
-        withBigNats [ ("a", N a), ("b", N a) ] [ "_, r = M.divrem(a, b)", "return r" ] >>= flip shouldBe (N 0)
-      it "should divide same huge integer (by value)" $ properly $ \a -> do
-        withBigNats [ ("a", a), ("b", a) ] [ "q, _ = M.divrem(a, b)", "return q" ] >>= flip shouldBe (N 1)
-        withBigNats [ ("a", a), ("b", a) ] [ "_, r = M.divrem(a, b)", "return r" ] >>= flip shouldBe (N 0)
-      it "should divide same integer (by reference)" $ properly $ \(Positive a) -> do
-        withBigNats [ ("a", N a) ] [ "q, _ = M.divrem(a, a)", "return q" ] >>= flip shouldBe (N 1)
-        withBigNats [ ("a", N a) ] [ "_, r = M.divrem(a, a)", "return r" ] >>= flip shouldBe (N 0)
-      it "should divide same huge integer (by reference)" $ properly $ \a -> do
-        withBigNats [ ("a", a) ] [ "q, _ = M.divrem(a, a)", "return q" ] >>= flip shouldBe (N 1)
-        withBigNats [ ("a", a) ] [ "_, r = M.divrem(a, a)", "return r" ] >>= flip shouldBe (N 0)
-
-    describe "integer conversion" $ do
-      it "should convert from non-negative integers" $ properly $ \(NonNegative a@(LuaInt i)) -> do
+      it "should parse big-endian bytestrings" $ properly $ \(a :: Operand) -> do
         a' <- runLua $ do
-          pushinteger i >> setglobal "a"
-          dostring' "return M.frominteger(a)"
-          peek top <* pop 1
-        a' `shouldBe` (N $ luaIntToInteger a)
-      it "should refuse to convert negative integers" $ properly $ \(Negative (LuaInt a)) -> do
-        Just (Exception msg) <- runLua $ do
-          pushinteger a >> setglobal "a"
-          expectError (dostring "M.frominteger(a)")
-        msg `shouldEndWith` "unexpected negative integer"
+          "bs" `bind` (toBeBytes $ toInteger a)
+          return' "N.frombigendian(bs)"
+        a' `shouldBe` a
 
-      let maxint = (\b -> 2^b - 1) $ case luaBits of { Lua32 -> 31 :: Integer ; Lua64 -> 63 }
-      it "should safely try converting to native integers" $ properly $ \(N a) -> do
+    describe "little-endian" $ do
+      it "should render little-endian bytestrings" $ properly $ I.unary $ \(a :: Operand) -> do
+        s <- runLua $ do
+          "a" `bind` a
+          return' "a:tolittleendian()"
+        s `shouldBe` (toLeBytes $ toInteger a)
+
+      it "should parse little-endian bytestrings" $ properly $ \(a :: Operand) -> do
         a' <- runLua $ do
-          pushBigNat (N a) >> setglobal "a"
-          dostring' "return a:tointeger()"
-          isnil top >>= \case
-            True -> return Nothing
-            False -> Just <$> peek @Integer top
-        a' `shouldBe` (if a <= maxint then Just a else Nothing)
-      it "should safely try converting huge integers to native integers" $ properly $ \(N a) -> do
-        a' <- runLua $ do
-          pushBigNat (N a) >> setglobal "a"
-          dostring' "return a:tointeger()"
-          isnil top >>= \case
-            True -> return Nothing
-            False -> Just <$> peek @Integer top
-        a' `shouldBe` (if a <= maxint then Just a else Nothing)
+          "bs" `bind` (toLeBytes $ toInteger a)
+          return' "N.fromlittleendian(bs)"
+        a' `shouldBe` a

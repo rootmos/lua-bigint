@@ -2,7 +2,8 @@
 [![Tests](https://github.com/rootmos/lua-bigint/actions/workflows/tests.yaml/badge.svg)](https://github.com/rootmos/lua-bigint/actions/workflows/tests.yaml)
 
 A small arbitrary precision integer Lua library,
-with an [exhaustive test suite](tests/src) using Haskell's
+with a [paranoid and extensive test suite](tests/src) using Haskell's
+native arbitrary precision integers,
 [QuickCheck](https://hackage.haskell.org/package/QuickCheck)
 and [HsLua](https://hackage.haskell.org/package/hslua).
 

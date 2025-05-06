@@ -157,8 +157,17 @@ local function binop(a, b)
         end
     end
 
-    assert(a.base == b.base) -- TODO or convert to max(a.base, b.base)?
-    return a, b
+    if a.base == b.base then
+        return a, b
+    elseif a.base < b.base then
+        local as = Arbbase.convert(a:digits(), a.base, b.base)
+        as.base = b.base
+        return M.make(as), b
+    else
+        local bs = Arbbase.convert(b:digits(), b.base, a.base)
+        bs.base = a.base
+        return a, M.make(bs)
+    end
 end
 
 function M.add(a, b)

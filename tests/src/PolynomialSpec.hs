@@ -44,8 +44,8 @@ instance Peekable Polynomial where
 
 pushPolynomial :: LuaError e => Polynomial -> LuaE e ()
 pushPolynomial p = ensureStackDiff 1 $ do
-  polynomial <- require "polynomial"
-  t <- getfield polynomial "make"
+  require "polynomial"
+  t <- getfield top "make"
   unless (t == TypeFunction) $ throwTypeMismatchError "function" top
   remove 1
 

@@ -2,6 +2,7 @@ module LuaUtils where
 
 import Control.Monad ( unless )
 import Control.Monad.IO.Class ( MonadIO )
+import Data.Function ( (&) )
 import Data.List ( intercalate )
 import System.FilePath ( (</>) )
 import System.IO.Unsafe ( unsafePerformIO )
@@ -38,18 +39,18 @@ stackNeutral f = do
   if after == before then return a
   else failLua $ printf "not stack-netural! %d" (fromIntegral @_ @Int $ after - before)
 
-require :: LuaError e => String -> LuaE e StackIndex
+bind :: (LuaError e, Pushable a) => Name -> a -> LuaE e ()
+bind n a = stackNeutral $ push a >> setglobal n
+
+require :: LuaError e => String -> LuaE e ()
 require modname = ensureStackDiff 1 $ do
   t <- getglobal "require"
   unless (t == TypeFunction) $ throwTypeMismatchError "function" top
   pushstring $ BSUTF8.fromString modname
   call 1 1
-  gettop
 
 requireG :: LuaError e => Name -> String -> LuaE e ()
-requireG g modname = stackNeutral $ do
-  _ <- require modname
-  setglobal g
+requireG g modname = stackNeutral $ require modname >> setglobal g
 
 extendLuaPath :: LuaError e => FilePath -> LuaE e ()
 extendLuaPath dir = stackNeutral $ do
@@ -67,8 +68,8 @@ extendLuaPath dir = stackNeutral $ do
   pop 1
 
 
-type Prepare = LuaE HsLua.Exception ()
-type RunLuaRun = forall a m. MonadIO m => LuaE HsLua.Exception a -> m a
+type Prepare = Lua ()
+type RunLuaRun = forall a m. MonadIO m => Lua a -> m a
 type RunLuaAndPeek = forall a m. (Peekable a, MonadIO m) => [ String ] -> m a
 type EvalLuaAndPeek = forall a m. (Peekable a, MonadIO m) => String -> m a
 
@@ -99,20 +100,36 @@ luaBits = unsafePerformIO $ HsLua.run @HsLua.Exception $ do
         b 64 = Lua64
         b _ = undefined
 
+handleStatus :: LuaError e => Status -> LuaE e ()
+handleStatus OK = return ()
+handleStatus ErrRun = throwErrorAsException
+handleStatus  _ = undefined
+
 dostring' :: LuaError e => String -> LuaE e ()
-dostring' s = dostring (BSUTF8.fromString s) >>= \case
-  OK -> return ()
-  ErrRun -> throwErrorAsException
-  _ -> undefined
+dostring' s = dostring (BSUTF8.fromString s) >>= handleStatus
+
+peek' :: (Peekable a, LuaError e) => LuaE e a
+peek' = ensureStackDiff (-1) $ peek top <* pop 1
+
+return' :: (LuaError e, Peekable a) => String -> LuaE e a
+return' expr = stackNeutral $ do
+  dostring' $ "return " ++ expr
+  peek'
 
 newtype LuaInt = LuaInt HsLua.Integer deriving ( Show, Num, Eq, Ord )
 
+maxint :: Integral a => a
+maxint = case luaBits of { Lua32 -> 31 :: Integer ; Lua64 -> 63 } & \b -> 2^b - 1
+
 instance Arbitrary LuaInt where
   arbitrary = do
-    let e :: Int = case luaBits of Lua32 -> 31; Lua64 -> 63
-    let m :: Int = 2^e
-    i <- chooseInt (-m + 1, m - 1)
+    i <- chooseInt (-maxint + 1, maxint - 1)
     return (LuaInt . HsLua.Integer . fromIntegral $ i)
+
+  shrink li = LuaInt . fromIntegral <$> shrink (luaIntToInteger li)
+
+instance Pushable LuaInt where
+  push (LuaInt i) = pushinteger i
 
 luaIntToInteger :: LuaInt -> Integer
 luaIntToInteger (LuaInt (HsLua.Integer i)) = fromIntegral i
