@@ -13,7 +13,7 @@ gogo() {
     #make tests
     #cd tests && stack run specs
     #cd tests && make build
-    cd tests && make build && stack run specs -- -m '/Bignat2'
+    cd tests && make build && stack run specs -- -m '/Bignat'
     #cd tests && make build && stack run specs -- -m '/Utils'
     #./run examples/bignat.lua
     #./mk-dist && tail -n10 dist/bignat.lua
