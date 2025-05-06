@@ -67,10 +67,17 @@ integerLike runLua isLuaNative = do
           return' $ printf "a %s b" oplua
         s `shouldBe` op a b
 
-      it "should behave as expected when called with the same operand" $ properly $ unary $ \a -> do
+      it "should behave as expected when called with the same operand (by reference)" $ properly $ unary $ \a -> do
         s <- runLua $ do
           "a" `bind` a
           return' $ printf "a %s a" oplua
+        s `shouldBe` op a a
+
+      it "should behave as expected when called with the same operand (by value)" $ properly $ unary $ \a -> do
+        s <- runLua $ do
+          "a" `bind` a
+          "b" `bind` a
+          return' $ printf "a %s b" oplua
         s `shouldBe` op a a
 
       when comm $ it "should be commutative" $ properly $ binary $ \(a, b) -> do
@@ -111,5 +118,5 @@ integerLike runLua isLuaNative = do
           Just (Exception msg') <- runLua $ do
             "a" `bind` a
             "b" `bind` b
-            expectError (dostring . BSUTF8.fromString $ printf "return a %s b" oplua)
+            expectError $ dostring . BSUTF8.fromString $ printf "return a %s b" oplua
           msg' `shouldEndWith` msg

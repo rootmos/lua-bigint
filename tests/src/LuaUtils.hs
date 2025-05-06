@@ -108,7 +108,7 @@ handleStatus  _ = undefined
 dostring' :: LuaError e => String -> LuaE e ()
 dostring' s = dostring (BSUTF8.fromString s) >>= handleStatus
 
-peek' :: (LuaError e, Peekable a) => LuaE e a
+peek' :: (Peekable a, LuaError e) => LuaE e a
 peek' = ensureStackDiff (-1) $ peek top <* pop 1
 
 return' :: (LuaError e, Peekable a) => String -> LuaE e a
@@ -127,6 +127,9 @@ instance Arbitrary LuaInt where
     return (LuaInt . HsLua.Integer . fromIntegral $ i)
 
   shrink li = LuaInt . fromIntegral <$> shrink (luaIntToInteger li)
+
+instance Pushable LuaInt where
+  push (LuaInt i) = pushinteger i
 
 luaIntToInteger :: LuaInt -> Integer
 luaIntToInteger (LuaInt (HsLua.Integer i)) = fromIntegral i

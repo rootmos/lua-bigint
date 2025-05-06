@@ -145,8 +145,32 @@ spec = do
     b <- runLua $ return' "N.max_base"
     b `shouldBe` maxBase
 
-  it "should survive a push and peek roundtrip" $ properly $ forAll (suchThat arbitrary (not . isLuaNative)) $ \a -> do
-    b <- runLua $ push a >> peek'
-    b `shouldBe` a
+  it "should survive a push and peek roundtrip" $ properly $
+    forAll (suchThat arbitrary (not . isLuaNative)) $ \a -> do
+      b <- runLua $ push a >> peek'
+      b `shouldBe` a
 
   integerLike runLua isLuaNative
+
+  describe "integer conversion" $ do
+    it "should convert from non-negative integers" $ properly $ \(NonNegative a) -> do
+      a' <- runLua $ do
+        "a" `bind` a
+        return' "N.frominteger(a)"
+      a' `shouldBe` OpL a
+
+    it "should refuse to convert negative integers" $ properly $ \(Negative (a :: LuaInt)) -> do
+      Just (Exception msg) <- runLua $ do
+        "a" `bind` a
+        expectError (dostring "N.frominteger(a)")
+      msg `shouldEndWith` "unexpected negative integer"
+
+    it "should safely try converting to native integers" $ properly $
+      forAll (suchThat arbitrary (not . isLuaNative)) $ \a -> do
+        a' <- runLua $ do
+          "a" `bind` a
+          dostring' "return a:tointeger()"
+          isnil top >>= \case
+            True -> return Nothing
+            False -> Just <$> peek' @Integer
+        a' `shouldBe` (if a <= maxint then Just (toInteger a) else Nothing)
