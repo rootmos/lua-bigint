@@ -145,7 +145,11 @@ spec = do
     b <- runLua $ return' "N.max_base"
     b `shouldBe` maxBase
 
-  it "should survive a push and peek roundtrip" $ properly $ unary @Operand $ \a -> do
+  it "should have the expected default_base" $ do
+    b <- runLua $ return' "N.default_base"
+    b `shouldBe` maxBase
+
+  it "should survive a push and peek roundtrip" $ properly $ unary $ \(a :: Operand) -> do
       b <- runLua $ push a >> peek'
       b `shouldBe` a
 
@@ -164,7 +168,7 @@ spec = do
         expectError (dostring "N.frominteger(a)")
       msg `shouldEndWith` "unexpected negative integer"
 
-    it "should safely try converting to native integers" $ properly $ unary @Operand $ \a -> do
+    it "should safely try converting to native integers" $ properly $ unary $ \(a :: Operand) -> do
       a' <- runLua $ do
         "a" `bind` a
         dostring' "return a:tointeger()"
@@ -175,40 +179,49 @@ spec = do
 
   describe "representations" $ do
     describe "decimal" $ do
-      it "should render decimal strings" $ properly $ unary @(NonNegative Operand) $ \(NonNegative a) -> do
+      it "should render decimal strings" $ properly $ unary $ \(a :: Operand) -> do
         s <- runLua $ do
           "a" `bind` a
           return' "a:tostring()"
         s `shouldBe` (show $ toInteger a)
 
-      it "should parse decimal strings" $ properly $ \(NonNegative (a :: Operand)) -> do
+      it "should parse decimal strings" $ properly $ \(a :: Operand) -> do
         a' <- runLua $ return' $ printf "N.fromstring('%s')" (show $ toInteger a)
         a' `shouldBe` a
 
-    --describe "hexadecimal" $ do
-      --it "should reproduce hexadecimal strings" $ properly $ \(NonNegative (n :: Integer)) ->
-        --evalAndPeek (printf "M.fromhex('%s'):tohex()" (toHex n)) >>= flip shouldBe (toHex n)
-      --it "should reproduce hexadecimal strings of huge integers" $ properly $ \(Huge { getHuge = n }) ->
-        --evalAndPeek (printf "M.fromhex('%s'):tohex()" (toHex n)) >>= flip shouldBe (toHex n)
-      --it "should produce hexadecimal strings of integers pushed from Haskell" $ properly $ \(a@(N n)) ->
-        --withBigNats [ ("a", a) ] [ "return a:tohex()" ] >>= flip shouldBe (toHex n)
+    describe "hexadecimal" $ do
+      it "should render hexadecimal strings" $ properly $ unary $ \(a :: Operand) -> do
+        s <- runLua $ do
+          "a" `bind` a
+          return' "a:tohex()"
+        s `shouldBe` (toHex $ toInteger a)
 
-    --describe "big-endian" $ do
-      --it "should parse big-endian bytestrings" $ properly $ \(Huge { getHuge = n }) -> do
-        --(N m) <- runLua $ do
-          --stackNeutral $ pushstring (toBeBytes n) >> setglobal "a"
-          --dostring' "return M.frombigendian(a)"
-          --peek top
-        --m `shouldBe` n
-      --it "should produce big-endian bytestrings" $ properly $ \(Huge { getHuge = n}) -> do
-        --withBigNats [ ("a", N n) ] [ "return a:tobigendian()" ] >>= flip shouldBe (toBeBytes n)
+      it "should parse hexadecimal strings" $ properly $ \(a :: Operand) -> do
+        a' <- runLua $ return' $ printf "N.fromhex('%s')" (toHex $ toInteger a)
+        a' `shouldBe` a
 
-    --describe "little-endian" $ do
-      --it "should parse little-endian bytestrings" $ properly $ \(Huge { getHuge = n }) -> do
-        --(N m) <- runLua $ do
-          --stackNeutral $ pushstring (toLeBytes n) >> setglobal "a"
-          --dostring' "return M.fromlittleendian(a)"
-          --peek top
-        --m `shouldBe` n
-      --it "should produce little-endian bytestrings" $ properly $ \(Huge { getHuge = n}) -> do
-        --withBigNats [ ("a", N n) ] [ "return a:tolittleendian()" ] >>= flip shouldBe (toLeBytes n)
+    describe "big-endian" $ do
+      it "should render big-endian bytestrings" $ properly $ unary $ \(a :: Operand) -> do
+        s <- runLua $ do
+          "a" `bind` a
+          return' "a:tobigendian()"
+        s `shouldBe` (toBeBytes $ toInteger a)
+
+      it "should parse big-endian bytestrings" $ properly $ \(a :: Operand) -> do
+        a' <- runLua $ do
+          "bs" `bind` (toBeBytes $ toInteger a)
+          return' "N.frombigendian(bs)"
+        a' `shouldBe` a
+
+    describe "little-endian" $ do
+      it "should render little-endian bytestrings" $ properly $ unary $ \(a :: Operand) -> do
+        s <- runLua $ do
+          "a" `bind` a
+          return' "a:tolittleendian()"
+        s `shouldBe` (toLeBytes $ toInteger a)
+
+      it "should parse little-endian bytestrings" $ properly $ \(a :: Operand) -> do
+        a' <- runLua $ do
+          "bs" `bind` (toLeBytes $ toInteger a)
+          return' "N.fromlittleendian(bs)"
+        a' `shouldBe` a

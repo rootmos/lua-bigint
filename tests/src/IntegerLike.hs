@@ -57,7 +57,7 @@ integerLike :: ( Show op, Integral op
             -> Spec
 integerLike runLua (IntegerLike { eq, divIsDefined, sub }) = do
   describe "relational operators" $ do
-    let ops = [ ("==", True, eq)
+    let ops = [ ("==", True, eq) -- TODO enforce the type in a prettier way?
               , ("~=", False, (/=))
               , ("<", False, (<))
               , ("<=", True, (<=))
