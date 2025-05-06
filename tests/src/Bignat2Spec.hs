@@ -135,9 +135,9 @@ instance Arbitrary Operand where
     b' <- filter (>= 2) $ shrink b
     return $ OpO b' o' i'
 
-isLuaNative :: Operand -> Bool
-isLuaNative (OpL _) = True
-isLuaNative _ = False
+instance IsLuaNative Operand where
+  isLuaNative (OpL _) = True
+  isLuaNative _ = False
 
 spec :: Spec
 spec = do
@@ -145,12 +145,11 @@ spec = do
     b <- runLua $ return' "N.max_base"
     b `shouldBe` maxBase
 
-  it "should survive a push and peek roundtrip" $ properly $
-    forAll (suchThat arbitrary (not . isLuaNative)) $ \a -> do
+  it "should survive a push and peek roundtrip" $ properly $ unary @Operand $ \a -> do
       b <- runLua $ push a >> peek'
       b `shouldBe` a
 
-  integerLike runLua isLuaNative
+  integerLike @Operand runLua truncatingSubtraction
 
   describe "integer conversion" $ do
     it "should convert from non-negative integers" $ properly $ \(NonNegative a) -> do
@@ -165,12 +164,51 @@ spec = do
         expectError (dostring "N.frominteger(a)")
       msg `shouldEndWith` "unexpected negative integer"
 
-    it "should safely try converting to native integers" $ properly $
-      forAll (suchThat arbitrary (not . isLuaNative)) $ \a -> do
-        a' <- runLua $ do
+    it "should safely try converting to native integers" $ properly $ unary @Operand $ \a -> do
+      a' <- runLua $ do
+        "a" `bind` a
+        dostring' "return a:tointeger()"
+        isnil top >>= \case
+          True -> return Nothing
+          False -> Just <$> peek' @Integer
+      a' `shouldBe` (if a <= maxint then Just (toInteger a) else Nothing)
+
+  describe "representations" $ do
+    describe "decimal" $ do
+      it "should render decimal strings" $ properly $ unary @(NonNegative Operand) $ \(NonNegative a) -> do
+        s <- runLua $ do
           "a" `bind` a
-          dostring' "return a:tointeger()"
-          isnil top >>= \case
-            True -> return Nothing
-            False -> Just <$> peek' @Integer
-        a' `shouldBe` (if a <= maxint then Just (toInteger a) else Nothing)
+          return' "a:tostring()"
+        s `shouldBe` (show $ toInteger a)
+
+      it "should parse decimal strings" $ properly $ \(NonNegative (a :: Operand)) -> do
+        a' <- runLua $ return' $ printf "N.fromstring('%s')" (show $ toInteger a)
+        a' `shouldBe` a
+
+    --describe "hexadecimal" $ do
+      --it "should reproduce hexadecimal strings" $ properly $ \(NonNegative (n :: Integer)) ->
+        --evalAndPeek (printf "M.fromhex('%s'):tohex()" (toHex n)) >>= flip shouldBe (toHex n)
+      --it "should reproduce hexadecimal strings of huge integers" $ properly $ \(Huge { getHuge = n }) ->
+        --evalAndPeek (printf "M.fromhex('%s'):tohex()" (toHex n)) >>= flip shouldBe (toHex n)
+      --it "should produce hexadecimal strings of integers pushed from Haskell" $ properly $ \(a@(N n)) ->
+        --withBigNats [ ("a", a) ] [ "return a:tohex()" ] >>= flip shouldBe (toHex n)
+
+    --describe "big-endian" $ do
+      --it "should parse big-endian bytestrings" $ properly $ \(Huge { getHuge = n }) -> do
+        --(N m) <- runLua $ do
+          --stackNeutral $ pushstring (toBeBytes n) >> setglobal "a"
+          --dostring' "return M.frombigendian(a)"
+          --peek top
+        --m `shouldBe` n
+      --it "should produce big-endian bytestrings" $ properly $ \(Huge { getHuge = n}) -> do
+        --withBigNats [ ("a", N n) ] [ "return a:tobigendian()" ] >>= flip shouldBe (toBeBytes n)
+
+    --describe "little-endian" $ do
+      --it "should parse little-endian bytestrings" $ properly $ \(Huge { getHuge = n }) -> do
+        --(N m) <- runLua $ do
+          --stackNeutral $ pushstring (toLeBytes n) >> setglobal "a"
+          --dostring' "return M.fromlittleendian(a)"
+          --peek top
+        --m `shouldBe` n
+      --it "should produce little-endian bytestrings" $ properly $ \(Huge { getHuge = n}) -> do
+        --withBigNats [ ("a", N n) ] [ "return a:tolittleendian()" ] >>= flip shouldBe (toLeBytes n)
