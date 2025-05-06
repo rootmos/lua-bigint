@@ -153,7 +153,7 @@ spec = do
       b <- runLua $ push a >> peek'
       b `shouldBe` a
 
-  integerLike @Operand runLua (syntacticOperators <> truncatingSubtraction <> divremFunction "N")
+  integerLike @Operand runLua (syntacticOperators <> truncatingSubtraction <> divremFunction "N.divrem")
 
   describe "integer conversion" $ do
     it "should convert from non-negative integers" $ properly $ \(NonNegative a) -> do

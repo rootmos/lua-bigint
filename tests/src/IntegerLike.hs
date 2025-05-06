@@ -63,7 +63,7 @@ divremFunction modname = mempty { partialOps = [ (mk "q", div, isdef, "attempt t
                                                ]
                                 }
   where isdef (_, b) = b /= 0
-        mk v = printf "(function() local q, r = %s.divrem(%%a, %%b); return %s end)()" modname (v :: String)
+        mk v = printf "(function() local q, r = %s(%%a, %%b); return %s end)()" modname (v :: String)
 
 binaryExpr :: String -> String -> String -> String
 binaryExpr template a b = T.unpack $ T.replace "%b" (T.pack b) $ T.replace "%a" (T.pack a) (T.pack template)
@@ -84,7 +84,8 @@ unary' :: (Show op, Arbitrary op, IsLuaNative op)
         => (op -> Bool) -> (op -> IO ()) -> Test.QuickCheck.Property
 unary' def = forAll $ suchThat arbitrary $ \a -> def a && not (isLuaNative a)
 
-integerLike :: ( Show op, Integral op
+integerLike :: forall op.
+               ( Show op, Integral op
                , Eq op
                , IsLuaNative op
                , Arbitrary op
@@ -136,12 +137,11 @@ integerLike runLua (IntegerLike { relationalOps, binaryOps, partialOps }) = do
           return' $ binaryExpr expr "a" "b"
         s `shouldBe` ref a a
 
-      when comm $ it "should be commutative" $ properly $ binary $ \(a, b) -> do
+      when comm $ it "should be commutative" $ properly $ binary $ \(a :: op, b :: op) -> do
         s <- runLua $ do
           "a" `bind` a
           "b" `bind` b
           return' $ printf "(%s) == (%s)" (binaryExpr expr "a" "b") (binaryExpr expr "b" "a")
-        let _ = ref a a -- TODO?
         s `shouldBe` True
 
   describe "partial binary operators" $ do
