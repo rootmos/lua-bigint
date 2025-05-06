@@ -21,9 +21,6 @@ type RelationalOperator a = ( String, Bool, a -> a -> Bool )
 type BinaryOperator a = ( String, Bool, a -> a -> a )
 type PartialBinaryOperator a = ( String, a -> a -> a, (a, a) -> Bool, String )
 
---data IntegerLike a = IntegerLike { eq :: a -> a -> Bool
-                                 --, divIsDefined :: (a,a) -> Bool
-                                 --, sub :: a -> a -> a
 data IntegerLike a = IntegerLike { relationalOps :: [ RelationalOperator a ]
                                  , binaryOps :: [ BinaryOperator a ]
                                  , partialOps :: [ PartialBinaryOperator a ]
@@ -58,10 +55,15 @@ syntacticOperators = IntegerLike { relationalOps = [ ("%a == %b", True, (==))
                                  }
 
 truncatingSubtraction :: (Num a, Ord a) => IntegerLike a
-truncatingSubtraction = IntegerLike { relationalOps = []
-                                    , binaryOps = [ ("%a - %b", False, \a b -> max 0 (a - b)) ]
-                                    , partialOps = []
-                                    }
+truncatingSubtraction = mempty { binaryOps = [ ("%a - %b", False, \a b -> max 0 (a - b)) ] }
+
+divremFunction :: Integral a => String -> IntegerLike a
+divremFunction modname = mempty { partialOps = [ (mk "q", div, isdef, "attempt to divide by zero")
+                                               , (mk "r", rem, isdef, "attempt to divide by zero")
+                                               ]
+                                }
+  where isdef (_, b) = b /= 0
+        mk v = printf "(function() local q, r = %s.divrem(%%a, %%b); return %s end)()" modname (v :: String)
 
 binaryExpr :: String -> String -> String -> String
 binaryExpr template a b = T.unpack $ T.replace "%b" (T.pack b) $ T.replace "%a" (T.pack a) (T.pack template)
