@@ -117,19 +117,19 @@ binaryExpr template a b = T.unpack $ T.replace "%b" (T.pack b) $ T.replace "%a" 
 
 unary :: (Show op, Arbitrary op, IsLuaNative op)
       => (op -> IO ()) -> Test.QuickCheck.Property
-unary = forAll $ suchThat arbitrary $ not . isLuaNative
+unary = flip forAllShrink shrink $ suchThat arbitrary $ not . isLuaNative
 
 binary :: (Show op, Arbitrary op, IsLuaNative op)
        => ((op, op) -> IO ()) -> Test.QuickCheck.Property
-binary = forAll $ suchThat arbitrary $ \(a, b) -> not (isLuaNative a && isLuaNative b)
+binary = flip forAllShrink shrink $ suchThat arbitrary $ \(a, b) -> not (isLuaNative a && isLuaNative b)
 
 binary' :: (Show op, Arbitrary op, IsLuaNative op)
         => ((op, op) -> Bool) -> ((op, op) -> IO ()) -> Test.QuickCheck.Property
-binary' def = forAll $ suchThat arbitrary $ \(a, b) -> def (a, b) && not (isLuaNative a && isLuaNative b)
+binary' def = flip forAllShrink shrink $ suchThat arbitrary $ \(a, b) -> def (a, b) && not (isLuaNative a && isLuaNative b)
 
 unary' :: (Show op, Arbitrary op, IsLuaNative op)
         => (op -> Bool) -> (op -> IO ()) -> Test.QuickCheck.Property
-unary' def = forAll $ suchThat arbitrary $ \a -> def a && not (isLuaNative a)
+unary' def = flip forAllShrink shrink $ suchThat arbitrary $ \a -> def a && not (isLuaNative a)
 
 integerLike :: forall op. IntegerLike op
             => RunLuaRun

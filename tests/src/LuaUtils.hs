@@ -69,7 +69,7 @@ extendLuaPath dir = stackNeutral $ do
 
 
 type Prepare = Lua ()
-type RunLuaRun = forall a m. MonadIO m => Lua a -> m a
+type RunLuaRun = forall m a. MonadIO m => Lua a -> m a
 type RunLuaAndPeek = forall a m. (Peekable a, MonadIO m) => [ String ] -> m a
 type EvalLuaAndPeek = forall a m. (Peekable a, MonadIO m) => String -> m a
 
