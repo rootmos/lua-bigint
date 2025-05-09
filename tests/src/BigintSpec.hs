@@ -13,6 +13,7 @@ import Test.QuickCheck
 import HsLua hiding ( Integer, compare )
 import HsLua.Marshalling.Peekers
 
+import Huge
 import LuaUtils
 import LuaBigInt
 import qualified IntegerLike as I
@@ -24,16 +25,19 @@ runLua = mkRun $ do
   "I" `requireG` "bigint"
 
 type Base = Integer
+type Sign = Integer
 
 data Operand = OpI (Maybe Base) Integer
+             | OpH (Maybe Base) Sign Huge
+             -- | OpL LuaInt
              | OpO Base Int Integer
-
              deriving ( Show )
 --instance Show Operand where
   --show = show . operandToInteger
 
 operandToInteger :: Operand -> Integer
 operandToInteger (OpI _ i) = i
+operandToInteger (OpH _ sign h) = (* sign) $ getHuge h
 operandToInteger (OpO b o i) = (b^o) * i
 
 instance Eq Operand where
@@ -64,7 +68,10 @@ instance Integral Operand where
     (fromInteger q, fromInteger r)
 
 instance Pushable Operand where
-  push (OpI _ _) = undefined
+  push (OpI Nothing i) = dostring' $ printf "return I.fromstring('%s')" (show i)
+  push (OpI (Just b) i) = dostring' $ printf "return I.fromstring('%s', 10, %d)" (show i) b
+  push o@(OpH Nothing _ _) = dostring' $ printf "return I.fromstring('%s')" (show $ operandToInteger o)
+  push o@(OpH (Just b) _ _) = dostring' $ printf "return I.fromstring('%s', 10, %d)" (show $ operandToInteger o) b
   push (OpO b o i) = ensureStackDiff 1 $ do
     dostring' "return I.make"
 
@@ -115,12 +122,14 @@ instance I.IsLuaNative Operand where
   isLuaNative _ = False
 
 instance Arbitrary Operand where
-  arbitrary = frequency [ (0, genI)
-                        , (100, genO)
+  arbitrary = frequency [ (50, genI)
+                        , (20, genH)
+                        , (30, genO)
                         ]
     where genBase = chooseInteger (2, maxBase)
           genBaseM = oneof [ return Nothing, Just <$> genBase ]
           genI = OpI <$> genBaseM <*> arbitrary
+          genH = OpH <$> genBaseM <*> elements [ 1, -1 ] <*> arbitrary
           genO = do
             b <- genBase
             o <- getNonNegative <$> arbitrary
@@ -128,6 +137,7 @@ instance Arbitrary Operand where
             return $ OpO b o i
 
   shrink (OpI mb i) = OpI mb <$> shrink i
+  shrink (OpH mb sign h) = OpH mb sign <$> shrink h
   shrink (OpO b o i) = do
     o' <- shrink o
     i' <- shrink i
