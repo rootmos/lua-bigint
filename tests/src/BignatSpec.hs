@@ -153,7 +153,7 @@ spec = do
       b `shouldBe` a
 
   I.integerLike @Operand runLua $ mempty
-    <>  I.syntacticOperators <> I.truncatingSubtraction "N.sub"
+    <> I.syntacticOperators <> I.truncatingSubtraction "N.sub"
     <> I.add "N.add" <> I.mul "N.mul"
     <> I.divrem "N.divrem"
     <> I.compare "N.compare"

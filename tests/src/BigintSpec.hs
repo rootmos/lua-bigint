@@ -167,3 +167,4 @@ spec = do
 
   I.integerLike @Operand runLua $ mempty
     <> I.add "I.add" <> I.sub "I.sub"
+    <> I.compare "I.compare"
