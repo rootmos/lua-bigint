@@ -2,8 +2,10 @@ module BigintSpec where
 
 import Control.Monad ( when )
 import Data.Maybe ( fromMaybe )
+import Data.Ratio ( (%) )
 import System.IO.Unsafe ( unsafePerformIO )
 import System.Random ( randomIO )
+import Text.Printf
 
 import Test.Hspec
 import Test.QuickCheck
@@ -39,6 +41,27 @@ instance Eq Operand where
 
 instance Ord Operand where
   compare a b = compare (operandToInteger a) (operandToInteger b)
+
+instance Num Operand where
+  a + b = OpI Nothing $ operandToInteger a + operandToInteger b
+  a * b = OpI Nothing $ operandToInteger a * operandToInteger b
+  abs a = OpI Nothing $ abs $ operandToInteger a
+  signum a = OpI Nothing $ signum $ operandToInteger a
+  negate o = OpI Nothing (negate $ operandToInteger o)
+  fromInteger i = OpI Nothing i
+
+instance Real Operand where
+  toRational op = operandToInteger op % 1
+
+instance Enum Operand where
+  toEnum = fromInteger . fromIntegral
+  fromEnum = undefined
+
+instance Integral Operand where
+  toInteger = operandToInteger
+  quotRem a b =
+    let (q, r) = operandToInteger a `quotRem` operandToInteger b in
+    (fromInteger q, fromInteger r)
 
 instance Pushable Operand where
   push (OpI _ _) = undefined
@@ -119,3 +142,15 @@ spec = do
   it "should survive a push and peek roundtrip" $ properly $ I.unary $ \(a :: Operand) -> do
     b <- runLua $ push a >> peek'
     b `shouldBe` a
+
+  describe "representations" $ do
+    describe "decimal" $ do
+      it "should render decimal strings" $ properly $ I.unary $ \(a :: Operand) -> do
+        s <- runLua $ do
+          "a" `bind` a
+          return' "a:tostring()"
+        s `shouldBe` (show $ toInteger a)
+
+      it "should parse decimal strings" $ properly $ \(a :: Operand) -> do
+        a' <- runLua $ return' $ printf "I.fromstring('%s')" (show $ toInteger a)
+        a' `shouldBe` a
