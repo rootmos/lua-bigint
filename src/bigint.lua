@@ -140,7 +140,34 @@ function M.compare(a, b)
 end
 
 function __mt.__eq(a, b)
+    if not M.is_bigint(a) or not M.is_bigint(b) then
+        return false
+    end
+
+    if rawequal(a, b) then
+        return true
+    end
+
+    local a, b = binop(a, b)
     return M.compare(a, b) == 0
+end
+
+function __mt.__lt(a, b)
+    if rawequal(a, b) then
+        return false
+    end
+
+    local a, b = binop(a, b)
+    return M.compare(a, b) < 0
+end
+
+function __mt.__gt(a, b)
+    if rawequal(a, b) then
+        return false
+    end
+
+    local a, b = binop(a, b)
+    return M.compare(a, b) > 0
 end
 
 return setmetatable(M, {

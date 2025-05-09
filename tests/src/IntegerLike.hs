@@ -1,7 +1,7 @@
 module IntegerLike ( IsLuaNative (..)
 
                    , Spec (..)
-                   , syntacticOperators
+                   , relationalOperators
                    , add, mul
                    , sub, truncatingSubtraction
                    , divrem
@@ -63,21 +63,15 @@ instance Monoid (Spec a) where
 divByZeroMsg :: String
 divByZeroMsg = "attempt to divide by zero"
 
-syntacticOperators :: IntegerLike a => Spec a
-syntacticOperators = Spec { relationalOps = [ ("%a == %b", True, (==))
-                                            , ("%a ~= %b", False, (/=))
-                                            , ("%a < %b", False, (<))
-                                            , ("%a <= %b", True, (<=))
-                                            , ("%a > %b", False, (>))
-                                            , ("%a >= %b", True, (>=))
-                                            ]
-                          , binaryOps = [ ("%a + %b", True, MkBin (+))
-                                        , ("%a * %b", True, MkBin (*))
-                                        ]
-                          , partialOps = [ ("%a // %b", MkBin div, \(_, b) -> b /= 0, divByZeroMsg)
-                                         , ("%a % %b", MkBin rem, \(_, b) -> b /= 0, divByZeroMsg)
-                                         ]
-                          }
+relationalOperators :: IntegerLike a => Spec a
+relationalOperators = mempty { relationalOps = [ ("%a == %b", True, (==))
+                                               , ("%a ~= %b", False, (/=))
+                                               , ("%a < %b", False, (<))
+                                               , ("%a <= %b", True, (<=))
+                                               , ("%a > %b", False, (>))
+                                               , ("%a >= %b", True, (>=))
+                                               ]
+                             }
 
 truncatingSubtraction :: IntegerLike a => String -> Spec a
 truncatingSubtraction expr = mempty { binaryOps = [ ("%a - %b", False, MkBin ref)
@@ -107,16 +101,24 @@ divrem :: IntegerLike a => String -> Spec a
 divrem expr = mempty { partialOps = [ (mk "q", MkBin div, isdef, divByZeroMsg)
                                     , (mk "r", MkBin rem, isdef, divByZeroMsg)
                                     , (printf "{%s(%%a, %%b)}" expr, MkBin divMod, isdef, divByZeroMsg)
+                                    , ("%a // %b", MkBin div, \(_, b) -> b /= 0, divByZeroMsg)
+                                    , ("%a % %b", MkBin rem, \(_, b) -> b /= 0, divByZeroMsg)
                                     ]
                      }
   where isdef (_, b) = b /= 0
         mk v = printf "(function() local q, r = %s(%%a, %%b); return %s end)()" expr (v :: String)
 
 add :: IntegerLike a => String -> Spec a
-add expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, True, MkBin (+)) ] }
+add expr = mempty { binaryOps = [ ("%a + %b", True, MkBin (+))
+                                , (printf "%s(%%a, %%b)" expr, True, MkBin (+))
+                                ]
+                  }
 
 mul :: IntegerLike a => String -> Spec a
-mul expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, True, MkBin (*)) ] }
+mul expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, True, MkBin (*))
+                                , ("%a * %b", True, MkBin (*))
+                                ]
+                  }
 
 binaryExpr :: String -> String -> String -> String
 binaryExpr template a b = T.unpack $ T.replace "%b" (T.pack b) $ T.replace "%a" (T.pack a) (T.pack template)

@@ -166,5 +166,6 @@ spec = do
         a' `shouldBe` a
 
   I.integerLike @Operand runLua $ mempty
+    <> I.relationalOperators
     <> I.add "I.add" <> I.sub "I.sub"
     <> I.compare "I.compare"
