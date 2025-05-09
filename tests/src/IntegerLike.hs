@@ -2,8 +2,8 @@ module IntegerLike ( IsLuaNative (..)
 
                    , Spec (..)
                    , syntacticOperators
-                   , truncatingSubtraction
                    , add, mul
+                   , sub, truncatingSubtraction
                    , divrem
                    , compare
 
@@ -89,6 +89,12 @@ truncatingSubtraction expr = mempty { binaryOps = [ ("%a - %b", False, MkBin ref
   where mk v = printf "(function() local d, t = %s(%%a, %%b); return %s end)()" expr (v :: String)
         ref a b = max 0 (a - b)
         trunc = (<)
+
+sub :: IntegerLike a => String -> Spec a
+sub expr = mempty { binaryOps = [ ("%a - %b", False, MkBin (-))
+                                , (printf "%s(%%a, %%b)" expr, False, MkBin (-))
+                                ]
+                                }
 
 compare :: IntegerLike a => String -> Spec a
 compare expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, False, MkBin ref) ] }

@@ -16,12 +16,16 @@ function M.is_bigint(x)
     return getmetatable(x) == __mt
 end
 
-function M.make(p)
+local function make(abs, sign)
     local q = {
-        abs = Bignat.make(p),
-        sign = p.sign,
+        abs = abs,
+        sign = sign,
     }
     return setmetatable(q, __mt)
+end
+
+function M.make(p)
+    return make(Bignat.make(p), p.sign)
 end
 __fn.clone = M.make
 
@@ -34,11 +38,7 @@ function M.fromstring(s, from, to)
         sign = -1
         s = s:sub(2)
     end
-    local q = {
-        abs = Bignat.fromstring(s, from, to),
-        sign = sign,
-    }
-    return setmetatable(q, __mt)
+    return make(Bignat.fromstring(s, from, to), sign)
 end
 
 function __fn:tostring(to)
@@ -55,6 +55,28 @@ function __fn:tostring(to)
 end
 M.tostring = __fn.tostring
 __mt.__tostring = __fn.tostring
+
+local function add(asign, aabs, bsign, babs)
+    if asign == bsign then
+        return make(aabs + babs, asign)
+    else
+        if aabs >= babs then
+            return make(aabs - babs, asign)
+        else
+            return make(babs - aabs, bsign)
+        end
+    end
+end
+
+function M.add(a, b)
+    return add(a.sign, a.abs, b.sign, b.abs)
+end
+__mt.__add = M.add
+
+function M.sub(a, b)
+    return add(a.sign, a.abs, -b.sign, b.abs)
+end
+__mt.__sub = M.sub
 
 return setmetatable(M, {
     __call = function(N, o)

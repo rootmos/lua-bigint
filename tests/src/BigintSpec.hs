@@ -164,3 +164,6 @@ spec = do
       it "should parse decimal strings" $ properly $ \(a :: Operand) -> do
         a' <- runLua $ return' $ printf "I.fromstring('%s')" (show $ toInteger a)
         a' `shouldBe` a
+
+  I.integerLike @Operand runLua $ mempty
+    <> I.add "I.add" <> I.sub "I.sub"
