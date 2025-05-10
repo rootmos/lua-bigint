@@ -3,6 +3,8 @@ module BigintSpec where
 import Control.Monad ( when )
 import Data.Maybe ( fromMaybe )
 import Data.Ratio ( (%) )
+import GHC.Generics ( Generic )
+import Generic.Data ( gshowsPrec )
 import System.IO.Unsafe ( unsafePerformIO )
 import System.Random ( randomIO )
 import Text.Printf
@@ -31,9 +33,10 @@ data Operand = OpI (Maybe Base) Integer
              | OpH (Maybe Base) Sign Huge
              -- | OpL LuaInt
              | OpO Base Int Integer
-             deriving ( Show )
---instance Show Operand where
-  --show = show . operandToInteger
+             deriving ( Generic )
+
+instance Show Operand where
+  show op = printf "%d = %s" (operandToInteger op) (gshowsPrec 0 op "")
 
 operandToInteger :: Operand -> Integer
 operandToInteger (OpI _ i) = i
@@ -166,6 +169,6 @@ spec = do
         a' `shouldBe` a
 
   I.integerLike @Operand runLua $ mempty
-    <> I.relationalOperators
+    <> I.relationalOperators <> I.compare "I.compare"
     <> I.add "I.add" <> I.sub "I.sub"
-    <> I.compare "I.compare"
+    <> I.mul "I.mul" <> I.divrem "I.divrem"

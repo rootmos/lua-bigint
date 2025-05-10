@@ -117,6 +117,34 @@ function M.sub(a, b)
 end
 __mt.__sub = M.sub
 
+function M.mul(a, b)
+    local a, b = binop(a, b)
+    return make(a.abs * b.abs, a.sign * b.sign)
+end
+__mt.__mul = M.mul
+
+function M.divrem(a, b)
+    local a, b = binop(a, b)
+    local q, r = Bignat.divrem(a.abs, b.abs)
+    if a.sign == 0 then
+        return make(q, 0), make(r, 0)
+    elseif a.sign == b.sign then
+        return make(q, 1), make(r, b.sign)
+    else
+        return make(q, -1), make(r, a.sign)
+    end
+end
+
+function __mt.__idiv(a, b)
+    local q, _ = M.divrem(a, b)
+    return q
+end
+
+function __mt.__mod(a, b)
+    local _, r = M.divrem(a, b)
+    return r
+end
+
 function M.compare(a, b)
     if a.sign == b.sign then
         if a.sign == 0 then

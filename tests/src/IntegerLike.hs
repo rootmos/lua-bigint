@@ -98,10 +98,10 @@ compare expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, False, MkBin 
                     GT -> 1
 
 divrem :: IntegerLike a => String -> Spec a
-divrem expr = mempty { partialOps = [ (mk "q", MkBin div, isdef, divByZeroMsg)
+divrem expr = mempty { partialOps = [ (mk "q", MkBin quot, isdef, divByZeroMsg)
                                     , (mk "r", MkBin rem, isdef, divByZeroMsg)
-                                    , (printf "{%s(%%a, %%b)}" expr, MkBin divMod, isdef, divByZeroMsg)
-                                    , ("%a // %b", MkBin div, \(_, b) -> b /= 0, divByZeroMsg)
+                                    , (printf "{%s(%%a, %%b)}" expr, MkBin quotRem, isdef, divByZeroMsg)
+                                    , ("%a // %b", MkBin quot, \(_, b) -> b /= 0, divByZeroMsg)
                                     , ("%a % %b", MkBin rem, \(_, b) -> b /= 0, divByZeroMsg)
                                     ]
                      }
