@@ -63,6 +63,38 @@ end
 M.tostring = __fn.tostring
 __mt.__tostring = __fn.tostring
 
+function M.frominteger(n, base)
+    assert(math.type(n) == "integer")
+
+    local base = base or Bignat.default_base
+    if n == 0 then
+        return make(Bignat.make{base=base}, 0)
+    end
+
+    local sign = 0
+    if n < 0 then
+        sign = -1
+        n = -n
+    else
+        sign = 1
+    end
+
+    return make(Bignat.frominteger(n), sign)
+end
+
+function __fn:tointeger()
+    if self.abs > Bignat.maxint then
+        return nil
+    end
+
+    local i = self.abs:tointeger()
+    if i == nil then
+        return nil
+    else
+        return i * self.sign
+    end
+end
+
 local function binop(a, b)
     local at, bt = M.is_bigint(a), M.is_bigint(b)
     if at ~= bt then
@@ -146,6 +178,7 @@ function __mt.__mod(a, b)
 end
 
 function M.compare(a, b)
+    local a, b = binop(a, b)
     if a.sign == b.sign then
         if a.sign == 0 then
             return 0

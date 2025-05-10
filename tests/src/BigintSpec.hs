@@ -31,7 +31,7 @@ type Sign = Integer
 
 data Operand = OpI (Maybe Base) Integer
              | OpH (Maybe Base) Sign Huge
-             -- | OpL LuaInt
+             | OpL LuaInt
              | OpO Base Int Integer
              deriving ( Generic )
 
@@ -41,6 +41,7 @@ instance Show Operand where
 operandToInteger :: Operand -> Integer
 operandToInteger (OpI _ i) = i
 operandToInteger (OpH _ sign h) = (* sign) $ getHuge h
+operandToInteger (OpL li) = luaIntToInteger li
 operandToInteger (OpO b o i) = (b^o) * i
 
 instance Eq Operand where
@@ -75,6 +76,7 @@ instance Pushable Operand where
   push (OpI (Just b) i) = dostring' $ printf "return I.fromstring('%s', 10, %d)" (show i) b
   push o@(OpH Nothing _ _) = dostring' $ printf "return I.fromstring('%s')" (show $ operandToInteger o)
   push o@(OpH (Just b) _ _) = dostring' $ printf "return I.fromstring('%s', 10, %d)" (show $ operandToInteger o) b
+  push (OpL (LuaInt li)) = pushinteger li
   push (OpO b o i) = ensureStackDiff 1 $ do
     dostring' "return I.make"
 
@@ -122,17 +124,20 @@ instance Peekable Operand where
     return $ OpI (Just b) i
 
 instance I.IsLuaNative Operand where
+  isLuaNative (OpL _) = True
   isLuaNative _ = False
 
 instance Arbitrary Operand where
   arbitrary = frequency [ (50, genI)
                         , (20, genH)
-                        , (30, genO)
+                        , (10, genL)
+                        , (20, genO)
                         ]
     where genBase = chooseInteger (2, maxBase)
           genBaseM = oneof [ return Nothing, Just <$> genBase ]
           genI = OpI <$> genBaseM <*> arbitrary
           genH = OpH <$> genBaseM <*> elements [ 1, -1 ] <*> arbitrary
+          genL = OpL <$> arbitrary
           genO = do
             b <- genBase
             o <- getNonNegative <$> arbitrary
@@ -141,6 +146,7 @@ instance Arbitrary Operand where
 
   shrink (OpI mb i) = OpI mb <$> shrink i
   shrink (OpH mb sign h) = OpH mb sign <$> shrink h
+  shrink (OpL li) = OpL <$> shrink li
   shrink (OpO b o i) = do
     o' <- shrink o
     i' <- shrink i
@@ -172,3 +178,19 @@ spec = do
     <> I.relationalOperators <> I.compare "I.compare"
     <> I.add "I.add" <> I.sub "I.sub"
     <> I.mul "I.mul" <> I.divrem "I.divrem"
+
+  describe "integer conversion" $ do
+    it "should convert from integers" $ properly $ \a -> do
+      a' <- runLua $ do
+        "a" `bind` a
+        return' "I.frominteger(a)"
+      a' `shouldBe` OpL a
+
+    it "should safely try converting to native integers" $ properly $ I.unary $ \(a :: Operand) -> do
+      a' <- runLua $ do
+        "a" `bind` a
+        dostring' "return a:tointeger()"
+        isnil top >>= \case
+          True -> return Nothing
+          False -> Just <$> peek' @Integer
+      a' `shouldBe` (if abs a <= maxint then Just (toInteger a) else Nothing)
