@@ -155,6 +155,14 @@ function M.mul(a, b)
 end
 __mt.__mul = M.mul
 
+function M.neg(a)
+    if not M.is_bigint(a) then
+        error("bigint unary operation called with unsuitable value")
+    end
+    return make(a.abs, -a.sign)
+end
+__mt.__unm = M.neg
+
 function M.divrem(a, b)
     local a, b = binop(a, b)
     local q, r = Bignat.divrem(a.abs, b.abs)

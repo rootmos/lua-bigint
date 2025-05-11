@@ -4,6 +4,7 @@ module IntegerLike ( IsLuaNative (..)
                    , relationalOperators
                    , add, mul
                    , sub, truncatingSubtraction
+                   , neg
                    , divrem
                    , compare
 
@@ -41,24 +42,28 @@ class (Show a, Integral a, IsLuaNative a, Arbitrary a, Peekable a, Pushable a) =
 instance (Show a, Integral a, IsLuaNative a, Arbitrary a, Peekable a, Pushable a) => IntegerLike a where
 
 data Bin a = forall b. (Peekable b, Show b, Eq b) => MkBin (a -> a -> b)
+data Un a = forall b. (Peekable b, Show b, Eq b) => MkUn (a -> b)
 
 type RelationalOperator a = ( String, Bool, a -> a -> Bool )
 type BinaryOperator a = ( String, Bool, Bin a)
 type PartialBinaryOperator a = ( String, Bin a, (a, a) -> Bool, String )
+type UnaryOperator a = ( String, Un a)
 
 data Spec a = Spec { relationalOps :: [ RelationalOperator a ]
                    , binaryOps :: [ BinaryOperator a ]
                    , partialOps :: [ PartialBinaryOperator a ]
+                   , unaryOps :: [ UnaryOperator a ]
                    }
 
 instance Semigroup (Spec a) where
   a <> b = Spec { relationalOps = relationalOps a ++ relationalOps b
                 , binaryOps = binaryOps a ++ binaryOps b
                 , partialOps = partialOps a ++ partialOps b
+                , unaryOps = unaryOps a ++ unaryOps b
                 }
 
 instance Monoid (Spec a) where
-  mempty = Spec [] [] []
+  mempty = Spec [] [] [] []
 
 divByZeroMsg :: String
 divByZeroMsg = "attempt to divide by zero"
@@ -120,8 +125,17 @@ mul expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, True, MkBin (*))
                                 ]
                   }
 
+neg :: IntegerLike a => String -> Spec a
+neg expr = mempty { unaryOps = [ (printf "%s(%%a)" expr, MkUn negate)
+                               , ("(-%a)", MkUn negate)
+                               ]
+                  }
+
 binaryExpr :: String -> String -> String -> String
 binaryExpr template a b = T.unpack $ T.replace "%b" (T.pack b) $ T.replace "%a" (T.pack a) (T.pack template)
+
+unaryExpr :: String -> String -> String
+unaryExpr template a = T.unpack $ T.replace "%a" (T.pack a) (T.pack template)
 
 unary :: (Show op, Arbitrary op, IsLuaNative op)
       => (op -> IO ()) -> Test.QuickCheck.Property
@@ -143,7 +157,7 @@ integerLike :: forall op. IntegerLike op
             => RunLuaRun
             -> Spec op
             -> Hspec.Spec
-integerLike runLua (Spec { relationalOps, binaryOps, partialOps }) = do
+integerLike runLua (Spec { relationalOps, binaryOps, partialOps, unaryOps }) = do
   describe "relational operators" $ do
     flip mapM_ relationalOps $ \(expr, refl, ref) -> describe (binaryExpr expr "a" "b") $ do
       it (printf "should %s be reflexive (by reference)" (be refl)) $ properly $ unary $ \a -> do
@@ -225,3 +239,11 @@ integerLike runLua (Spec { relationalOps, binaryOps, partialOps }) = do
             "b" `bind` b
             expectError $ dostring . BSUTF8.fromString $ "return " ++ binaryExpr expr "a" "b"
           msg' `shouldEndWith` msg
+
+  describe "unary operators" $ do
+    flip mapM_ unaryOps $ \(expr, MkUn ref) -> describe (unaryExpr expr "a") $ do
+      it "should adhere to the reference implementation" $ properly $ unary $ \a -> do
+        n <- runLua $ do
+          "a" `bind` a
+          return' $ unaryExpr expr "a"
+        n `shouldBe` ref a

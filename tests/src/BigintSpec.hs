@@ -176,7 +176,7 @@ spec = do
 
   I.integerLike @Operand runLua $ mempty
     <> I.relationalOperators <> I.compare "I.compare"
-    <> I.add "I.add" <> I.sub "I.sub"
+    <> I.add "I.add" <> I.sub "I.sub" <> I.neg "I.neg"
     <> I.mul "I.mul" <> I.divrem "I.divrem"
 
   describe "integer conversion" $ do
