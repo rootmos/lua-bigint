@@ -30,7 +30,6 @@ data Operand = OpI (Maybe Base) Integer
              | OpH (Maybe Base) Huge
              | OpL LuaInt
              | OpO Base Int Integer
-
              deriving ( Show )
 --instance Show Operand where
   --show = show . operandToInteger
@@ -78,10 +77,10 @@ instance Peekable Operand where
     return $ OpI (Just b) $ (* b^o) $ evalInBase b as
 
 instance Pushable Operand where
-  push (OpI Nothing i) = dostring' (printf "return N.fromstring('%s')" (show i))
-  push (OpI (Just b) i) = dostring' (printf "return N.fromstring('%s', 10, %d)" (show i) b)
-  push (OpH Nothing h) = dostring' (printf "return N.fromstring('%s')" (show $ getHuge h))
-  push (OpH (Just b) h) = dostring' (printf "return N.fromstring('%s', 10, %d)" (show $ getHuge h) b)
+  push (OpI Nothing i) = dostring' $ printf "return N.fromstring('%s')" (show i)
+  push (OpI (Just b) i) = dostring' $ printf "return N.fromstring('%s', 10, %d)" (show i) b
+  push o@(OpH Nothing _) = dostring' $ printf "return N.fromstring('%s')" (show $ operandToInteger o)
+  push o@(OpH (Just b) _) = dostring' $ printf "return N.fromstring('%s', 10, %d)" (show $ operandToInteger o) b
   push (OpL (LuaInt li)) = pushinteger li
   push (OpO b o i) = ensureStackDiff 1 $ do
     dostring' "return N.make"
@@ -154,8 +153,9 @@ spec = do
       b `shouldBe` a
 
   I.integerLike @Operand runLua $ mempty
-    <>  I.syntacticOperators <> I.truncatingSubtraction "N.sub"
+    <> I.relationalOperators
     <> I.add "N.add" <> I.mul "N.mul"
+    <> I.truncatingSubtraction "N.sub"
     <> I.divrem "N.divrem"
     <> I.compare "N.compare"
 

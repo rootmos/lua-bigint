@@ -7,17 +7,7 @@ import Text.Printf
 
 import qualified Data.ByteString as BS
 
-import Test.QuickCheck ( verbose
-                       , property
-                       , Testable
-                       , Property
-                       , withMaxSuccess
-                       , mapSize
-                       , Gen
-                       , chooseInt
-                       , chooseInteger
-                       , infiniteListOf
-                       )
+import Test.QuickCheck
 
 digitsInBase :: Integer -> Integer -> [ Integer ]
 digitsInBase _ x | x < 0 = undefined
@@ -30,17 +20,8 @@ evalInBase :: Integer -> [ Integer ] -> Integer
 evalInBase b _ | b < 2 = undefined
 evalInBase b ds = sum $ zipWith (*) ds (iterate (* b) 1)
 
-genDigits :: Integer -> Int -> Gen [ Integer ]
-genDigits base n =
-  fmap (take n) $ infiniteListOf $ chooseInteger (0, base - 1)
-
-genDigitsWithLeadingZeroes :: Integer -> Int -> Gen [ Integer ]
-genDigitsWithLeadingZeroes base n = do
-  m <- chooseInt (0, n)
-  (++) (take (n - m) $ repeat 0) <$> genDigits base m
-
 properly :: Testable p => p -> Property
-properly = v . m . s . property
+properly = v . m . s . ns . vs . property
  where v = unsafePerformIO (lookupEnv "QUICKCHECK_VERBOSE") & \case
              Nothing -> id
              Just "" -> id
@@ -53,6 +34,14 @@ properly = v . m . s . property
              Nothing -> id
              Just "" -> id
              Just size -> mapSize (\_ -> read size)
+       ns = unsafePerformIO (lookupEnv "QUICKCHECK_NO_SHRINKING") & \case
+             Nothing -> id
+             Just "" -> id
+             Just _ -> noShrinking
+       vs = unsafePerformIO (lookupEnv "QUICKCHECK_VERBOSE_SHRINKING") & \case
+             Nothing -> id
+             Just "" -> id
+             Just _ -> verboseShrinking
 
 be :: Bool -> String
 be True = "be"
