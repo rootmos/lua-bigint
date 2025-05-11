@@ -88,6 +88,8 @@ jobs:
 
     - name: Create distribution files
       run: ./mk-dist
+      env:
+        LUA: ../lua
 
     - name: Check the examples against the distribution files
       run: make -C examples RUNNER=../lua LUA_PATH="$PWD/dist/?.lua;$PWD/dist/?/init.lua"
