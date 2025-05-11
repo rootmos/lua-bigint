@@ -1,7 +1,9 @@
 RUNNER ?= ../run
 
-tests:
-	./bignat.calc | diff - bignat.output
-	$(RUNNER) bignat.lua | diff - bignat.output
+tests: bignat.test bigint.test
+
+%.test:
+	./$*.calc | diff - $*.output
+	$(RUNNER) $*.lua | diff - $*.output
 
 .PHONY: tests

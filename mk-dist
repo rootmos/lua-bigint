@@ -22,8 +22,17 @@ fi
 env --chdir="$SRC" "$TOOLS/bundle" "${OPTs[@]}" \
     -o "$OUTPUT_DIR/bignat.lua" "bignat.lua" \
     "arbbase.lua" \
+    "ascii.lua" \
+    "bits.lua" \
+    "build-info.lua" \
+    "internal.lua" \
+    "polynomial.lua"
+
+env --chdir="$SRC" "$TOOLS/bundle" "${OPTs[@]}" \
+    -o "$OUTPUT_DIR/bigint.lua" "bigint.lua" \
     "arbbase.lua" \
     "ascii.lua" \
+    "bignat.lua" \
     "bits.lua" \
     "build-info.lua" \
     "internal.lua" \

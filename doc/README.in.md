@@ -9,23 +9,23 @@ and [HsLua](https://hackage.haskell.org/package/hslua).
 
 ## Example
 ```lua
-@include "examples/bignat.lua"
+@include "examples/bigint.lua"
 ```
 ```
-@include "examples/bignat.output"
+@include "examples/bigint.output"
 ```
 
 ## Try it out
-Download [bignat.lua](https://github.com/rootmos/lua-bigint/releases/latest/download/bignat.lua)
+Download [bigint.lua](https://github.com/rootmos/lua-bigint/releases/latest/download/bigint.lua)
 from the [latest](https://github.com/rootmos/lua-bigint/releases/latest) release
 and chuck it into Lua:
 ```sh
-lua -l N=bignat -e 'print(N.build_info)'
+lua -l I=bigint -e 'print(I.build_info)'
 ```
 
 ### Or grab the latest pre-release using [`gh`](https://cli.github.com/manual/gh_release)
 ```sh
-gh release download "$(gh release list --json tagName --jq '.[0].tagName')" --pattern bignat.lua
+gh release download "$(gh release list --json tagName --jq '.[0].tagName')" --pattern bigint.lua
 ```
 
 ### Or build from the source
