@@ -80,6 +80,28 @@ relationalOperators = mempty { relationalOps = [ ("%a == %b", True, (==))
                                                ]
                              }
 
+data Case = RelevantAndDefined
+          | Irrelevant
+          | Partial String
+
+relevantIfFstNotLuaIntegerOtherwiseIrrelevant :: IsLuaNative a => (a, b) -> c
+relevantIfFstNotLuaIntegerOtherwiseIrrelevant = undefined
+
+relevantIfNotBothLuaIntegers :: (IsLuaNative a, IsLuaNative b) => (a, b) -> c
+relevantIfNotBothLuaIntegers= undefined
+
+data Operator a = forall b. MkOperator {
+  human :: String -- "addition"
+, ref :: a -> b
+
+, isPartial :: Bool -- indicator to not try and search for non-existent partial cases
+
+, modname :: String -- "N"
+, function :: Maybe (String, a -> Case) -- Just "add" always
+, method :: Maybe (String, a -> Case) -- Just "add" (relevantIfFstNotLuaIntegerOtherwiseIrrelevant) ~> "add(%a,%b)"
+, syntax :: Maybe (String, a -> Case) -- Just "+" (relevantIfNotBothLuaIntegers)
+}
+
 truncatingSubtraction :: IntegerLike a => String -> Spec a
 truncatingSubtraction modname = mempty { binaryOps = [ ("%a - %b", False, MkBin ref)
                                                      , (mk "d", False, MkBin ref)
