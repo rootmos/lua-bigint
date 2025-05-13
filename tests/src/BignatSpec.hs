@@ -154,10 +154,10 @@ spec = do
 
   I.integerLike @Operand runLua $ mempty
     <> I.relationalOperators
-    <> I.add "N.add" <> I.mul "N.mul"
-    <> I.truncatingSubtraction "N.sub"
-    <> I.divrem "N.divrem"
-    <> I.compare "N.compare"
+    <> I.add "N" <> I.mul "N"
+    <> I.truncatingSubtraction "N"
+    <> I.divrem "N"
+    <> I.compare "N"
 
   describe "integer conversion" $ do
     it "should convert from non-negative integers" $ properly $ \(NonNegative a) -> do

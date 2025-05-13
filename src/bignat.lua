@@ -174,12 +174,14 @@ function M.add(a, b)
     local a, b = binop(a, b)
     return addB(a, b, a.base)
 end
+__fn.add = M.add
 __mt.__add = M.add
 
 function M.mul(a, b)
     local a, b = binop(a, b)
     return mulB(a, b, a.base)
 end
+__fn.mul = M.mul
 __mt.__mul = M.mul
 
 function M.compare(a, b)
@@ -215,6 +217,7 @@ function M.compare(a, b)
     end
     return 0
 end
+__fn.compare = M.compare
 
 function __mt.__eq(a, b)
     if not M.is_bignat(a) or not M.is_bignat(b) then
@@ -367,16 +370,23 @@ function M.divrem(a, b)
 
     return M.make(q), r
 end
+__fn.divrem = M.divrem
 
-function __mt.__idiv(a, b)
+function M.div(a, b)
     local q, _ = M.divrem(a, b)
     return q
 end
+__mt.__idiv = M.div
+__fn.div = M.div
 
-function __mt.__mod(a, b)
+function M.rem(a, b)
     local _, r = M.divrem(a, b)
     return r
 end
+M.mod = M.rem
+__fn.rem = M.rem
+__fn.mod = M.rem
+__mt.__mod = M.rem
 
 return setmetatable(M, {
     __call = function(N, o)

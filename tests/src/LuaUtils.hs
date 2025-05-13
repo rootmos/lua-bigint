@@ -103,7 +103,7 @@ luaBits = unsafePerformIO $ HsLua.run @HsLua.Exception $ do
 handleStatus :: LuaError e => Status -> LuaE e ()
 handleStatus OK = return ()
 handleStatus ErrRun = throwErrorAsException
-handleStatus  _ = undefined
+handleStatus e = error $ show e
 
 dostring' :: LuaError e => String -> LuaE e ()
 dostring' s = dostring (BSUTF8.fromString s) >>= handleStatus

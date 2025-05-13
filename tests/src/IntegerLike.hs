@@ -6,10 +6,12 @@ module IntegerLike ( IsLuaNative (..)
                    , sub, truncatingSubtraction
                    , neg
                    , divrem
+                   , sign, IntegerLike.abs
+
                    , compare
 
-                   , unary
-                   , binary
+                   , unary, unary'
+                   , binary, binary'
 
                    , integerLike
                    ) where
@@ -79,57 +81,87 @@ relationalOperators = mempty { relationalOps = [ ("%a == %b", True, (==))
                              }
 
 truncatingSubtraction :: IntegerLike a => String -> Spec a
-truncatingSubtraction expr = mempty { binaryOps = [ ("%a - %b", False, MkBin ref)
-                                                  , (mk "d", False, MkBin ref)
-                                                  , (mk "t", False, MkBin trunc)
-                                                  , (printf "{%s(%%a, %%b)}" expr, False, MkBin $ \a b -> (ref a b, trunc a b))
-                                                  ]
-                                    }
-  where mk v = printf "(function() local d, t = %s(%%a, %%b); return %s end)()" expr (v :: String)
+truncatingSubtraction modname = mempty { binaryOps = [ ("%a - %b", False, MkBin ref)
+                                                     , (mk "d", False, MkBin ref)
+                                                     , (mk "t", False, MkBin trunc)
+                                             -- TODO , car, cdr "%:sub(%b)"
+                                                     , (printf "{%s.sub(%%a, %%b)}" modname, False, MkBin $ \a b -> (ref a b, trunc a b))
+                                                     ]
+                                       }
+  where mk v = printf "(function() local d, t = %s.sub(%%a, %%b); return %s end)()" modname (v :: String)
         ref a b = max 0 (a - b)
         trunc = (<)
 
 sub :: IntegerLike a => String -> Spec a
-sub expr = mempty { binaryOps = [ ("%a - %b", False, MkBin (-))
-                                , (printf "%s(%%a, %%b)" expr, False, MkBin (-))
-                                ]
-                                }
+sub modname = mempty { binaryOps = [ ("%a - %b", False, MkBin (-))
+                                   , ("%a:sub(%b)", False, MkBin (-))
+                                   , (modname ++ ".sub(%a, %b)", False, MkBin (-))
+                                   ]
+                     }
 
 compare :: IntegerLike a => String -> Spec a
-compare expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, False, MkBin ref) ] }
+compare modname = mempty { binaryOps = [ (modname ++ ".compare(%a, %b)", False, MkBin ref)
+                                       , ("%a:compare(%b)", False, MkBin ref)
+                                       ]
+                         }
   where ref a b = case P.compare a b of
                     LT -> -1 :: Int
                     EQ -> 0
                     GT -> 1
 
 divrem :: IntegerLike a => String -> Spec a
-divrem expr = mempty { partialOps = [ (mk "q", MkBin quot, isdef, divByZeroMsg)
-                                    , (mk "r", MkBin rem, isdef, divByZeroMsg)
-                                    , (printf "{%s(%%a, %%b)}" expr, MkBin quotRem, isdef, divByZeroMsg)
-                                    , ("%a // %b", MkBin quot, \(_, b) -> b /= 0, divByZeroMsg)
-                                    , ("%a % %b", MkBin rem, \(_, b) -> b /= 0, divByZeroMsg)
-                                    ]
-                     }
+divrem modname = mempty { partialOps = [ (mk "q", MkBin quot, isdef, divByZeroMsg)
+                                       , (mk "r", MkBin rem, isdef, divByZeroMsg)
+                                       , (printf "{%s.divrem(%%a, %%b)}" modname, MkBin quotRem, isdef, divByZeroMsg)
+                                       , ("{%a:divrem(%b)}", MkBin quotRem, isdef', divByZeroMsg)
+
+                                       , ("%a // %b", MkBin quot, isdef, divByZeroMsg)
+                                       , ("%a:div(%b)", MkBin quot, isdef', divByZeroMsg)
+                                       , (modname ++ ".div(%a, %b)", MkBin quot, isdef, divByZeroMsg)
+
+                                       , ("%a % %b", MkBin rem, isdef, divByZeroMsg)
+                                       , ("%a:rem(%b)", MkBin rem, isdef', divByZeroMsg)
+                                       , ("%a:mod(%b)", MkBin rem, isdef', divByZeroMsg)
+                                       , (modname ++ ".rem(%a, %b)", MkBin rem, isdef, divByZeroMsg)
+                                       , (modname ++ ".mod(%a, %b)", MkBin rem, isdef, divByZeroMsg)
+                                       ]
+                        }
   where isdef (_, b) = b /= 0
-        mk v = printf "(function() local q, r = %s(%%a, %%b); return %s end)()" expr (v :: String)
+        isdef' (a, b) = (not $ isLuaNative a) && isdef (a, b)
+        mk v = printf "(function() local q, r = %s.divrem(%%a, %%b); return %s end)()" modname (v :: String)
 
 add :: IntegerLike a => String -> Spec a
-add expr = mempty { binaryOps = [ ("%a + %b", True, MkBin (+))
-                                , (printf "%s(%%a, %%b)" expr, True, MkBin (+))
-                                ]
-                  }
+add modname = mempty { binaryOps = [ ("%a + %b", True, MkBin (+))
+                                   , (modname ++ ".add(%a, %b)", True, MkBin (+))
+                                   , ("%a:add(%b)", True, MkBin (+))
+                                   ]
+                     }
 
 mul :: IntegerLike a => String -> Spec a
-mul expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, True, MkBin (*))
-                                , ("%a * %b", True, MkBin (*))
-                                ]
-                  }
+mul modname = mempty { binaryOps = [ ("%a * %b", True, MkBin (*))
+                                   , (modname ++ ".mul(%a, %b)", True, MkBin (*))
+                                   , ("%a:mul(%b)", True, MkBin (*))
+                                   ]
+                     }
 
 neg :: IntegerLike a => String -> Spec a
-neg expr = mempty { unaryOps = [ (printf "%s(%%a)" expr, MkUn negate)
-                               , ("(-%a)", MkUn negate)
-                               ]
-                  }
+neg modname = mempty { unaryOps = [ ("-%a", MkUn negate)
+                                  , (modname ++ ".neg(%a)", MkUn negate)
+                                  , ("%a:neg()", MkUn negate)
+                                  ]
+                     }
+
+sign :: IntegerLike a => String -> Spec a
+sign modname = mempty { unaryOps = [ (modname ++ ".sign(%a)", MkUn signum)
+                                   , ("%a:sign()", MkUn negate)
+                                   ]
+                      }
+
+abs :: IntegerLike a => String -> Spec a
+abs modname = mempty { unaryOps = [ (modname ++ ".%s(%%a)", MkUn Prelude.abs)
+                                  , ("%a:abs()", MkUn Prelude.abs)
+                                  ]
+                     }
 
 binaryExpr :: String -> String -> String -> String
 binaryExpr template a b = T.unpack $ T.replace "%b" (T.pack b) $ T.replace "%a" (T.pack a) (T.pack template)
