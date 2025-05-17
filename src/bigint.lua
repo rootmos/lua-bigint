@@ -201,6 +201,41 @@ end
 __fn.rem = M.rem
 __mt.__mod = M.rem
 
+function M.divmod(a, b)
+    local a, b = binop(a, b)
+    local base <const> = a.base
+
+    if a == 0 then
+        return M{base=base}, b
+    end
+
+    local q, r = M.quotrem(a, b)
+
+    local s, t = a >= 0, b > 0
+
+    if s and t then
+        return q, r
+    elseif not s and not t then
+        return q, r
+    else
+        local r = r.abs
+        return make(q.abs, r.sign), r
+    end
+end
+__fn.divmod = M.divmod
+
+function M.div(a, b)
+    local q, _ = M.divmod(a, b)
+    return q
+end
+__fn.div = M.div
+
+function M.mod(a, b)
+    local _, r = M.divmod(a, b)
+    return r
+end
+__fn.mod = M.rem
+
 function M.compare(a, b)
     local a, b = binop(a, b)
     if a.sign == b.sign then

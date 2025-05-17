@@ -230,15 +230,14 @@ end
 __fn.compare = M.compare
 
 function M.eq(a, b)
-    if not M.is_bignat(a) or not M.is_bignat(b) then
-        return false
-    end
-
     if rawequal(a, b) then
         return true
     end
 
-    local a, b = binop(a, b)
+    if not M.is_bignat(a) or not M.is_bignat(b) then
+        a, b = binop(a, b)
+    end
+
     return M.compare(a, b) == 0
 end
 __fn.eq = M.eq
@@ -434,6 +433,26 @@ function M.rem(a, b)
 end
 __fn.rem = M.rem
 __mt.__mod = M.rem
+
+function M.divmod(a, b)
+    local a, b = binop(a, b)
+    local base <const> = a.base
+
+    return M.quotrem(a, b)
+end
+__fn.divmod = M.divmod
+
+function M.div(a, b)
+    local q, _ = M.divmod(a, b)
+    return q
+end
+__fn.div = M.div
+
+function M.mod(a, b)
+    local _, r = M.divmod(a, b)
+    return r
+end
+__fn.mod = M.rem
 
 return setmetatable(M, {
     __call = function(N, o)

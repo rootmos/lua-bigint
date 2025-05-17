@@ -70,6 +70,9 @@ instance Integral Operand where
   quotRem a b =
     let (q, r) = operandToInteger a `quotRem` operandToInteger b in
     (fromInteger q, fromInteger r)
+  divMod a b =
+    let (q, r) = operandToInteger a `divMod` operandToInteger b in
+    (fromInteger q, fromInteger r)
 
 instance Peekable Operand where
   safepeek idx = retrieving "operand" $ do
@@ -163,7 +166,7 @@ spec = do
     I2.MkSpec { binary = [ I2.add "N", I2.sub "N"
                          , I2.mul "N"
                          , I2.quot "N", I2.rem "N", I2.quotrem "N"
-                         -- TODO, I2.div "N", I2.mod "N", I2.divmod "N"
+                         , I2.div "N", I2.mod "N", I2.divmod "N"
                          , I2.compare "N"
                          ]
                       ++ I2.relationalOperators "N"

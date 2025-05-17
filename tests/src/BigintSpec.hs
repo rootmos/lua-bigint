@@ -71,6 +71,9 @@ instance Integral Operand where
   quotRem a b =
     let (q, r) = operandToInteger a `quotRem` operandToInteger b in
     (fromInteger q, fromInteger r)
+  divMod a b =
+    let (q, r) = operandToInteger a `divMod` operandToInteger b in
+    (fromInteger q, fromInteger r)
 
 instance Pushable Operand where
   push (OpI Nothing i) = dostring' $ printf "return I.fromstring('%s')" (show i)
@@ -170,7 +173,7 @@ spec = do
     I2.MkSpec { binary = [ I2.add "I", I2.sub "I"
                          , I2.mul "I"
                          , I2.quot "I", I2.rem "I", I2.quotrem "I"
-                         -- TODO, I2.div "I", I2.mod "I", I2.divmod "I"
+                         , I2.div "I", I2.mod "I", I2.divmod "I"
                          , I2.compare "I"
                          ]
                       ++ I2.relationalOperators "I"
