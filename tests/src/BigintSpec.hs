@@ -154,6 +154,7 @@ instance Arbitrary Operand where
     b' <- filter (>= 2) $ shrink b
     return $ OpO b' o' i'
 
+-- TODO should this really be necessary?
 instance I2.IntegerLike Operand where
 
 spec :: Spec
@@ -169,6 +170,7 @@ spec = do
     I2.MkSpec { binary = [ I2.add "I", I2.sub "I"
                          , I2.mul "I"
                          , I2.quot "I", I2.rem "I", I2.quotrem "I"
+                         -- TODO, I2.div "I", I2.mod "I", I2.divmod "I"
                          , I2.compare "I"
                          ]
                       ++ I2.relationalOperators "I"

@@ -14,8 +14,8 @@ export LUA_BITS=64
 gogo() {
     #make tests
     #cd tests && make build
-    #cd tests && stack run specs -- -m '/Bignat'
-    cd tests && stack run specs -- -m '/Bigint'
+    cd tests && stack run specs -- -m '/Bignat'
+    #cd tests && stack run specs -- -m '/Bigint'
     #cd tests && stack run specs -- --match "/Bigint/greater than or equal/a:ge(b)/" --seed 799366864
     #cd tests && stack run specs -- -m '/LuaUtils'
     #./run examples/bignat.lua

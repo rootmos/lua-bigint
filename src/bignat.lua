@@ -142,6 +142,7 @@ function __fn:tointeger()
     end
     return sum
 end
+M.tointeger = __fn.tointeger
 
 local function binop(a, b)
     local at, bt = M.is_bignat(a), M.is_bignat(b)
@@ -184,6 +185,15 @@ end
 __fn.mul = M.mul
 __mt.__mul = M.mul
 
+function M.neg(a)
+    if not M.is_bignat(a) then
+        error("bignat unary operation called with unsuitable value")
+    end
+    return M.make{base=a.base}
+end
+__fn.neg = M.neg
+__mt.__unm = M.neg
+
 function M.compare(a, b)
     local a, b = binop(a, b)
 
@@ -219,7 +229,7 @@ function M.compare(a, b)
 end
 __fn.compare = M.compare
 
-function __mt.__eq(a, b)
+function M.eq(a, b)
     if not M.is_bignat(a) or not M.is_bignat(b) then
         return false
     end
@@ -231,8 +241,16 @@ function __mt.__eq(a, b)
     local a, b = binop(a, b)
     return M.compare(a, b) == 0
 end
+__fn.eq = M.eq
+__mt.__eq = M.eq
 
-function __mt.__lt(a, b)
+function M.neq(a, b)
+    return not M.eq(a, b)
+end
+__fn.neq = M.neq
+
+
+function M.lt(a, b)
     if rawequal(a, b) then
         return false
     end
@@ -240,8 +258,20 @@ function __mt.__lt(a, b)
     local a, b = binop(a, b)
     return M.compare(a, b) < 0
 end
+__mt.__lt = M.lt
+__fn.lt = M.lt
 
-function __mt.__gt(a, b)
+function M.le(a, b)
+    if rawequal(a, b) then
+        return true
+    end
+
+    local a, b = binop(a, b)
+    return M.compare(a, b) <= 0
+end
+__fn.le = M.le
+
+function M.gt(a, b)
     if rawequal(a, b) then
         return false
     end
@@ -249,8 +279,20 @@ function __mt.__gt(a, b)
     local a, b = binop(a, b)
     return M.compare(a, b) > 0
 end
+__mt.__gt = M.gt
+__fn.gt = M.gt
 
-function M.sub(a, b)
+function M.ge(a, b)
+    if rawequal(a, b) then
+        return true
+    end
+
+    local a, b = binop(a, b)
+    return M.compare(a, b) >= 0
+end
+__fn.ge = M.ge
+
+function M.tsub(a, b)
     if rawequal(a, b) then
         return M.make{0}, false
     end
@@ -308,10 +350,17 @@ function M.sub(a, b)
 
     return M.make(a), false
 end
+__fn.tsub = M.tsub
+
+function M.sub(a, b)
+    local d, _ = M.tsub(a, b)
+    return d
+end
+__fn.sub = M.sub
 __mt.__sub = M.sub
 
 -- https://en.wikipedia.org/wiki/Long_division#Algorithm_for_arbitrary_base
-function M.divrem(a, b)
+function M.quotrem(a, b)
     local a, b = binop(a, b)
 
     local base <const> = a.base
@@ -370,22 +419,20 @@ function M.divrem(a, b)
 
     return M.make(q), r
 end
-__fn.divrem = M.divrem
+__fn.quotrem = M.quotrem
 
-function M.div(a, b)
-    local q, _ = M.divrem(a, b)
+function M.quot(a, b)
+    local q, _ = M.quotrem(a, b)
     return q
 end
-__mt.__idiv = M.div
-__fn.div = M.div
+__fn.quot = M.quot
+__mt.__idiv = M.quot
 
 function M.rem(a, b)
-    local _, r = M.divrem(a, b)
+    local _, r = M.quotrem(a, b)
     return r
 end
-M.mod = M.rem
 __fn.rem = M.rem
-__fn.mod = M.rem
 __mt.__mod = M.rem
 
 return setmetatable(M, {
