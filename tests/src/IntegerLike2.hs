@@ -46,9 +46,10 @@ relevantIfNotBothLuaIntegers (a, b) =
     (True, True) -> Irrelevant
     _ -> Relevant
 
-data Operator a = forall b. (Show b, Eq b, Peekable b)
+data Operator a = forall b. (Show b, Eq b, Peekable b, Pushable b)
   => MkOperator { human :: String
                 , ref :: a -> b
+                , isDual :: Bool -- indicator to test the dual of the reference implementation
                 , isPartial :: Bool -- indicator to not try and search for non-existent partial cases
                 , syntax :: Maybe (String, a -> Case)
                 , function :: Maybe (String, a -> Case)
@@ -63,6 +64,7 @@ add :: IntegerLike a => String -> Operator (a, a)
 add modname =
   MkOperator { human = "addition"
              , ref = uncurry (+)
+             , isDual = False
              , isPartial = False
              , syntax = Just ("%a + %b", relevantIfNotBothLuaIntegers)
              , function = Just (modname ++ ".add(%a,%b)", relevantIfNotBothLuaIntegers)
@@ -73,18 +75,32 @@ tostring :: IntegerLike a => String -> Operator a
 tostring modname =
   MkOperator { human = "convert to decimal representation"
              , ref = show . toInteger
+             , isDual = False
              , isPartial = False
              , syntax = Just ("tostring(%a)", always)
              , function = Just (modname ++ ".tostring(%a)", relevantIfNotNative)
              , method =  Just ("%a:tostring()", relevantIfNotNative)
              }
 
+fromstring :: IntegerLike a => String -> Operator a
+fromstring modname =
+  MkOperator { human = "convert from decimal representation"
+             , ref = show . toInteger
+             , isDual = True
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".fromstring(%b)", always)
+             , method =  Nothing
+             }
+
 mkProp :: (Show c, Arbitrary c)
        => (c -> Case) -> (c -> IO ()) -> Test.QuickCheck.Property
 mkProp study = flip forAllShrink shrink $ suchThat arbitrary ((== Relevant) . study)
 
-binaryExpr :: String -> String -> String -> String
-binaryExpr template a b = T.unpack $ T.replace "%b" (T.pack b) $ T.replace "%a" (T.pack a) (T.pack template)
+mkExpr :: String -> [ (String, String) ] -> String
+mkExpr template rs = T.unpack $ r rs $ T.pack template
+  where r [] s = s
+        r ((from, to):rs) s = r rs $ T.replace (T.pack from) (T.pack to) s
 
 integerLike :: forall a. IntegerLike a
             => RunLuaRun
@@ -94,7 +110,7 @@ integerLike runLua spec = do
   flip mapM_ (binary spec) $ \MkOperator { human, ref, syntax, function, method } -> do
     describe human $ do
       forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
-        let expr' = binaryExpr expr "a" "b"
+        let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
         describe expr' $ do
           it "should adhere to the reference implementation" $ properly $ mkProp study $ \(a, b) -> do
             s <- runLua $ do
@@ -103,13 +119,23 @@ integerLike runLua spec = do
               return' expr'
             s `shouldBe` ref (a, b)
 
-  flip mapM_ (unary spec) $ \MkOperator { human, ref, syntax, function, method } -> do
-    describe human $ do
-      forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
-        let expr' = binaryExpr expr "a" "b"
-        describe expr' $ do
-          it "should adhere to the reference implementation" $ properly $ mkProp study $ \a -> do
-            s <- runLua $ do
-              "a" `bind` a
-              return' expr'
-            s `shouldBe` ref a
+  flip mapM_ (unary spec) $ \MkOperator { human, ref, isDual, syntax, function, method } -> do
+    describe human $ case isDual of
+      False -> do
+        forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+          let expr' = mkExpr expr [ ("%a", "a") ]
+          describe expr' $ do
+            it "should adhere to the reference implementation" $ properly $ mkProp study $ \a -> do
+              s <- runLua $ do
+                "a" `bind` a
+                return' expr'
+              s `shouldBe` ref a
+      True -> do
+        forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+          let expr' = mkExpr expr [ ("%b", "b") ]
+          describe expr' $ do
+            it "should adhere to the reference implementation" $ properly $ mkProp study $ \a -> do
+              s <- runLua $ do
+                "b" `bind` (ref a)
+                return' expr'
+              s `shouldBe` a
