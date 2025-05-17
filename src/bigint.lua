@@ -63,6 +63,9 @@ end
 M.tostring = __fn.tostring
 __mt.__tostring = __fn.tostring
 
+local maxint <const> = Bignat.maxint:tointeger()
+local minint <const> = -maxint-1
+
 function M.frominteger(n, base)
     assert(math.type(n) == "integer")
 
@@ -74,6 +77,9 @@ function M.frominteger(n, base)
     local sign = 0
     if n < 0 then
         sign = -1
+        if n == minint then
+            return make(Bignat.frominteger(maxint), sign) - 1
+        end
         n = -n
     else
         sign = 1
