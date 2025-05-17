@@ -155,6 +155,7 @@ function M.mul(a, b)
     local a, b = binop(a, b)
     return make(a.abs * b.abs, a.sign * b.sign)
 end
+__fn.mul = M.mul
 __mt.__mul = M.mul
 
 function M.neg(a)

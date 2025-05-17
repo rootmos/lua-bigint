@@ -76,6 +76,17 @@ add modname =
              , method =  Just ("%a:add(%b)", relevantIfFstNotNative)
              }
 
+mul :: IntegerLike a => String -> Operator (a, a)
+mul modname =
+  MkOperator { human = "multiplication"
+             , ref = uncurry (*)
+             , isDual = False
+             , isPartial = False
+             , syntax = Just ("%a * %b", relevantIfNotBothLuaIntegers)
+             , function = Just (modname ++ ".mul(%a,%b)", relevantIfNotBothLuaIntegers)
+             , method =  Just ("%a:mul(%b)", relevantIfFstNotNative)
+             }
+
 tostring :: IntegerLike a => String -> Operator a
 tostring modname =
   MkOperator { human = "convert to decimal representation"
@@ -160,7 +171,7 @@ integerLike runLua spec = do
           s `shouldBe` ref (a, b)
 
         let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
-        it (expr' ++ " (when a == b)") $ properly $ mkProp (study . \a -> (a, a)) $ \a -> do
+        it (expr' ++ " (when a == b by value)") $ properly $ mkProp (study . \a -> (a, a)) $ \a -> do
           s <- runLua $ do
             "a" `bind` a
             "b" `bind` a

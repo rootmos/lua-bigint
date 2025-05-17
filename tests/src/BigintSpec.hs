@@ -165,7 +165,7 @@ spec = do
     b <- runLua $ push a >> peek'
     b `shouldBe` a
 
-  I2.integerLike @Operand runLua $ I2.MkSpec { binary = [ I2.add "I" ]
+  I2.integerLike @Operand runLua $ I2.MkSpec { binary = [ I2.add "I", I2.mul "I" ]
                                              , unary = [ I2.tostring "I", I2.fromstring "I"
                                                        , I2.tointeger "I", I2.frominteger "I"
                                                        ]
