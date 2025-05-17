@@ -114,6 +114,28 @@ compare modname =
              , method =  Just ("%a:compare(%b)", relevantIfFstNotNative)
              }
 
+eq :: IntegerLike a => String -> Operator (a, a)
+eq modname =
+  MkOperator { human = "equality"
+             , ref = uncurry (==)
+             , isDual = False
+             , isPartial = False
+             , syntax = Just ("%a == %b", relevantIfNotBothLuaIntegers)
+             , function = Just (modname ++ ".eq(%a,%b)", relevantIfNotBothLuaIntegers)
+             , method =  Just ("%a:eq(%b)", relevantIfFstNotNative)
+             }
+
+neq :: IntegerLike a => String -> Operator (a, a)
+neq modname =
+  MkOperator { human = "not equals"
+             , ref = uncurry (/=)
+             , isDual = False
+             , isPartial = False
+             , syntax = Just ("%a ~= %b", relevantIfNotBothLuaIntegers)
+             , function = Just (modname ++ ".neq(%a,%b)", relevantIfNotBothLuaIntegers)
+             , method =  Just ("%a:neq(%b)", relevantIfFstNotNative)
+             }
+
 tostring :: IntegerLike a => String -> Operator a
 tostring modname =
   MkOperator { human = "convert to decimal representation"

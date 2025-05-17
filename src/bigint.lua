@@ -219,7 +219,7 @@ function M.compare(a, b)
 end
 __fn.compare = M.compare
 
-function __mt.__eq(a, b)
+function M.eq(a, b)
     if not M.is_bigint(a) or not M.is_bigint(b) then
         return false
     end
@@ -231,6 +231,13 @@ function __mt.__eq(a, b)
     local a, b = binop(a, b)
     return M.compare(a, b) == 0
 end
+__fn.eq = M.eq
+__mt.__eq = M.eq
+
+function M.neq(a, b)
+    return not M.eq(a, b)
+end
+__fn.neq = M.neq
 
 function __mt.__lt(a, b)
     if rawequal(a, b) then

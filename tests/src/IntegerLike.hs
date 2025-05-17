@@ -106,7 +106,6 @@ compare modname = mempty { binaryOps = [ (modname ++ ".compare(%a, %b)", False, 
                     EQ -> 0
                     GT -> 1
 
-
 divrem :: IntegerLike a => String -> Spec a
 divrem modname = mempty { partialOps = [ (mk "q", MkBin quot, isdef, divByZeroMsg)
                                        , (mk "r", MkBin rem, isdef, divByZeroMsg)
