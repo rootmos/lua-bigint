@@ -46,6 +46,7 @@ relevantIfNotBothLuaIntegers (a, b) =
     (True, True) -> Irrelevant
     _ -> Relevant
 
+ -- TODO split into MkBin, MkUn, MkDual so b can be Peekable and Pushable accordingly
 data Operator a = forall b. (Show b, Eq b, Peekable b, Pushable b)
   => MkOperator { human :: String
                 , ref :: a -> b
@@ -91,6 +92,31 @@ fromstring modname =
              , syntax = Nothing
              , function = Just (modname ++ ".fromstring(%b)", always)
              , method =  Nothing
+             }
+
+newtype SafeToInteger = MkSafeToInteger (Maybe Integer) deriving ( Show, Eq )
+
+instance Peekable SafeToInteger where
+  safepeek idx = cleanup $ liftLua $ isnil idx >>= \case
+    True -> return $ MkSafeToInteger Nothing
+    False -> MkSafeToInteger . Just <$> peek idx
+
+instance Pushable SafeToInteger where
+  push = undefined
+
+safeToInteger :: Integral a => a -> SafeToInteger
+safeToInteger a = MkSafeToInteger $
+  if abs a <= maxint then Just (toInteger a) else Nothing
+
+tointeger :: IntegerLike a => String -> Operator a
+tointeger modname =
+  MkOperator { human = "convert to decimal representation"
+             , ref = safeToInteger
+             , isDual = False
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".tointeger(%a)", relevantIfNotNative)
+             , method =  Just ("%a:tointeger()", relevantIfNotNative)
              }
 
 mkProp :: (Show c, Arbitrary c)

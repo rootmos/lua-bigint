@@ -94,6 +94,7 @@ function __fn:tointeger()
         return i * self.sign
     end
 end
+M.tointeger = __fn.tointeger
 
 local function binop(a, b)
     local at, bt = M.is_bigint(a), M.is_bigint(b)
