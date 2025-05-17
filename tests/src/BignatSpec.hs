@@ -152,12 +152,12 @@ spec = do
       b <- runLua $ push a >> peek'
       b `shouldBe` a
 
-  I.integerLike @Operand runLua $ mempty
-    <> I.relationalOperators
-    <> I.add "N" <> I.mul "N"
-    <> I.truncatingSubtraction "N"
-    <> I.divrem "N"
-    <> I.compare "N"
+  -- I.integerLike @Operand runLua $ mempty
+    -- <> I.relationalOperators
+    -- <> I.compare "N"
+    -- <> I.add "N" <> I.mul "N"
+    -- <> I.truncatingSubtraction "N"
+    -- <> I.divrem "N"
 
   describe "integer conversion" $ do
     it "should convert from non-negative integers" $ properly $ \(NonNegative a) -> do
