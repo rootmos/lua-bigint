@@ -160,6 +160,23 @@ integerLike runLua spec = do
               return' expr'
             s `shouldBe` ref (a, b)
 
+        let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
+        describe (expr' ++ " (when a == b)") $ do
+          it "should adhere to the reference implementation" $ properly $ mkProp (study . \a -> (a, a)) $ \a -> do
+            s <- runLua $ do
+              "a" `bind` a
+              "b" `bind` a
+              return' expr'
+            s `shouldBe` ref (a, a)
+
+        let expr' = mkExpr expr [ ("%a", "a"), ("%b", "a") ]
+        describe expr' $ do
+          it "should adhere to the reference implementation" $ properly $ mkProp (study . \a -> (a, a)) $ \a -> do
+            s <- runLua $ do
+              "a" `bind` a
+              return' expr'
+            s `shouldBe` ref (a, a)
+
   flip mapM_ (unary spec) $ \MkOperator { human, ref, isDual, syntax, function, method } -> do
     describe human $ case isDual of
       False -> do

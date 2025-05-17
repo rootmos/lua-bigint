@@ -165,18 +165,6 @@ spec = do
     b <- runLua $ push a >> peek'
     b `shouldBe` a
 
-  -- describe "representations" $ do
-  --   describe "decimal" $ do
-  --     it "should render decimal strings" $ properly $ I.unary $ \(a :: Operand) -> do
-  --       s <- runLua $ do
-  --         "a" `bind` a
-  --         return' "a:tostring()"
-  --       s `shouldBe` (show $ toInteger a)
-
-  --     it "should parse decimal strings" $ properly $ \(a :: Operand) -> do
-  --       a' <- runLua $ return' $ printf "I.fromstring('%s')" (show $ toInteger a)
-  --       a' `shouldBe` a
-
   I2.integerLike @Operand runLua $ I2.MkSpec { binary = [ I2.add "I" ]
                                              , unary = [ I2.tostring "I", I2.fromstring "I"
                                                        , I2.tointeger "I", I2.frominteger "I"
@@ -185,19 +173,3 @@ spec = do
   --   <> I.relationalOperators <> I.compare "I.compare"
   --   <> I.add "I.add" <> I.sub "I.sub" <> I.neg "I.neg"
   --   <> I.mul "I.mul" <> I.divrem "I.divrem"
-
-  -- describe "integer conversion" $ do
-  --   it "should convert from integers" $ properly $ \a -> do
-  --     a' <- runLua $ do
-  --       "a" `bind` a
-  --       return' "I.frominteger(a)"
-  --     a' `shouldBe` OpL a
-
-  --   it "should safely try converting to native integers" $ properly $ I.unary $ \(a :: Operand) -> do
-  --     a' <- runLua $ do
-  --       "a" `bind` a
-  --       dostring' "return a:tointeger()"
-  --       isnil top >>= \case
-  --         True -> return Nothing
-  --         False -> Just <$> peek' @Integer
-  --     a' `shouldBe` (if abs a <= maxint then Just (toInteger a) else Nothing)
