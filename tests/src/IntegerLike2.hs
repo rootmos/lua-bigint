@@ -152,48 +152,43 @@ integerLike runLua spec = do
     describe human $ do
       forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
         let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
-        describe expr' $ do
-          it "should adhere to the reference implementation" $ properly $ mkProp study $ \(a, b) -> do
-            s <- runLua $ do
-              "a" `bind` a
-              "b" `bind` b
-              return' expr'
-            s `shouldBe` ref (a, b)
+        it expr' $ properly $ mkProp study $ \(a, b) -> do
+          s <- runLua $ do
+            "a" `bind` a
+            "b" `bind` b
+            return' expr'
+          s `shouldBe` ref (a, b)
 
         let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
-        describe (expr' ++ " (when a == b)") $ do
-          it "should adhere to the reference implementation" $ properly $ mkProp (study . \a -> (a, a)) $ \a -> do
-            s <- runLua $ do
-              "a" `bind` a
-              "b" `bind` a
-              return' expr'
-            s `shouldBe` ref (a, a)
+        it (expr' ++ " (when a == b)") $ properly $ mkProp (study . \a -> (a, a)) $ \a -> do
+          s <- runLua $ do
+            "a" `bind` a
+            "b" `bind` a
+            return' expr'
+          s `shouldBe` ref (a, a)
 
         let expr' = mkExpr expr [ ("%a", "a"), ("%b", "a") ]
-        describe expr' $ do
-          it "should adhere to the reference implementation" $ properly $ mkProp (study . \a -> (a, a)) $ \a -> do
-            s <- runLua $ do
-              "a" `bind` a
-              return' expr'
-            s `shouldBe` ref (a, a)
+        it expr' $ properly $ mkProp (study . \a -> (a, a)) $ \a -> do
+          s <- runLua $ do
+            "a" `bind` a
+            return' expr'
+          s `shouldBe` ref (a, a)
 
   flip mapM_ (unary spec) $ \MkOperator { human, ref, isDual, syntax, function, method } -> do
     describe human $ case isDual of
       False -> do
         forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
           let expr' = mkExpr expr [ ("%a", "a") ]
-          describe expr' $ do
-            it "should adhere to the reference implementation" $ properly $ mkProp study $ \a -> do
-              s <- runLua $ do
-                "a" `bind` a
-                return' expr'
-              s `shouldBe` ref a
+          it expr' $ properly $ mkProp study $ \a -> do
+            s <- runLua $ do
+              "a" `bind` a
+              return' expr'
+            s `shouldBe` ref a
       True -> do
         forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
           let expr' = mkExpr expr [ ("%b", "b") ]
-          describe expr' $ do
-            it "should adhere to the reference implementation" $ properly $ mkProp study $ \a -> do
-              s <- runLua $ do
-                "b" `bind` (ref a)
-                return' expr'
-              s `shouldBe` a
+          it expr' $ properly $ mkProp study $ \a -> do
+            s <- runLua $ do
+              "b" `bind` (ref a)
+              return' expr'
+            s `shouldBe` a
