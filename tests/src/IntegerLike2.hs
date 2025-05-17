@@ -126,7 +126,7 @@ mul modname =
 
 div :: IntegerLike a => String -> Operator (a, a)
 div modname =
-  MkOperator { human = "integer division"
+  MkOperator { human = "floor division"
              , ref = uncurry quot
              , isDual = False
              , isPartial = True
@@ -144,6 +144,17 @@ mod modname =
              , syntax = Just ("%a % %b", relevantIfNotBothLuaIntegers <> divByZero)
              , function = Just (modname ++ ".mod(%a,%b)", relevantIfNotBothLuaIntegers <> divByZero)
              , method =  Just ("%a:mod(%b)", relevantIfFstNotNative <> divByZero)
+             }
+
+divrem :: IntegerLike a => String -> Operator (a, a)
+divrem modname =
+  MkOperator { human = "divrem function"
+             , ref = uncurry quotRem
+             , isDual = False
+             , isPartial = True
+             , syntax = Nothing
+             , function = Just (printf "{%s.divrem(%%a,%%b)}" modname, relevantIfNotBothLuaIntegers <> divByZero)
+             , method =  Just ("{%a:divrem(%b)}", relevantIfFstNotNative <> divByZero)
              }
 
 compare :: IntegerLike a => String -> Operator (a, a)

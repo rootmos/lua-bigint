@@ -185,6 +185,7 @@ function M.divrem(a, b)
         return make(q, -1), make(r, a.sign)
     end
 end
+__fn.divrem = M.divrem
 
 function M.div(a, b)
     local q, _ = M.divrem(a, b)
