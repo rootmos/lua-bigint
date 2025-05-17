@@ -90,6 +90,17 @@ sub modname =
              , method =  Just ("%a:sub(%b)", relevantIfFstNotNative)
              }
 
+neg :: IntegerLike a => String -> Operator a
+neg modname =
+  MkOperator { human = "negation"
+             , ref = negate
+             , isDual = False
+             , isPartial = False
+             , syntax = Just ("-%a", relevantIfNotNative)
+             , function = Just (modname ++ ".neg(%a)", relevantIfNotNative)
+             , method =  Just ("%a:neg()", relevantIfNotNative)
+             }
+
 mul :: IntegerLike a => String -> Operator (a, a)
 mul modname =
   MkOperator { human = "multiplication"

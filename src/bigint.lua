@@ -171,6 +171,7 @@ function M.neg(a)
     end
     return make(a.abs, -a.sign)
 end
+__fn.neg = M.neg
 __mt.__unm = M.neg
 
 function M.divrem(a, b)
