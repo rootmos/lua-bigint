@@ -5,6 +5,7 @@ import Prelude
 import Control.Monad ( forM_ )
 import Data.Maybe ( catMaybes )
 import qualified Data.Text as T
+import Text.Printf
 
 --import Data.ByteString.UTF8 as BSUTF8
 --import qualified Data.ByteString as BS
@@ -114,27 +115,23 @@ compare modname =
              , method =  Just ("%a:compare(%b)", relevantIfFstNotNative)
              }
 
-eq :: IntegerLike a => String -> Operator (a, a)
-eq modname =
-  MkOperator { human = "equality"
-             , ref = uncurry (==)
-             , isDual = False
-             , isPartial = False
-             , syntax = Just ("%a == %b", relevantIfNotBothLuaIntegers)
-             , function = Just (modname ++ ".eq(%a,%b)", relevantIfNotBothLuaIntegers)
-             , method =  Just ("%a:eq(%b)", relevantIfFstNotNative)
-             }
-
-neq :: IntegerLike a => String -> Operator (a, a)
-neq modname =
-  MkOperator { human = "not equals"
-             , ref = uncurry (/=)
-             , isDual = False
-             , isPartial = False
-             , syntax = Just ("%a ~= %b", relevantIfNotBothLuaIntegers)
-             , function = Just (modname ++ ".neq(%a,%b)", relevantIfNotBothLuaIntegers)
-             , method =  Just ("%a:neq(%b)", relevantIfFstNotNative)
-             }
+relationalOperators :: IntegerLike a => String -> [ Operator (a, a) ]
+relationalOperators modname = fmap mk [ ("equality", (==), "==", "eq")
+                                      , ("not equal", (/=), "~=", "neq")
+                                      , ("less than", (<), "<", "lt")
+                                      , ("less than or equal", (<=), "<=", "le")
+                                      , ("greater than", (>), ">", "gt")
+                                      , ("greater than or equal", (>=), ">=", "ge")
+                                      ]
+  where mk (human, ref, syntax :: String, method :: String) =
+               MkOperator { human = human
+                          , ref = uncurry ref
+                          , isDual = False
+                          , isPartial = False
+                          , syntax = Just (printf "%%a %s %%b" syntax, relevantIfNotBothLuaIntegers)
+                          , function = Just (printf "%s.%s(%%a, %%b)" modname method, relevantIfNotBothLuaIntegers)
+                          , method =  Just (printf "%%a:%s(%%b)" method, relevantIfFstNotNative)
+                          }
 
 tostring :: IntegerLike a => String -> Operator a
 tostring modname =

@@ -239,7 +239,7 @@ function M.neq(a, b)
 end
 __fn.neq = M.neq
 
-function __mt.__lt(a, b)
+function M.lt(a, b)
     if rawequal(a, b) then
         return false
     end
@@ -247,8 +247,15 @@ function __mt.__lt(a, b)
     local a, b = binop(a, b)
     return M.compare(a, b) < 0
 end
+__mt.__lt = M.lt
+__fn.lt = M.lt
 
-function __mt.__gt(a, b)
+function M.le(a, b)
+    return M.lt(a, b) or M.eq(a, b)
+end
+__fn.le = M.le
+
+function M.gt(a, b)
     if rawequal(a, b) then
         return false
     end
@@ -256,6 +263,13 @@ function __mt.__gt(a, b)
     local a, b = binop(a, b)
     return M.compare(a, b) > 0
 end
+__mt.__gt = M.gt
+__fn.gt = M.gt
+
+function M.ge(a, b)
+    return M.gt(a, b) or M.eq(a, b)
+end
+__fn.ge = M.ge
 
 return setmetatable(M, {
     __call = function(N, o)
