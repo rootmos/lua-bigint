@@ -178,7 +178,9 @@ spec = do
   --       a' `shouldBe` a
 
   I2.integerLike @Operand runLua $ I2.MkSpec { binary = [ I2.add "I" ]
-                                             , unary = [ I2.tostring "I", I2.fromstring "I", I2.tointeger "I" ]
+                                             , unary = [ I2.tostring "I", I2.fromstring "I"
+                                                       , I2.tointeger "I", I2.frominteger "I"
+                                                       ]
                                              }
   --   <> I.relationalOperators <> I.compare "I.compare"
   --   <> I.add "I.add" <> I.sub "I.sub" <> I.neg "I.neg"

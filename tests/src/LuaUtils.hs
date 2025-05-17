@@ -122,9 +122,12 @@ maxint :: Integral a => a
 maxint = case luaBits of { Lua32 -> 31 :: Integer ; Lua64 -> 63 } & \b -> 2^b - 1
 
 instance Arbitrary LuaInt where
-  arbitrary = do
-    i <- chooseInt (-maxint + 1, maxint - 1)
-    return (LuaInt . HsLua.Integer . fromIntegral $ i)
+  arbitrary = fmap (LuaInt . HsLua.Integer . fromIntegral) $
+    frequency [ (10, chooseInt (-0x10, 0x10))
+              , (20, chooseInt (-0x100, 0x100))
+              , (20, chooseInt (-0x1000, 0x1000))
+              , (50, chooseInt (-maxint + 1, maxint - 1))
+              ]
 
   shrink li = LuaInt . fromIntegral <$> shrink (luaIntToInteger li)
 

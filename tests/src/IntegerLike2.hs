@@ -36,6 +36,10 @@ relevantIfNotNative :: IsLuaNative a => a -> Case
 relevantIfNotNative a | isLuaNative a = Irrelevant
 relevantIfNotNative _ | otherwise = Relevant
 
+relevantIfNative :: IsLuaNative a => a -> Case
+relevantIfNative a | isLuaNative a = Relevant
+relevantIfNative _ | otherwise = Irrelevant
+
 relevantIfFstNotNative :: IsLuaNative a => (a, b) -> Case
 relevantIfFstNotNative (a, _) | isLuaNative a = Irrelevant
 relevantIfFstNotNative (_, _) | otherwise = Relevant
@@ -110,13 +114,24 @@ safeToInteger a = MkSafeToInteger $
 
 tointeger :: IntegerLike a => String -> Operator a
 tointeger modname =
-  MkOperator { human = "convert to decimal representation"
+  MkOperator { human = "safe conversion to native integer"
              , ref = safeToInteger
              , isDual = False
              , isPartial = False
              , syntax = Nothing
              , function = Just (modname ++ ".tointeger(%a)", relevantIfNotNative)
              , method =  Just ("%a:tointeger()", relevantIfNotNative)
+             }
+
+frominteger :: IntegerLike a => String -> Operator a
+frominteger modname =
+  MkOperator { human = "convert from native integers"
+             , ref = toInteger
+             , isDual = True
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".frominteger(%b)", relevantIfNative)
+             , method =  Nothing
              }
 
 mkProp :: (Show c, Arbitrary c)
