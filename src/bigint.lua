@@ -141,6 +141,7 @@ function M.add(a, b)
     local a, b = binop(a, b)
     return add(a.sign, a.abs, b.sign, b.abs)
 end
+__fn.add = M.add
 __mt.__add = M.add
 
 function M.sub(a, b)

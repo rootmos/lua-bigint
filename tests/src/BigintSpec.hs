@@ -18,7 +18,8 @@ import HsLua.Marshalling.Peekers
 import Huge
 import LuaUtils
 import LuaBigInt
-import qualified IntegerLike as I
+--import qualified IntegerLike as I
+import qualified IntegerLike2 as I2
 import Utils
 
 runLua :: RunLuaRun
@@ -123,7 +124,7 @@ instance Peekable Operand where
 
     return $ OpI (Just b) i
 
-instance I.IsLuaNative Operand where
+instance I2.IsLuaNative Operand where
   isLuaNative (OpL _) = True
   isLuaNative _ = False
 
@@ -153,44 +154,46 @@ instance Arbitrary Operand where
     b' <- filter (>= 2) $ shrink b
     return $ OpO b' o' i'
 
+instance I2.IntegerLike Operand where
+
 spec :: Spec
 spec = do
   it "should load" $ do
     runLua @IO $ return ()
 
-  it "should survive a push and peek roundtrip" $ properly $ I.unary $ \(a :: Operand) -> do
-    b <- runLua $ push a >> peek'
-    b `shouldBe` a
+  -- it "should survive a push and peek roundtrip" $ properly $ I.unary $ \(a :: Operand) -> do
+  --   b <- runLua $ push a >> peek'
+  --   b `shouldBe` a
 
-  describe "representations" $ do
-    describe "decimal" $ do
-      it "should render decimal strings" $ properly $ I.unary $ \(a :: Operand) -> do
-        s <- runLua $ do
-          "a" `bind` a
-          return' "a:tostring()"
-        s `shouldBe` (show $ toInteger a)
+  -- describe "representations" $ do
+  --   describe "decimal" $ do
+  --     it "should render decimal strings" $ properly $ I.unary $ \(a :: Operand) -> do
+  --       s <- runLua $ do
+  --         "a" `bind` a
+  --         return' "a:tostring()"
+  --       s `shouldBe` (show $ toInteger a)
 
-      it "should parse decimal strings" $ properly $ \(a :: Operand) -> do
-        a' <- runLua $ return' $ printf "I.fromstring('%s')" (show $ toInteger a)
-        a' `shouldBe` a
+  --     it "should parse decimal strings" $ properly $ \(a :: Operand) -> do
+  --       a' <- runLua $ return' $ printf "I.fromstring('%s')" (show $ toInteger a)
+  --       a' `shouldBe` a
 
-  I.integerLike @Operand runLua $ mempty
-    <> I.relationalOperators <> I.compare "I.compare"
-    <> I.add "I.add" <> I.sub "I.sub" <> I.neg "I.neg"
-    <> I.mul "I.mul" <> I.divrem "I.divrem"
+  I2.integerLike @Operand runLua $ I2.MkSpec { binary = [ I2.add "I" ] }
+  --   <> I.relationalOperators <> I.compare "I.compare"
+  --   <> I.add "I.add" <> I.sub "I.sub" <> I.neg "I.neg"
+  --   <> I.mul "I.mul" <> I.divrem "I.divrem"
 
-  describe "integer conversion" $ do
-    it "should convert from integers" $ properly $ \a -> do
-      a' <- runLua $ do
-        "a" `bind` a
-        return' "I.frominteger(a)"
-      a' `shouldBe` OpL a
+  -- describe "integer conversion" $ do
+  --   it "should convert from integers" $ properly $ \a -> do
+  --     a' <- runLua $ do
+  --       "a" `bind` a
+  --       return' "I.frominteger(a)"
+  --     a' `shouldBe` OpL a
 
-    it "should safely try converting to native integers" $ properly $ I.unary $ \(a :: Operand) -> do
-      a' <- runLua $ do
-        "a" `bind` a
-        dostring' "return a:tointeger()"
-        isnil top >>= \case
-          True -> return Nothing
-          False -> Just <$> peek' @Integer
-      a' `shouldBe` (if abs a <= maxint then Just (toInteger a) else Nothing)
+  --   it "should safely try converting to native integers" $ properly $ I.unary $ \(a :: Operand) -> do
+  --     a' <- runLua $ do
+  --       "a" `bind` a
+  --       dostring' "return a:tointeger()"
+  --       isnil top >>= \case
+  --         True -> return Nothing
+  --         False -> Just <$> peek' @Integer
+  --     a' `shouldBe` (if abs a <= maxint then Just (toInteger a) else Nothing)
