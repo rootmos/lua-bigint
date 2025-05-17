@@ -217,6 +217,7 @@ function M.compare(a, b)
         return 1
     end
 end
+__fn.compare = M.compare
 
 function __mt.__eq(a, b)
     if not M.is_bigint(a) or not M.is_bigint(b) then

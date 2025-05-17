@@ -1,5 +1,7 @@
 module IntegerLike2 where
 
+import Prelude
+
 import Control.Monad ( forM_ )
 import Data.Maybe ( catMaybes )
 import qualified Data.Text as T
@@ -96,6 +98,20 @@ mul modname =
              , syntax = Just ("%a * %b", relevantIfNotBothLuaIntegers)
              , function = Just (modname ++ ".mul(%a,%b)", relevantIfNotBothLuaIntegers)
              , method =  Just ("%a:mul(%b)", relevantIfFstNotNative)
+             }
+
+compare :: IntegerLike a => String -> Operator (a, a)
+compare modname =
+  MkOperator { human = "comparison"
+             , ref = \(a, b) -> case Prelude.compare a b of
+                                  LT -> -1 :: Int
+                                  EQ -> 0
+                                  GT -> 1
+             , isDual = False
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".compare(%a,%b)", relevantIfNotBothLuaIntegers)
+             , method =  Just ("%a:compare(%b)", relevantIfFstNotNative)
              }
 
 tostring :: IntegerLike a => String -> Operator a
