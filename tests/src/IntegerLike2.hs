@@ -124,38 +124,72 @@ mul modname =
              , method =  Just ("%a:mul(%b)", relevantIfFstNotNative)
              }
 
-div :: IntegerLike a => String -> Operator (a, a)
-div modname =
-  MkOperator { human = "floor division"
-             , ref = uncurry quot
+quot :: IntegerLike a => String -> Operator (a, a)
+quot modname =
+  MkOperator { human = "integer division truncated towards zero"
+             , ref = uncurry Prelude.quot
              , isDual = False
              , isPartial = True
              , syntax = Just ("%a // %b", relevantIfNotBothLuaIntegers <> divByZero)
+             , function = Just (modname ++ ".quot(%a,%b)", relevantIfNotBothLuaIntegers <> divByZero)
+             , method =  Just ("%a:quot(%b)", relevantIfFstNotNative <> divByZero)
+             }
+
+rem :: IntegerLike a => String -> Operator (a, a)
+rem modname =
+  MkOperator { human = "remainder after integer division truncated towards zero"
+             , ref = uncurry Prelude.rem
+             , isDual = False
+             , isPartial = True
+             , syntax = Just ("%a % %b", relevantIfNotBothLuaIntegers <> divByZero)
+             , function = Just (modname ++ ".rem(%a,%b)", relevantIfNotBothLuaIntegers <> divByZero)
+             , method =  Just ("%a:rem(%b)", relevantIfFstNotNative <> divByZero)
+             }
+
+quotrem :: IntegerLike a => String -> Operator (a, a)
+quotrem modname =
+  MkOperator { human = "quotrem function"
+             , ref = uncurry quotRem
+             , isDual = False
+             , isPartial = True
+             , syntax = Nothing
+             , function = Just (printf "{%s.quotrem(%%a,%%b)}" modname, relevantIfNotBothLuaIntegers <> divByZero)
+             , method =  Just ("{%a:quotrem(%b)}", relevantIfFstNotNative <> divByZero)
+             }
+
+div :: IntegerLike a => String -> Operator (a, a)
+div modname =
+  MkOperator { human = "integer division truncated towards negative infinity"
+             , ref = uncurry Prelude.div
+             , isDual = False
+             , isPartial = True
+             , syntax = Nothing
              , function = Just (modname ++ ".div(%a,%b)", relevantIfNotBothLuaIntegers <> divByZero)
              , method =  Just ("%a:div(%b)", relevantIfFstNotNative <> divByZero)
              }
 
 mod :: IntegerLike a => String -> Operator (a, a)
 mod modname =
-  MkOperator { human = "modulo"
-             , ref = uncurry rem
+  MkOperator { human = "remainder after integer division truncated towards negative infinity"
+             , ref = uncurry Prelude.mod
              , isDual = False
              , isPartial = True
-             , syntax = Just ("%a % %b", relevantIfNotBothLuaIntegers <> divByZero)
+             , syntax = Nothing
              , function = Just (modname ++ ".mod(%a,%b)", relevantIfNotBothLuaIntegers <> divByZero)
              , method =  Just ("%a:mod(%b)", relevantIfFstNotNative <> divByZero)
              }
 
-divrem :: IntegerLike a => String -> Operator (a, a)
-divrem modname =
-  MkOperator { human = "divrem function"
-             , ref = uncurry quotRem
+divmod :: IntegerLike a => String -> Operator (a, a)
+divmod modname =
+  MkOperator { human = "divmod function"
+             , ref = uncurry divMod
              , isDual = False
              , isPartial = True
              , syntax = Nothing
-             , function = Just (printf "{%s.divrem(%%a,%%b)}" modname, relevantIfNotBothLuaIntegers <> divByZero)
-             , method =  Just ("{%a:divrem(%b)}", relevantIfFstNotNative <> divByZero)
+             , function = Just (printf "{%s.divmod(%%a,%%b)}" modname, relevantIfNotBothLuaIntegers <> divByZero)
+             , method =  Just ("{%a:divmod(%b)}", relevantIfFstNotNative <> divByZero)
              }
+
 
 compare :: IntegerLike a => String -> Operator (a, a)
 compare modname =

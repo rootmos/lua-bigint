@@ -174,7 +174,7 @@ end
 __fn.neg = M.neg
 __mt.__unm = M.neg
 
-function M.divrem(a, b)
+function M.quotrem(a, b)
     local a, b = binop(a, b)
     local q, r = Bignat.divrem(a.abs, b.abs)
     if a.sign == 0 then
@@ -185,21 +185,21 @@ function M.divrem(a, b)
         return make(q, -1), make(r, a.sign)
     end
 end
-__fn.divrem = M.divrem
+__fn.quotrem = M.quotrem
 
-function M.div(a, b)
-    local q, _ = M.divrem(a, b)
+function M.quot(a, b)
+    local q, _ = M.quotrem(a, b)
     return q
 end
-__fn.div = M.div
-__mt.__idiv = M.div
+__fn.quot = M.quot
+__mt.__idiv = M.quot
 
-function M.mod(a, b)
-    local _, r = M.divrem(a, b)
+function M.rem(a, b)
+    local _, r = M.quotrem(a, b)
     return r
 end
-__fn.mod = M.mod
-__mt.__mod = M.mod
+__fn.rem = M.rem
+__mt.__mod = M.rem
 
 function M.compare(a, b)
     local a, b = binop(a, b)
