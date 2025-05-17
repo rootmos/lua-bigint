@@ -149,6 +149,7 @@ function M.sub(a, b)
     local a, b = binop(a, b)
     return add(a.sign, a.abs, -b.sign, b.abs)
 end
+__fn.sub = M.sub
 __mt.__sub = M.sub
 
 function M.mul(a, b)

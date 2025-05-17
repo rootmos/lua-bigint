@@ -76,6 +76,17 @@ add modname =
              , method =  Just ("%a:add(%b)", relevantIfFstNotNative)
              }
 
+sub :: IntegerLike a => String -> Operator (a, a)
+sub modname =
+  MkOperator { human = "subtraction"
+             , ref = uncurry (-)
+             , isDual = False
+             , isPartial = False
+             , syntax = Just ("%a - %b", relevantIfNotBothLuaIntegers)
+             , function = Just (modname ++ ".sub(%a,%b)", relevantIfNotBothLuaIntegers)
+             , method =  Just ("%a:sub(%b)", relevantIfFstNotNative)
+             }
+
 mul :: IntegerLike a => String -> Operator (a, a)
 mul modname =
   MkOperator { human = "multiplication"
