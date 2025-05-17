@@ -1,4 +1,4 @@
-#export QUICKCHECK_VERBOSE=1
+export QUICKCHECK_VERBOSE=1
 export QUICKCHECK_VERBOSE_SHRINKING=1
 #export QUICKCHECK_NO_SHRINKING=1
 
@@ -15,12 +15,13 @@ gogo() {
     #make tests
     #cd tests && make build
     cd tests && stack run specs -- -m '/Bigint'
+    #cd tests && stack run specs -- -m '/LuaUtils'
     #./run examples/bignat.lua
     #./mk-dist && tail -n10 dist/bignat.lua
 }
 
-#TIMEOUT=10s
-TIMEOUT=0
+TIMEOUT=10s
+#TIMEOUT=0
 
 go() {
     timeout "$TIMEOUT" k gogo

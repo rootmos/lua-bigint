@@ -121,12 +121,16 @@ newtype LuaInt = LuaInt HsLua.Integer deriving ( Show, Num, Eq, Ord )
 maxint :: Integral a => a
 maxint = case luaBits of { Lua32 -> 31 :: Integer ; Lua64 -> 63 } & \b -> 2^b - 1
 
+minint :: Integral a => a
+minint = case luaBits of { Lua32 -> 31 :: Integer ; Lua64 -> 63 } & \b -> -2^b
+
 instance Arbitrary LuaInt where
   arbitrary = fmap (LuaInt . HsLua.Integer . fromIntegral) $
-    frequency [ (10, chooseInt (-0x10, 0x10))
+    frequency [ (5, elements [ -1, 0, 1, minint, maxint ]) -- the usual suspects
+              , (10, chooseInt (-0x10, 0x10))
               , (20, chooseInt (-0x100, 0x100))
               , (20, chooseInt (-0x1000, 0x1000))
-              , (50, chooseInt (-maxint + 1, maxint - 1))
+              , (45, chooseInt (minint, maxint))
               ]
 
   shrink li = LuaInt . fromIntegral <$> shrink (luaIntToInteger li)
