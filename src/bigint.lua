@@ -186,15 +186,19 @@ function M.divrem(a, b)
     end
 end
 
-function __mt.__idiv(a, b)
+function M.div(a, b)
     local q, _ = M.divrem(a, b)
     return q
 end
+__fn.div = M.div
+__mt.__idiv = M.div
 
-function __mt.__mod(a, b)
+function M.mod(a, b)
     local _, r = M.divrem(a, b)
     return r
 end
+__fn.mod = M.mod
+__mt.__mod = M.mod
 
 function M.compare(a, b)
     local a, b = binop(a, b)
@@ -252,7 +256,12 @@ __mt.__lt = M.lt
 __fn.lt = M.lt
 
 function M.le(a, b)
-    return M.lt(a, b) or M.eq(a, b)
+    if rawequal(a, b) then
+        return true
+    end
+
+    local a, b = binop(a, b)
+    return M.compare(a, b) <= 0
 end
 __fn.le = M.le
 
@@ -268,7 +277,12 @@ __mt.__gt = M.gt
 __fn.gt = M.gt
 
 function M.ge(a, b)
-    return M.gt(a, b) or M.eq(a, b)
+    if rawequal(a, b) then
+        return true
+    end
+
+    local a, b = binop(a, b)
+    return M.compare(a, b) >= 0
 end
 __fn.ge = M.ge
 

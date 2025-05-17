@@ -2,7 +2,7 @@ module IntegerLike2 where
 
 import Prelude
 
-import Control.Monad ( forM_ )
+import Control.Monad ( forM_, when )
 import Data.Maybe ( catMaybes )
 import qualified Data.Text as T
 import Text.Printf
@@ -52,6 +52,18 @@ relevantIfNotBothLuaIntegers (a, b) =
   case (isLuaNative a, isLuaNative b) of
     (True, True) -> Irrelevant
     _ -> Relevant
+
+divByZero :: Integral b => (a, b) -> Case
+divByZero (_, b) | b == 0 = Partial "attempt to divide by zero"
+divByZero (_, _) | otherwise = Relevant
+
+instance Semigroup Case where
+  Relevant <> Relevant = Relevant
+  Irrelevant <> _ = Irrelevant
+  _ <> Irrelevant = Irrelevant
+  Partial msg <> Relevant = Partial msg
+  Relevant <> Partial msg = Partial msg
+  Partial msg <> Partial _ = Partial msg
 
  -- TODO split into MkBin, MkUn, MkDual so b can be Peekable and Pushable accordingly
 data Operator a = forall b. (Show b, Eq b, Peekable b, Pushable b)
@@ -110,6 +122,28 @@ mul modname =
              , syntax = Just ("%a * %b", relevantIfNotBothLuaIntegers)
              , function = Just (modname ++ ".mul(%a,%b)", relevantIfNotBothLuaIntegers)
              , method =  Just ("%a:mul(%b)", relevantIfFstNotNative)
+             }
+
+div :: IntegerLike a => String -> Operator (a, a)
+div modname =
+  MkOperator { human = "integer division"
+             , ref = uncurry quot
+             , isDual = False
+             , isPartial = True
+             , syntax = Just ("%a // %b", relevantIfNotBothLuaIntegers <> divByZero)
+             , function = Just (modname ++ ".div(%a,%b)", relevantIfNotBothLuaIntegers <> divByZero)
+             , method =  Just ("%a:div(%b)", relevantIfFstNotNative <> divByZero)
+             }
+
+mod :: IntegerLike a => String -> Operator (a, a)
+mod modname =
+  MkOperator { human = "modulo"
+             , ref = uncurry rem
+             , isDual = False
+             , isPartial = True
+             , syntax = Just ("%a % %b", relevantIfNotBothLuaIntegers <> divByZero)
+             , function = Just (modname ++ ".mod(%a,%b)", relevantIfNotBothLuaIntegers <> divByZero)
+             , method =  Just ("%a:mod(%b)", relevantIfFstNotNative <> divByZero)
              }
 
 compare :: IntegerLike a => String -> Operator (a, a)
@@ -206,6 +240,13 @@ mkProp :: (Show c, Arbitrary c)
        => (c -> Case) -> (c -> IO ()) -> Test.QuickCheck.Property
 mkProp study = flip forAllShrink shrink $ suchThat arbitrary ((== Relevant) . study)
 
+mkPropPartial :: (Show c, Arbitrary c)
+              => (c -> Case) -> ((c, String) -> IO ()) -> Test.QuickCheck.Property
+mkPropPartial study = flip forAllShrink shrink $ suchThatMap arbitrary $ \a ->
+  case study a of
+    Partial msg -> Just (a, msg)
+    _ -> Nothing
+
 mkExpr :: String -> [ (String, String) ] -> String
 mkExpr template rs = T.unpack $ r rs $ T.pack template
   where r [] s = s
@@ -216,7 +257,7 @@ integerLike :: forall a. IntegerLike a
             -> Spec a
             -> Hspec.Spec
 integerLike runLua spec = do
-  flip mapM_ (binary spec) $ \MkOperator { human, ref, syntax, function, method } -> do
+  flip mapM_ (binary spec) $ \MkOperator { human, ref, isPartial, syntax, function, method } -> do
     describe human $ do
       forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
         let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
@@ -241,6 +282,16 @@ integerLike runLua spec = do
             "a" `bind` a
             return' expr'
           s `shouldBe` ref (a, a)
+
+      when isPartial $ do
+        forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+          let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
+          it (printf "%s should raise the expected error when not defined" expr') $ properly $ mkPropPartial study $ \((a, b), msg) -> do
+            Just (Exception msg') <- runLua $ do
+              "a" `bind` a
+              "b" `bind` b
+              expectError' expr'
+            msg' `shouldEndWith` msg
 
   flip mapM_ (unary spec) $ \MkOperator { human, ref, isDual, syntax, function, method } -> do
     describe human $ case isDual of

@@ -146,3 +146,6 @@ expectError expr = try expr >>= \case
   Right ErrRun -> Just <$> popException
   Right _ -> return Nothing
   Left _ -> return Nothing
+
+expectError' :: (LuaError e) => String -> LuaE e (Maybe e)
+expectError' s = expectError $ dostring . BSUTF8.fromString $ "return " ++ s

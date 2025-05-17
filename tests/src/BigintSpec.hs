@@ -168,6 +168,7 @@ spec = do
   I2.integerLike @Operand runLua $
     I2.MkSpec { binary = [ I2.add "I", I2.sub "I"
                          , I2.mul "I"
+                         , I2.div "I", I2.mod "I"
                          , I2.compare "I"
                          ]
                       ++ I2.relationalOperators "I"
@@ -176,5 +177,4 @@ spec = do
                         , I2.tointeger "I", I2.frominteger "I"
                         ]
               }
-  --   <> I.add "I.add" <> I.sub "I.sub" <> I.neg "I.neg"
-  --   <> I.mul "I.mul" <> I.divrem "I.divrem"
+  -- I.divrem "I.divrem"
