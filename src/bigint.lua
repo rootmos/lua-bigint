@@ -176,7 +176,7 @@ __mt.__unm = M.neg
 
 function M.quotrem(a, b)
     local a, b = binop(a, b)
-    local q, r = Bignat.divrem(a.abs, b.abs)
+    local q, r = Bignat.quotrem(a.abs, b.abs)
     if a.sign == 0 then
         return make(q, 0), make(r, 0)
     elseif a.sign == b.sign then

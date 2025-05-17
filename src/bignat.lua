@@ -366,13 +366,13 @@ function M.quotrem(a, b)
     local base <const> = a.base
     local B <const> = M.make{0,1, base=base}
 
-    if b == M{0, base=base} then
+    if b == M{base=base} then
         error("attempt to divide by zero")
     end
 
     -- TODO check if checking a == b significantly affects performance
     if rawequal(a, b) or a == b then
-        return M{1, base=base}, M{0, base=base}
+        return M{1, base=base}, M{base=base}
     end
 
     local ao <const>, bo <const> = a.o, b.o
@@ -381,7 +381,7 @@ function M.quotrem(a, b)
     local l <const> = bo + bn
 
     if k < l then
-        return M.make{0, base=base}, a
+        return M.make{base=base}, a
     end
 
     local function alpha(i)
@@ -391,7 +391,7 @@ function M.quotrem(a, b)
         return a[an - i]
     end
 
-    local r = M.make{0, base=base}
+    local r = M.make{base=base}
     for i = 0,l-2 do
         r = r + M.make{alpha(i), o=l-2-i, base=base}
     end
@@ -399,7 +399,7 @@ function M.quotrem(a, b)
     local d
     local function f(x)
         local t
-        r, t = M.sub(d, b*M.make{x, base=base})
+        r, t = M.tsub(d, b*M.make{x, base=base})
         if t then
             return -1
         end

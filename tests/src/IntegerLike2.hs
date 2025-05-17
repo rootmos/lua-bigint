@@ -283,7 +283,8 @@ frominteger modname =
 
 mkProp :: (Show c, Arbitrary c)
        => (c -> Case) -> (c -> IO ()) -> Test.QuickCheck.Property
-mkProp study = flip forAllShrink shrink $ suchThat arbitrary ((== Relevant) . study)
+mkProp study = flip forAllShrink (filter p <$> shrink) $ suchThat arbitrary p
+  where p = ((== Relevant) . study)
 
 mkPropPartial :: (Show c, Arbitrary c)
               => (c -> Case) -> ((c, String) -> IO ()) -> Test.QuickCheck.Property
