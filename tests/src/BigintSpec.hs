@@ -161,9 +161,9 @@ spec = do
   it "should load" $ do
     runLua @IO $ return ()
 
-  -- it "should survive a push and peek roundtrip" $ properly $ I.unary $ \(a :: Operand) -> do
-  --   b <- runLua $ push a >> peek'
-  --   b `shouldBe` a
+  it "should survive a push and peek roundtrip" $ properly $ I2.mkProp I2.relevantIfNotNative $ \(a :: Operand) -> do
+    b <- runLua $ push a >> peek'
+    b `shouldBe` a
 
   -- describe "representations" $ do
   --   describe "decimal" $ do
@@ -177,7 +177,9 @@ spec = do
   --       a' <- runLua $ return' $ printf "I.fromstring('%s')" (show $ toInteger a)
   --       a' `shouldBe` a
 
-  I2.integerLike @Operand runLua $ I2.MkSpec { binary = [ I2.add "I" ] }
+  I2.integerLike @Operand runLua $ I2.MkSpec { binary = [ I2.add "I" ]
+                                             , unary = [ I2.tostring "I" ]
+                                             }
   --   <> I.relationalOperators <> I.compare "I.compare"
   --   <> I.add "I.add" <> I.sub "I.sub" <> I.neg "I.neg"
   --   <> I.mul "I.mul" <> I.divrem "I.divrem"

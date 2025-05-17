@@ -32,6 +32,10 @@ data Case = Relevant
 always :: a -> Case
 always _ = Relevant
 
+relevantIfNotNative :: IsLuaNative a => a -> Case
+relevantIfNotNative a | isLuaNative a = Irrelevant
+relevantIfNotNative _ | otherwise = Relevant
+
 relevantIfFstNotNative :: IsLuaNative a => (a, b) -> Case
 relevantIfFstNotNative (a, _) | isLuaNative a = Irrelevant
 relevantIfFstNotNative (_, _) | otherwise = Relevant
@@ -65,6 +69,16 @@ add modname =
              , method =  Just ("%a:add(%b)", relevantIfFstNotNative)
              }
 
+tostring :: IntegerLike a => String -> Operator a
+tostring modname =
+  MkOperator { human = "convert to decimal representation"
+             , ref = show . toInteger
+             , isPartial = False
+             , syntax = Just ("tostring(%a)", always)
+             , function = Just (modname ++ ".tostring(%a)", relevantIfNotNative)
+             , method =  Just ("%a:tostring()", relevantIfNotNative)
+             }
+
 mkProp :: (Show c, Arbitrary c)
        => (c -> Case) -> (c -> IO ()) -> Test.QuickCheck.Property
 mkProp study = flip forAllShrink shrink $ suchThat arbitrary ((== Relevant) . study)
@@ -88,3 +102,14 @@ integerLike runLua spec = do
               "b" `bind` b
               return' expr'
             s `shouldBe` ref (a, b)
+
+  flip mapM_ (unary spec) $ \MkOperator { human, ref, syntax, function, method } -> do
+    describe human $ do
+      forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+        let expr' = binaryExpr expr "a" "b"
+        describe expr' $ do
+          it "should adhere to the reference implementation" $ properly $ mkProp study $ \a -> do
+            s <- runLua $ do
+              "a" `bind` a
+              return' expr'
+            s `shouldBe` ref a
