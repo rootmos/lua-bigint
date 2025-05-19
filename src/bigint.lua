@@ -277,10 +277,6 @@ end
 __fn.compare = M.compare
 
 function M.eq(a, b)
-    if not M.is_bigint(a) or not M.is_bigint(b) then
-        return false
-    end
-
     if rawequal(a, b) then
         return true
     end
