@@ -53,6 +53,12 @@ relevantIfNotBothLuaIntegers (a, b) =
     (True, True) -> Irrelevant
     _ -> Relevant
 
+relevantIfNeitherIsNative :: (IsLuaNative a, IsLuaNative b) => (a, b) -> Case
+relevantIfNeitherIsNative (a, b) =
+  case (isLuaNative a, isLuaNative b) of
+    (False, False) -> Relevant
+    (_, _) -> Irrelevant
+
 divByZero :: Integral b => (a, b) -> Case
 divByZero (_, b) | b == 0 = Partial "attempt to divide by zero"
 divByZero (_, _) | otherwise = Relevant
@@ -228,9 +234,10 @@ compare modname =
              }
 
 relationalOperators :: IntegerLike a => String -> [ Operator (a, a) ]
-relationalOperators modname = fmap mk [ ("equality", (==), "==", "eq")
-                                      , ("not equal", (/=), "~=", "neq")
-                                      , ("less than", (<), "<", "lt")
+relationalOperators modname = fmap mk' [ ("equality", (==), "==", "eq")
+                                       , ("not equal", (/=), "~=", "neq")
+                                       ] ++
+                              fmap mk [ ("less than", (<), "<", "lt")
                                       , ("less than or equal", (<=), "<=", "le")
                                       , ("greater than", (>), ">", "gt")
                                       , ("greater than or equal", (>=), ">=", "ge")
@@ -241,6 +248,15 @@ relationalOperators modname = fmap mk [ ("equality", (==), "==", "eq")
                           , isDual = False
                           , isPartial = False
                           , syntax = Just (printf "%%a %s %%b" syntax, relevantIfNotBothLuaIntegers)
+                          , function = Just (printf "%s.%s(%%a, %%b)" modname method, relevantIfNotBothLuaIntegers)
+                          , method =  Just (printf "%%a:%s(%%b)" method, relevantIfFstNotNative)
+                          }
+        mk' (human, ref, syntax :: String, method :: String) =
+               MkOperator { human = human
+                          , ref = uncurry ref
+                          , isDual = False
+                          , isPartial = False
+                          , syntax = Just (printf "%%a %s %%b" syntax, relevantIfNeitherIsNative)
                           , function = Just (printf "%s.%s(%%a, %%b)" modname method, relevantIfNotBothLuaIntegers)
                           , method =  Just (printf "%%a:%s(%%b)" method, relevantIfFstNotNative)
                           }
