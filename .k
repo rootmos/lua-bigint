@@ -18,7 +18,7 @@ gogo() {
     #make tests
     #cd tests && make build
     #cd tests && stack run specs -- -m "/Bignat/"
-    cd tests && stack run specs -- --match "/Bigint/not equal/a:neq(b)/" --seed 1126222394
+    cd tests && stack run specs -- --match "/Bigint/" --seed 620190848
     #cd tests && stack run specs -- -m '/Bigint'
     #cd tests && stack run specs -- --match "/Bigint/integer division truncated towards negative infinity/I.div(a,b)/" --seed 819336231
     #cd tests && stack run specs -- --match "/Bigint/greater than or equal/a:ge(b)/" --seed 799366864

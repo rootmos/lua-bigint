@@ -198,11 +198,6 @@ __fn.sign = M.sign
 function M.quotrem(a, b)
     local a, b = binop(a, b)
 
-    local base <const> = a.base
-    if a:eq(0) then
-        return M.zero(base), M.zero(base)
-    end
-
     local q, r = Bignat.quotrem(a.__abs, b.__abs)
     if a.__sign == b.__sign then
         return make(q, 1), make(r, a.__sign)
