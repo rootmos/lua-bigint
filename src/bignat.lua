@@ -72,9 +72,10 @@ function M.fromhex(s)
     return M.fromstring(s, 16)
 end
 
-function __fn:tohex()
+function M:tohex()
     return self:tostring(16)
 end
+__fn.tohex = M.tohex
 
 function M.frombigendian(bs)
     local p = table.pack(string.byte(bs, 1, #bs))

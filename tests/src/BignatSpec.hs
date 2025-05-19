@@ -174,61 +174,18 @@ spec = do
                      ++ [ I2.abs "N", I2.sign "N" ]
                      ++ [ I2.tostring "N", I2.fromstring "N"
                         , I2.tointeger "N", I2.frominteger "N"
+                        , I2.tohex "N", I2.fromhex "N"
                         ]
               }
 
-  -- I.integerLike @Operand runLua $ mempty
-    -- <> I.relationalOperators
-    -- <> I.compare "N"
-    -- <> I.add "N" <> I.mul "N"
-    -- <> I.truncatingSubtraction "N"
-    -- <> I.divrem "N"
-
   --describe "integer conversion" $ do
-    --it "should convert from non-negative integers" $ properly $ \(NonNegative a) -> do
-      --a' <- runLua $ do
-        --"a" `bind` a
-        --return' "N.frominteger(a)"
-      --a' `shouldBe` OpL a
-
     --it "should refuse to convert negative integers" $ properly $ \(Negative (a :: LuaInt)) -> do
       --Just (Exception msg) <- runLua $ do
         --"a" `bind` a
         --expectError (dostring "N.frominteger(a)")
       --msg `shouldEndWith` "unexpected negative integer"
 
-    --it "should safely try converting to native integers" $ properly $ I.unary $ \(a :: Operand) -> do
-      --a' <- runLua $ do
-        --"a" `bind` a
-        --dostring' "return a:tointeger()"
-        --isnil top >>= \case
-          --True -> return Nothing
-          --False -> Just <$> peek' @Integer
-      --a' `shouldBe` (if a <= maxint then Just (toInteger a) else Nothing)
-
   --describe "representations" $ do
-    --describe "decimal" $ do
-      --it "should render decimal strings" $ properly $ I.unary $ \(a :: Operand) -> do
-        --s <- runLua $ do
-          --"a" `bind` a
-          --return' "a:tostring()"
-        --s `shouldBe` (show $ toInteger a)
-
-      --it "should parse decimal strings" $ properly $ \(a :: Operand) -> do
-        --a' <- runLua $ return' $ printf "N.fromstring('%s')" (show $ toInteger a)
-        --a' `shouldBe` a
-
-    --describe "hexadecimal" $ do
-      --it "should render hexadecimal strings" $ properly $ I.unary $ \(a :: Operand) -> do
-        --s <- runLua $ do
-          --"a" `bind` a
-          --return' "a:tohex()"
-        --s `shouldBe` (toHex $ toInteger a)
-
-      --it "should parse hexadecimal strings" $ properly $ \(a :: Operand) -> do
-        --a' <- runLua $ return' $ printf "N.fromhex('%s')" (toHex $ toInteger a)
-        --a' `shouldBe` a
-
     --describe "big-endian" $ do
       --it "should render big-endian bytestrings" $ properly $ I.unary $ \(a :: Operand) -> do
         --s <- runLua $ do

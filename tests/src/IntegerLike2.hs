@@ -283,6 +283,28 @@ fromstring modname =
              , method =  Nothing
              }
 
+tohex :: IntegerLike a => String -> Operator a
+tohex modname =
+  MkOperator { human = "convert to hexadecimal representation"
+             , ref = toHex . toInteger
+             , isDual = False
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".tohex(%a)", relevantIfNotNative)
+             , method =  Just ("%a:tohex()", relevantIfNotNative)
+             }
+
+fromhex :: IntegerLike a => String -> Operator a
+fromhex modname =
+  MkOperator { human = "convert from hexadecimal representation"
+             , ref = toHex . toInteger
+             , isDual = True
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".fromhex(%b)", always)
+             , method =  Nothing
+             }
+
 newtype SafeToInteger = MkSafeToInteger (Maybe Integer) deriving ( Show, Eq )
 
 instance Peekable SafeToInteger where
