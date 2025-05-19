@@ -162,7 +162,7 @@ spec = do
       b <- runLua $ push a >> peek'
       b `shouldBe` a
 
-  I2.integerLike @Operand runLua $
+  describe "integer-like" $ I2.integerLike @Operand runLua $
     I2.MkSpec { binary = [ I2.add "N", I2.sub "N"
                          , I2.mul "N"
                          , I2.quot "N", I2.rem "N", I2.quotrem "N"
@@ -180,9 +180,8 @@ spec = do
                         ]
               }
 
-  --describe "integer conversion" $ do
-    --it "should refuse to convert negative integers" $ properly $ \(Negative (a :: LuaInt)) -> do
-      --Just (Exception msg) <- runLua $ do
-        --"a" `bind` a
-        --expectError (dostring "N.frominteger(a)")
-      --msg `shouldEndWith` "unexpected negative integer"
+  it "should refuse to convert negative integers" $ properly $ \(Negative (a :: LuaInt)) -> do
+    Just (Exception msg) <- runLua $ do
+      "a" `bind` a
+      expectError' "N.frominteger(a)"
+    msg `shouldEndWith` "unexpected negative integer"
