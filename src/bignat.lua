@@ -365,7 +365,7 @@ function M.quotrem(a, b)
     local base <const> = a.base
     local B <const> = M.make{0,1, base=base}
 
-    if b == M{base=base} then
+    if b:eq(0) then
         error("attempt to divide by zero")
     end
 
@@ -434,13 +434,8 @@ end
 __fn.rem = M.rem
 __mt.__mod = M.rem
 
-function M.divmod(a, b)
-    local a, b = binop(a, b)
-    local base <const> = a.base
-
-    return M.quotrem(a, b)
-end
-__fn.divmod = M.divmod
+M.divmod = M.quotrem
+__fn.divmod = M.quotrem
 
 function M.div(a, b)
     local q, _ = M.divmod(a, b)
@@ -452,7 +447,7 @@ function M.mod(a, b)
     local _, r = M.divmod(a, b)
     return r
 end
-__fn.mod = M.rem
+__fn.mod = M.mod
 
 return setmetatable(M, {
     __call = function(N, o)

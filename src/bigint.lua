@@ -17,7 +17,8 @@ function M.is_bigint(x)
 end
 
 local function make(abs, sign)
-    if abs == 0 then
+    assert(Bignat.is_bignat(abs))
+    if abs:eq(0) then
         sign = 0
     end
     local q = {
@@ -31,6 +32,10 @@ function M.make(p)
     return make(Bignat.make(p), p.sign)
 end
 __fn.clone = M.make
+
+function M.zero(base)
+    return make(Bignat.make{base=base or M.default_base}, 0)
+end
 
 __fn.digits = I.coefficients
 M.digits = __fn.digits
@@ -176,11 +181,15 @@ __mt.__unm = M.neg
 
 function M.quotrem(a, b)
     local a, b = binop(a, b)
+
+    local base <const> = a.base
+    if a:eq(0) then
+        return M.zero(base), M.zero(base)
+    end
+
     local q, r = Bignat.quotrem(a.abs, b.abs)
-    if a.sign == 0 then
-        return make(q, 0), make(r, 0)
-    elseif a.sign == b.sign then
-        return make(q, 1), make(r, b.sign)
+    if a.sign == b.sign then
+        return make(q, 1), make(r, a.sign)
     else
         return make(q, -1), make(r, a.sign)
     end
@@ -201,25 +210,16 @@ end
 __fn.rem = M.rem
 __mt.__mod = M.rem
 
+-- https://hackage.haskell.org/package/ghc-internal-9.1201.0/docs/src/GHC.Internal.Real.html#divMod
 function M.divmod(a, b)
     local a, b = binop(a, b)
-    local base <const> = a.base
-
-    if a == 0 then
-        return M{base=base}, b
-    end
 
     local q, r = M.quotrem(a, b)
 
-    local s, t = a >= 0, b > 0
-
-    if s and t then
-        return q, r
-    elseif not s and not t then
-        return q, r
+    if r.sign == - b.sign then
+        return q - 1, r + b
     else
-        local r = r.abs
-        return make(q.abs, r.sign), r
+        return q, r
     end
 end
 __fn.divmod = M.divmod
@@ -234,7 +234,7 @@ function M.mod(a, b)
     local _, r = M.divmod(a, b)
     return r
 end
-__fn.mod = M.rem
+__fn.mod = M.mod
 
 function M.compare(a, b)
     local a, b = binop(a, b)

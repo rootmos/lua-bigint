@@ -71,9 +71,6 @@ instance Integral Operand where
   quotRem a b =
     let (q, r) = operandToInteger a `quotRem` operandToInteger b in
     (fromInteger q, fromInteger r)
-  divMod a b =
-    let (q, r) = operandToInteger a `divMod` operandToInteger b in
-    (fromInteger q, fromInteger r)
 
 instance Pushable Operand where
   push (OpI Nothing i) = dostring' $ printf "return I.fromstring('%s')" (show i)
