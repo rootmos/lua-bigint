@@ -18,8 +18,7 @@ import HsLua.Marshalling.Peekers
 import Huge
 import LuaUtils
 import LuaBigInt
---import qualified IntegerLike as I
-import qualified IntegerLike2 as I2
+import qualified IntegerLike as I
 import Utils
 
 import qualified BignatSpec as Bignat
@@ -126,7 +125,7 @@ instance Peekable Operand where
 
     return $ OpI (Just b) i
 
-instance I2.IsLuaNative Operand where
+instance I.IsLuaNative Operand where
   isLuaNative (OpL _) = True
   isLuaNative _ = False
 
@@ -156,47 +155,45 @@ instance Arbitrary Operand where
     b' <- filter (>= 2) $ shrink b
     return $ OpO b' o' i'
 
--- TODO should this really be necessary?
-instance I2.IntegerLike Operand where
+instance I.IntegerLike Operand where
 
-unexpectedNegativeInteger :: Integral a => a -> I2.Case
-unexpectedNegativeInteger b | b < 0 = I2.Partial "unexpected negative integer"
-unexpectedNegativeInteger _ | otherwise = I2.Relevant
+unexpectedNegativeInteger :: Integral a => a -> I.Case
+unexpectedNegativeInteger b | b < 0 = I.Partial "unexpected negative integer"
+unexpectedNegativeInteger _ | otherwise = I.Relevant
 
-tobignat :: I2.Operator Operand
-tobignat = I2.MkOperator { human = "bignat conversion"
-                         , ref = fromInteger @Bignat.Operand . toInteger @Operand
-                         , isDual = False
-                         , isPartial = True
-                         , syntax = Nothing
-                         , function = Just ("I.tobignat(%a)", I2.relevantIfNotNative <> unexpectedNegativeInteger)
-                         , method = Just ("%a:tobignat()", I2.relevantIfNotNative <> unexpectedNegativeInteger)
-                         }
+tobignat :: I.Operator Operand
+tobignat = I.MkOperator { human = "bignat conversion"
+                        , ref = fromInteger @Bignat.Operand . toInteger @Operand
+                        , isDual = False
+                        , isPartial = True
+                        , syntax = Nothing
+                        , function = Just ("I.tobignat(%a)", I.relevantIfNotNative <> unexpectedNegativeInteger)
+                        , method = Just ("%a:tobignat()", I.relevantIfNotNative <> unexpectedNegativeInteger)
+                        }
 
 spec :: Spec
 spec = do
   it "should load" $ do
     runLua @IO $ return ()
 
-  it "should survive a push and peek roundtrip" $ properly $ I2.mkProp I2.relevantIfNotNative $ \(a :: Operand) -> do
+  it "should survive a push and peek roundtrip" $ properly $ I.mkProp I.relevantIfNotNative $ \(a :: Operand) -> do
     b <- runLua $ push a >> peek'
     b `shouldBe` a
 
-
-  describe "integer-like" $ I2.integerLike @Operand runLua $
-    I2.MkSpec { binary = [ I2.add "I", I2.sub "I"
-                         , I2.mul "I"
-                         , I2.quot "I", I2.rem "I", I2.quotrem "I"
-                         , I2.div "I", I2.mod "I", I2.divmod "I"
-                         , I2.compare "I"
-                         ]
-                      ++ I2.relationalOperators "I"
-              , unary = [ I2.neg "I" ]
-                     ++ [ I2.abs "I", I2.sign "I" ]
-                     ++ [ I2.tostring "I", I2.fromstring "I"
-                        , I2.tointeger "I", I2.frominteger "I"
+  describe "integer-like" $ I.integerLike @Operand runLua $
+    I.MkSpec { binary = [ I.add "I", I.sub "I"
+                        , I.mul "I"
+                        , I.quot "I", I.rem "I", I.quotrem "I"
+                        , I.div "I", I.mod "I", I.divmod "I"
+                        , I.compare "I"
                         ]
-              }
+                     ++ I.relationalOperators "I"
+             , unary = [ I.neg "I" ]
+                    ++ [ I.abs "I", I.sign "I" ]
+                    ++ [ I.tostring "I", I.fromstring "I"
+                       , I.tointeger "I", I.frominteger "I"
+                       ]
+             }
 
   it "should build integers from absolute value and sign" $ properly $ \(a :: Bignat.Operand, s :: Ordering) -> do
     let s' = case s of { LT -> -1; EQ -> 0; GT -> 1 }
@@ -207,7 +204,7 @@ spec = do
       return' "I.fromabssign(a, s)"
     b `shouldBe` (fromInteger @Operand . (* s') . toInteger $ a)
 
-  I2.integerLike @Operand runLua $
-    I2.MkSpec { binary = []
-              , unary = [ tobignat ]
-              }
+  I.integerLike @Operand runLua $
+    I.MkSpec { binary = []
+             , unary = [ tobignat ]
+             }

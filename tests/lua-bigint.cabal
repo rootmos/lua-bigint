@@ -26,7 +26,6 @@ executable specs
       BignatSpec
       Huge
       IntegerLike
-      IntegerLike2
       InternalSpec
       LuaBigInt
       LuaUtils

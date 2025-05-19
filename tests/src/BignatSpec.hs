@@ -16,8 +16,7 @@ import HsLua hiding ( Integer, compare )
 import HsLua.Marshalling.Peekers
 
 import Huge
---import qualified IntegerLike as I
-import qualified IntegerLike2 as I2
+import qualified IntegerLike as I
 import LuaBigInt
 import LuaUtils
 import Utils
@@ -141,12 +140,11 @@ instance Arbitrary Operand where
     b' <- filter (>= 2) $ shrink b
     return $ OpO b' o' i'
 
-instance I2.IsLuaNative Operand where
+instance I.IsLuaNative Operand where
   isLuaNative (OpL _) = True
   isLuaNative _ = False
 
--- TODO should this really be necessary?
-instance I2.IntegerLike Operand where
+instance I.IntegerLike Operand where
 
 spec :: Spec
 spec = do
@@ -158,27 +156,27 @@ spec = do
     b <- runLua $ return' "N.default_base"
     b `shouldBe` maxBase
 
-  it "should survive a push and peek roundtrip" $ properly $ I2.mkProp I2.relevantIfNotNative $ \(a :: Operand) -> do
+  it "should survive a push and peek roundtrip" $ properly $ I.mkProp I.relevantIfNotNative $ \(a :: Operand) -> do
       b <- runLua $ push a >> peek'
       b `shouldBe` a
 
-  describe "integer-like" $ I2.integerLike @Operand runLua $
-    I2.MkSpec { binary = [ I2.add "N", I2.sub "N"
-                         , I2.mul "N"
-                         , I2.quot "N", I2.rem "N", I2.quotrem "N"
-                         , I2.div "N", I2.mod "N", I2.divmod "N"
-                         , I2.compare "N"
-                         ]
-                      ++ I2.relationalOperators "N"
-              , unary = [ I2.neg "N" ]
-                     ++ [ I2.abs "N", I2.sign "N" ]
-                     ++ [ I2.tostring "N", I2.fromstring "N"
-                        , I2.tointeger "N", I2.frominteger "N"
-                        , I2.tohex "N", I2.fromhex "N"
-                        , I2.tobigendian "N", I2.frombigendian "N"
-                        , I2.tolittleendian "N", I2.fromlittleendian "N"
+  describe "integer-like" $ I.integerLike @Operand runLua $
+    I.MkSpec { binary = [ I.add "N", I.sub "N"
+                        , I.mul "N"
+                        , I.quot "N", I.rem "N", I.quotrem "N"
+                        , I.div "N", I.mod "N", I.divmod "N"
+                        , I.compare "N"
                         ]
-              }
+                     ++ I.relationalOperators "N"
+             , unary = [ I.neg "N" ]
+                    ++ [ I.abs "N", I.sign "N" ]
+                    ++ [ I.tostring "N", I.fromstring "N"
+                       , I.tointeger "N", I.frominteger "N"
+                       , I.tohex "N", I.fromhex "N"
+                       , I.tobigendian "N", I.frombigendian "N"
+                       , I.tolittleendian "N", I.fromlittleendian "N"
+                       ]
+             }
 
   it "should refuse to convert negative integers" $ properly $ \(Negative (a :: LuaInt)) -> do
     Just (Exception msg) <- runLua $ do
