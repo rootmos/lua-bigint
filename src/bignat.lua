@@ -72,9 +72,10 @@ function M.fromhex(s)
     return M.fromstring(s, 16)
 end
 
-function __fn:tohex()
+function M:tohex()
     return self:tostring(16)
 end
+__fn.tohex = M.tohex
 
 function M.frombigendian(bs)
     local p = table.pack(string.byte(bs, 1, #bs))
@@ -85,9 +86,10 @@ function M.frombigendian(bs)
     return M.make(q)
 end
 
-function __fn:tobigendian()
+function M:tobigendian()
     return string.reverse(self:tolittleendian())
 end
+__fn.tobigendian = M.tobigendian
 
 function M.fromlittleendian(bs)
     local p = table.pack(string.byte(bs, 1, #bs))
@@ -95,9 +97,10 @@ function M.fromlittleendian(bs)
     return M.make(p)
 end
 
-function __fn:tolittleendian()
+function M:tolittleendian()
     return string.char(table.unpack(Arbbase.convert(self:digits(), self.base, 256)))
 end
+__fn.tolittleendian = M.tolittleendian
 
 local addB, mulB = I.mk_add(M.make), I.mk_mul(M.make)
 
@@ -142,6 +145,7 @@ function __fn:tointeger()
     end
     return sum
 end
+M.tointeger = __fn.tointeger
 
 local function binop(a, b)
     local at, bt = M.is_bignat(a), M.is_bignat(b)
@@ -174,13 +178,40 @@ function M.add(a, b)
     local a, b = binop(a, b)
     return addB(a, b, a.base)
 end
+__fn.add = M.add
 __mt.__add = M.add
 
 function M.mul(a, b)
     local a, b = binop(a, b)
     return mulB(a, b, a.base)
 end
+__fn.mul = M.mul
 __mt.__mul = M.mul
+
+function M.neg(a)
+    if not M.is_bignat(a) then
+        error("bignat unary operation called with unsuitable value")
+    end
+    return M.make{base=a.base}
+end
+__fn.neg = M.neg
+__mt.__unm = M.neg
+
+function M.abs(a)
+    if not M.is_bignat(a) then
+        error("bignat unary operation called with unsuitable value")
+    end
+    return a
+end
+__fn.abs = M.abs
+
+function M.sign(a)
+    if not M.is_bignat(a) then
+        error("bignat unary operation called with unsuitable value")
+    end
+    return a > 0 and 1 or 0
+end
+__fn.sign = M.sign
 
 function M.compare(a, b)
     local a, b = binop(a, b)
@@ -215,21 +246,29 @@ function M.compare(a, b)
     end
     return 0
 end
+__fn.compare = M.compare
 
-function __mt.__eq(a, b)
-    if not M.is_bignat(a) or not M.is_bignat(b) then
-        return false
-    end
-
+function M.eq(a, b)
     if rawequal(a, b) then
         return true
     end
 
-    local a, b = binop(a, b)
+    if not M.is_bignat(a) or not M.is_bignat(b) then
+        a, b = binop(a, b)
+    end
+
     return M.compare(a, b) == 0
 end
+__fn.eq = M.eq
+__mt.__eq = M.eq
 
-function __mt.__lt(a, b)
+function M.neq(a, b)
+    return not M.eq(a, b)
+end
+__fn.neq = M.neq
+
+
+function M.lt(a, b)
     if rawequal(a, b) then
         return false
     end
@@ -237,8 +276,20 @@ function __mt.__lt(a, b)
     local a, b = binop(a, b)
     return M.compare(a, b) < 0
 end
+__mt.__lt = M.lt
+__fn.lt = M.lt
 
-function __mt.__gt(a, b)
+function M.le(a, b)
+    if rawequal(a, b) then
+        return true
+    end
+
+    local a, b = binop(a, b)
+    return M.compare(a, b) <= 0
+end
+__fn.le = M.le
+
+function M.gt(a, b)
     if rawequal(a, b) then
         return false
     end
@@ -246,8 +297,20 @@ function __mt.__gt(a, b)
     local a, b = binop(a, b)
     return M.compare(a, b) > 0
 end
+__mt.__gt = M.gt
+__fn.gt = M.gt
 
-function M.sub(a, b)
+function M.ge(a, b)
+    if rawequal(a, b) then
+        return true
+    end
+
+    local a, b = binop(a, b)
+    return M.compare(a, b) >= 0
+end
+__fn.ge = M.ge
+
+function M.tsub(a, b)
     if rawequal(a, b) then
         return M.make{0}, false
     end
@@ -305,22 +368,29 @@ function M.sub(a, b)
 
     return M.make(a), false
 end
+__fn.tsub = M.tsub
+
+function M.sub(a, b)
+    local d, _ = M.tsub(a, b)
+    return d
+end
+__fn.sub = M.sub
 __mt.__sub = M.sub
 
 -- https://en.wikipedia.org/wiki/Long_division#Algorithm_for_arbitrary_base
-function M.divrem(a, b)
+function M.quotrem(a, b)
     local a, b = binop(a, b)
 
     local base <const> = a.base
     local B <const> = M.make{0,1, base=base}
 
-    if b == M{0, base=base} then
+    if b:eq(0) then
         error("attempt to divide by zero")
     end
 
     -- TODO check if checking a == b significantly affects performance
     if rawequal(a, b) or a == b then
-        return M{1, base=base}, M{0, base=base}
+        return M{1, base=base}, M{base=base}
     end
 
     local ao <const>, bo <const> = a.o, b.o
@@ -329,7 +399,7 @@ function M.divrem(a, b)
     local l <const> = bo + bn
 
     if k < l then
-        return M.make{0, base=base}, a
+        return M.make{base=base}, a
     end
 
     local function alpha(i)
@@ -339,7 +409,7 @@ function M.divrem(a, b)
         return a[an - i]
     end
 
-    local r = M.make{0, base=base}
+    local r = M.make{base=base}
     for i = 0,l-2 do
         r = r + M.make{alpha(i), o=l-2-i, base=base}
     end
@@ -347,7 +417,7 @@ function M.divrem(a, b)
     local d
     local function f(x)
         local t
-        r, t = M.sub(d, b*M.make{x, base=base})
+        r, t = M.tsub(d, b*M.make{x, base=base})
         if t then
             return -1
         end
@@ -367,16 +437,36 @@ function M.divrem(a, b)
 
     return M.make(q), r
 end
+__fn.quotrem = M.quotrem
 
-function __mt.__idiv(a, b)
-    local q, _ = M.divrem(a, b)
+function M.quot(a, b)
+    local q, _ = M.quotrem(a, b)
     return q
 end
+__fn.quot = M.quot
+__mt.__idiv = M.quot
 
-function __mt.__mod(a, b)
-    local _, r = M.divrem(a, b)
+function M.rem(a, b)
+    local _, r = M.quotrem(a, b)
     return r
 end
+__fn.rem = M.rem
+__mt.__mod = M.rem
+
+M.divmod = M.quotrem
+__fn.divmod = M.quotrem
+
+function M.div(a, b)
+    local q, _ = M.divmod(a, b)
+    return q
+end
+__fn.div = M.div
+
+function M.mod(a, b)
+    local _, r = M.divmod(a, b)
+    return r
+end
+__fn.mod = M.mod
 
 return setmetatable(M, {
     __call = function(N, o)

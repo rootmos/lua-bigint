@@ -12,7 +12,7 @@ import Text.Printf
 import Test.Hspec
 import Test.QuickCheck
 
-import HsLua hiding ( Integer, compare )
+import HsLua hiding ( Integer, compare, RelationalOperator(..) )
 import HsLua.Marshalling.Peekers
 
 import Huge
@@ -20,6 +20,8 @@ import LuaUtils
 import LuaBigInt
 import qualified IntegerLike as I
 import Utils
+
+import qualified BignatSpec as Bignat
 
 runLua :: RunLuaRun
 runLua = mkRun $ do
@@ -108,11 +110,11 @@ instance Pushable Operand where
 
 instance Peekable Operand where
   safepeek idx = retrieving "operand" $ do
-    sign <- peekFieldRaw peekIntegral "sign" idx
+    sign <- peekFieldRaw peekIntegral "__sign" idx
 
     (b, i) <- cleanup $ do
       abs <- liftLua $ do
-        _ <- getfield idx "abs"
+        _ <- getfield idx "__abs"
         absindex top
       n <- peekFieldRaw peekIntegral "n" abs
       as <- flip mapM [1..n] $ \i -> do
@@ -153,44 +155,56 @@ instance Arbitrary Operand where
     b' <- filter (>= 2) $ shrink b
     return $ OpO b' o' i'
 
+instance I.IntegerLike Operand where
+
+unexpectedNegativeInteger :: Integral a => a -> I.Case
+unexpectedNegativeInteger b | b < 0 = I.Partial "unexpected negative integer"
+unexpectedNegativeInteger _ | otherwise = I.Relevant
+
+tobignat :: I.Operator Operand
+tobignat = I.MkOperator { human = "bignat conversion"
+                        , ref = fromInteger @Bignat.Operand . toInteger @Operand
+                        , isDual = False
+                        , isPartial = True
+                        , syntax = Nothing
+                        , function = Just ("I.tobignat(%a)", I.relevantIfNotNative <> unexpectedNegativeInteger)
+                        , method = Just ("%a:tobignat()", I.relevantIfNotNative <> unexpectedNegativeInteger)
+                        }
+
 spec :: Spec
 spec = do
   it "should load" $ do
     runLua @IO $ return ()
 
-  it "should survive a push and peek roundtrip" $ properly $ I.unary $ \(a :: Operand) -> do
+  it "should survive a push and peek roundtrip" $ properly $ I.mkProp I.relevantIfNotNative $ \(a :: Operand) -> do
     b <- runLua $ push a >> peek'
     b `shouldBe` a
 
-  describe "representations" $ do
-    describe "decimal" $ do
-      it "should render decimal strings" $ properly $ I.unary $ \(a :: Operand) -> do
-        s <- runLua $ do
-          "a" `bind` a
-          return' "a:tostring()"
-        s `shouldBe` (show $ toInteger a)
+  describe "integer-like" $ I.integerLike @Operand runLua $
+    I.MkSpec { binary = [ I.add "I", I.sub "I"
+                        , I.mul "I"
+                        , I.quot "I", I.rem "I", I.quotrem "I"
+                        , I.div "I", I.mod "I", I.divmod "I"
+                        , I.compare "I"
+                        ]
+                     ++ I.relationalOperators "I"
+             , unary = [ I.neg "I" ]
+                    ++ [ I.abs "I", I.sign "I" ]
+                    ++ [ I.tostring "I", I.fromstring "I"
+                       , I.tointeger "I", I.frominteger "I"
+                       ]
+             }
 
-      it "should parse decimal strings" $ properly $ \(a :: Operand) -> do
-        a' <- runLua $ return' $ printf "I.fromstring('%s')" (show $ toInteger a)
-        a' `shouldBe` a
+  it "should build integers from absolute value and sign" $ properly $ \(a :: Bignat.Operand, s :: Ordering) -> do
+    let s' = case s of { LT -> -1; EQ -> 0; GT -> 1 }
+    b <- runLua $ do
+      "N" `requireG` "bignat"
+      "a" `bind` a
+      "s" `bind` s'
+      return' "I.fromabssign(a, s)"
+    b `shouldBe` (fromInteger @Operand . (* s') . toInteger $ a)
 
-  I.integerLike @Operand runLua $ mempty
-    <> I.relationalOperators <> I.compare "I.compare"
-    <> I.add "I.add" <> I.sub "I.sub" <> I.neg "I.neg"
-    <> I.mul "I.mul" <> I.divrem "I.divrem"
-
-  describe "integer conversion" $ do
-    it "should convert from integers" $ properly $ \a -> do
-      a' <- runLua $ do
-        "a" `bind` a
-        return' "I.frominteger(a)"
-      a' `shouldBe` OpL a
-
-    it "should safely try converting to native integers" $ properly $ I.unary $ \(a :: Operand) -> do
-      a' <- runLua $ do
-        "a" `bind` a
-        dostring' "return a:tointeger()"
-        isnil top >>= \case
-          True -> return Nothing
-          False -> Just <$> peek' @Integer
-      a' `shouldBe` (if abs a <= maxint then Just (toInteger a) else Nothing)
+  I.integerLike @Operand runLua $
+    I.MkSpec { binary = []
+             , unary = [ tobignat ]
+             }

@@ -103,7 +103,7 @@ luaBits = unsafePerformIO $ HsLua.run @HsLua.Exception $ do
 handleStatus :: LuaError e => Status -> LuaE e ()
 handleStatus OK = return ()
 handleStatus ErrRun = throwErrorAsException
-handleStatus  _ = undefined
+handleStatus e = error $ show e
 
 dostring' :: LuaError e => String -> LuaE e ()
 dostring' s = dostring (BSUTF8.fromString s) >>= handleStatus
@@ -121,10 +121,17 @@ newtype LuaInt = LuaInt HsLua.Integer deriving ( Show, Num, Eq, Ord )
 maxint :: Integral a => a
 maxint = case luaBits of { Lua32 -> 31 :: Integer ; Lua64 -> 63 } & \b -> 2^b - 1
 
+minint :: Integral a => a
+minint = case luaBits of { Lua32 -> 31 :: Integer ; Lua64 -> 63 } & \b -> -2^b
+
 instance Arbitrary LuaInt where
-  arbitrary = do
-    i <- chooseInt (-maxint + 1, maxint - 1)
-    return (LuaInt . HsLua.Integer . fromIntegral $ i)
+  arbitrary = fmap (LuaInt . HsLua.Integer . fromIntegral) $
+    frequency [ (5, elements [ -1, 0, 1, minint, maxint ]) -- the usual suspects
+              , (10, chooseInt (-0x10, 0x10))
+              , (20, chooseInt (-0x100, 0x100))
+              , (20, chooseInt (-0x1000, 0x1000))
+              , (45, chooseInt (minint, maxint))
+              ]
 
   shrink li = LuaInt . fromIntegral <$> shrink (luaIntToInteger li)
 
@@ -139,3 +146,6 @@ expectError expr = try expr >>= \case
   Right ErrRun -> Just <$> popException
   Right _ -> return Nothing
   Left _ -> return Nothing
+
+expectError' :: (LuaError e) => String -> LuaE e (Maybe e)
+expectError' s = expectError $ dostring . BSUTF8.fromString $ "return " ++ s

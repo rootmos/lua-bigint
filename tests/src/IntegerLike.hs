@@ -1,33 +1,20 @@
-module IntegerLike ( IsLuaNative (..)
+module IntegerLike where
 
-                   , Spec (..)
-                   , relationalOperators
-                   , add, mul
-                   , sub, truncatingSubtraction
-                   , neg
-                   , divrem
-                   , compare
+import Prelude
 
-                   , unary
-                   , binary
-
-                   , integerLike
-                   ) where
-
-import Prelude hiding ( compare )
-import qualified Prelude as P
-
-import Control.Monad ( when )
+import Control.Monad ( forM_, when )
+import Data.Maybe ( catMaybes )
 import qualified Data.Text as T
 import Text.Printf
 
-import Data.ByteString.UTF8 as BSUTF8
+--import Data.ByteString.UTF8 as BSUTF8
+--import qualified Data.ByteString as BS
 
+import Test.QuickCheck hiding ( function )
 import Test.Hspec hiding ( Spec )
 import qualified Test.Hspec as Hspec
-import Test.QuickCheck
 
-import HsLua hiding ( Integer, compare, RelationalOperator (..) )
+import HsLua hiding ( Integer, compare, RelationalOperator (..), ref, method )
 
 import LuaUtils
 import Utils
@@ -39,211 +26,448 @@ instance IsLuaNative a => IsLuaNative (NonNegative a) where
   isLuaNative = isLuaNative . getNonNegative
 
 class (Show a, Integral a, IsLuaNative a, Arbitrary a, Peekable a, Pushable a) => IntegerLike a where
-instance (Show a, Integral a, IsLuaNative a, Arbitrary a, Peekable a, Pushable a) => IntegerLike a where
 
-data Bin a = forall b. (Peekable b, Show b, Eq b) => MkBin (a -> a -> b)
-data Un a = forall b. (Peekable b, Show b, Eq b) => MkUn (a -> b)
+data Case = Relevant
+          | Irrelevant
+          | Partial String
+          deriving ( Show, Eq )
 
-type RelationalOperator a = ( String, Bool, a -> a -> Bool )
-type BinaryOperator a = ( String, Bool, Bin a)
-type PartialBinaryOperator a = ( String, Bin a, (a, a) -> Bool, String )
-type UnaryOperator a = ( String, Un a)
+always :: a -> Case
+always _ = Relevant
 
-data Spec a = Spec { relationalOps :: [ RelationalOperator a ]
-                   , binaryOps :: [ BinaryOperator a ]
-                   , partialOps :: [ PartialBinaryOperator a ]
-                   , unaryOps :: [ UnaryOperator a ]
-                   }
+relevantIfNotNative :: IsLuaNative a => a -> Case
+relevantIfNotNative a | isLuaNative a = Irrelevant
+relevantIfNotNative _ | otherwise = Relevant
 
-instance Semigroup (Spec a) where
-  a <> b = Spec { relationalOps = relationalOps a ++ relationalOps b
-                , binaryOps = binaryOps a ++ binaryOps b
-                , partialOps = partialOps a ++ partialOps b
-                , unaryOps = unaryOps a ++ unaryOps b
-                }
+relevantIfNative :: IsLuaNative a => a -> Case
+relevantIfNative a | isLuaNative a = Relevant
+relevantIfNative _ | otherwise = Irrelevant
 
-instance Monoid (Spec a) where
-  mempty = Spec [] [] [] []
+relevantIfFstNotNative :: IsLuaNative a => (a, b) -> Case
+relevantIfFstNotNative (a, _) | isLuaNative a = Irrelevant
+relevantIfFstNotNative (_, _) | otherwise = Relevant
 
-divByZeroMsg :: String
-divByZeroMsg = "attempt to divide by zero"
+relevantIfNotBothLuaIntegers :: (IsLuaNative a, IsLuaNative b) => (a, b) -> Case
+relevantIfNotBothLuaIntegers (a, b) =
+  case (isLuaNative a, isLuaNative b) of
+    (True, True) -> Irrelevant
+    _ -> Relevant
 
-relationalOperators :: IntegerLike a => Spec a
-relationalOperators = mempty { relationalOps = [ ("%a == %b", True, (==))
-                                               , ("%a ~= %b", False, (/=))
-                                               , ("%a < %b", False, (<))
-                                               , ("%a <= %b", True, (<=))
-                                               , ("%a > %b", False, (>))
-                                               , ("%a >= %b", True, (>=))
-                                               ]
-                             }
+relevantIfNeitherIsNative :: (IsLuaNative a, IsLuaNative b) => (a, b) -> Case
+relevantIfNeitherIsNative (a, b) =
+  case (isLuaNative a, isLuaNative b) of
+    (False, False) -> Relevant
+    (_, _) -> Irrelevant
 
-truncatingSubtraction :: IntegerLike a => String -> Spec a
-truncatingSubtraction expr = mempty { binaryOps = [ ("%a - %b", False, MkBin ref)
-                                                  , (mk "d", False, MkBin ref)
-                                                  , (mk "t", False, MkBin trunc)
-                                                  , (printf "{%s(%%a, %%b)}" expr, False, MkBin $ \a b -> (ref a b, trunc a b))
-                                                  ]
-                                    }
-  where mk v = printf "(function() local d, t = %s(%%a, %%b); return %s end)()" expr (v :: String)
-        ref a b = max 0 (a - b)
-        trunc = (<)
+divByZero :: Integral b => (a, b) -> Case
+divByZero (_, b) | b == 0 = Partial "attempt to divide by zero"
+divByZero (_, _) | otherwise = Relevant
 
-sub :: IntegerLike a => String -> Spec a
-sub expr = mempty { binaryOps = [ ("%a - %b", False, MkBin (-))
-                                , (printf "%s(%%a, %%b)" expr, False, MkBin (-))
-                                ]
-                                }
+instance Semigroup Case where
+  Relevant <> Relevant = Relevant
+  Irrelevant <> _ = Irrelevant
+  _ <> Irrelevant = Irrelevant
+  Partial msg <> Relevant = Partial msg
+  Relevant <> Partial msg = Partial msg
+  Partial msg <> Partial _ = Partial msg
 
-compare :: IntegerLike a => String -> Spec a
-compare expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, False, MkBin ref) ] }
-  where ref a b = case P.compare a b of
-                    LT -> -1 :: Int
-                    EQ -> 0
-                    GT -> 1
+ -- TODO split into MkBin, MkUn, MkDual so b can be Peekable and Pushable accordingly
+data Operator a = forall b. (Show b, Eq b, Peekable b, Pushable b)
+  => MkOperator { human :: String
+                , ref :: a -> b
+                , isDual :: Bool -- indicator to test the dual of the reference implementation
+                , isPartial :: Bool -- indicator to not try and search for non-existent partial cases
+                , syntax :: Maybe (String, a -> Case)
+                , function :: Maybe (String, a -> Case)
+                , method :: Maybe (String, a -> Case)
+                } -- laws?
 
-divrem :: IntegerLike a => String -> Spec a
-divrem expr = mempty { partialOps = [ (mk "q", MkBin quot, isdef, divByZeroMsg)
-                                    , (mk "r", MkBin rem, isdef, divByZeroMsg)
-                                    , (printf "{%s(%%a, %%b)}" expr, MkBin quotRem, isdef, divByZeroMsg)
-                                    , ("%a // %b", MkBin quot, \(_, b) -> b /= 0, divByZeroMsg)
-                                    , ("%a % %b", MkBin rem, \(_, b) -> b /= 0, divByZeroMsg)
-                                    ]
+data Spec a = MkSpec { unary :: [ Operator a ]
+                     , binary :: [ Operator (a, a) ]
                      }
-  where isdef (_, b) = b /= 0
-        mk v = printf "(function() local q, r = %s(%%a, %%b); return %s end)()" expr (v :: String)
 
-add :: IntegerLike a => String -> Spec a
-add expr = mempty { binaryOps = [ ("%a + %b", True, MkBin (+))
-                                , (printf "%s(%%a, %%b)" expr, True, MkBin (+))
-                                ]
-                  }
+add :: IntegerLike a => String -> Operator (a, a)
+add modname =
+  MkOperator { human = "addition"
+             , ref = uncurry (+)
+             , isDual = False
+             , isPartial = False
+             , syntax = Just ("%a + %b", relevantIfNotBothLuaIntegers)
+             , function = Just (modname ++ ".add(%a,%b)", relevantIfNotBothLuaIntegers)
+             , method =  Just ("%a:add(%b)", relevantIfFstNotNative)
+             }
 
-mul :: IntegerLike a => String -> Spec a
-mul expr = mempty { binaryOps = [ (printf "%s(%%a, %%b)" expr, True, MkBin (*))
-                                , ("%a * %b", True, MkBin (*))
-                                ]
-                  }
+sub :: IntegerLike a => String -> Operator (a, a)
+sub modname =
+  MkOperator { human = "subtraction"
+             , ref = uncurry (-)
+             , isDual = False
+             , isPartial = False
+             , syntax = Just ("%a - %b", relevantIfNotBothLuaIntegers)
+             , function = Just (modname ++ ".sub(%a,%b)", relevantIfNotBothLuaIntegers)
+             , method =  Just ("%a:sub(%b)", relevantIfFstNotNative)
+             }
 
-neg :: IntegerLike a => String -> Spec a
-neg expr = mempty { unaryOps = [ (printf "%s(%%a)" expr, MkUn negate)
-                               , ("(-%a)", MkUn negate)
-                               ]
-                  }
+neg :: IntegerLike a => String -> Operator a
+neg modname =
+  MkOperator { human = "negation"
+             , ref = negate
+             , isDual = False
+             , isPartial = False
+             , syntax = Just ("-%a", relevantIfNotNative)
+             , function = Just (modname ++ ".neg(%a)", relevantIfNotNative)
+             , method =  Just ("%a:neg()", relevantIfNotNative)
+             }
 
-binaryExpr :: String -> String -> String -> String
-binaryExpr template a b = T.unpack $ T.replace "%b" (T.pack b) $ T.replace "%a" (T.pack a) (T.pack template)
+mul :: IntegerLike a => String -> Operator (a, a)
+mul modname =
+  MkOperator { human = "multiplication"
+             , ref = uncurry (*)
+             , isDual = False
+             , isPartial = False
+             , syntax = Just ("%a * %b", relevantIfNotBothLuaIntegers)
+             , function = Just (modname ++ ".mul(%a,%b)", relevantIfNotBothLuaIntegers)
+             , method =  Just ("%a:mul(%b)", relevantIfFstNotNative)
+             }
 
-unaryExpr :: String -> String -> String
-unaryExpr template a = T.unpack $ T.replace "%a" (T.pack a) (T.pack template)
+quot :: IntegerLike a => String -> Operator (a, a)
+quot modname =
+  MkOperator { human = "integer division truncated towards zero"
+             , ref = uncurry Prelude.quot
+             , isDual = False
+             , isPartial = True
+             , syntax = Just ("%a // %b", relevantIfNotBothLuaIntegers <> divByZero)
+             , function = Just (modname ++ ".quot(%a,%b)", relevantIfNotBothLuaIntegers <> divByZero)
+             , method =  Just ("%a:quot(%b)", relevantIfFstNotNative <> divByZero)
+             }
 
-unary :: (Show op, Arbitrary op, IsLuaNative op)
-      => (op -> IO ()) -> Test.QuickCheck.Property
-unary = flip forAllShrink shrink $ suchThat arbitrary $ not . isLuaNative
+rem :: IntegerLike a => String -> Operator (a, a)
+rem modname =
+  MkOperator { human = "remainder after integer division truncated towards zero"
+             , ref = uncurry Prelude.rem
+             , isDual = False
+             , isPartial = True
+             , syntax = Just ("%a % %b", relevantIfNotBothLuaIntegers <> divByZero)
+             , function = Just (modname ++ ".rem(%a,%b)", relevantIfNotBothLuaIntegers <> divByZero)
+             , method =  Just ("%a:rem(%b)", relevantIfFstNotNative <> divByZero)
+             }
 
-binary :: (Show op, Arbitrary op, IsLuaNative op)
-       => ((op, op) -> IO ()) -> Test.QuickCheck.Property
-binary = flip forAllShrink shrink $ suchThat arbitrary $ \(a, b) -> not (isLuaNative a && isLuaNative b)
+quotrem :: IntegerLike a => String -> Operator (a, a)
+quotrem modname =
+  MkOperator { human = "quotrem function"
+             , ref = uncurry quotRem
+             , isDual = False
+             , isPartial = True
+             , syntax = Nothing
+             , function = Just (printf "{%s.quotrem(%%a,%%b)}" modname, relevantIfNotBothLuaIntegers <> divByZero)
+             , method =  Just ("{%a:quotrem(%b)}", relevantIfFstNotNative <> divByZero)
+             }
 
-binary' :: (Show op, Arbitrary op, IsLuaNative op)
-        => ((op, op) -> Bool) -> ((op, op) -> IO ()) -> Test.QuickCheck.Property
-binary' def = flip forAllShrink shrink $ suchThat arbitrary $ \(a, b) -> def (a, b) && not (isLuaNative a && isLuaNative b)
+div :: IntegerLike a => String -> Operator (a, a)
+div modname =
+  MkOperator { human = "integer division truncated towards negative infinity"
+             , ref = uncurry Prelude.div
+             , isDual = False
+             , isPartial = True
+             , syntax = Nothing
+             , function = Just (modname ++ ".div(%a,%b)", relevantIfNotBothLuaIntegers <> divByZero)
+             , method =  Just ("%a:div(%b)", relevantIfFstNotNative <> divByZero)
+             }
 
-unary' :: (Show op, Arbitrary op, IsLuaNative op)
-        => (op -> Bool) -> (op -> IO ()) -> Test.QuickCheck.Property
-unary' def = flip forAllShrink shrink $ suchThat arbitrary $ \a -> def a && not (isLuaNative a)
+mod :: IntegerLike a => String -> Operator (a, a)
+mod modname =
+  MkOperator { human = "remainder after integer division truncated towards negative infinity"
+             , ref = uncurry Prelude.mod
+             , isDual = False
+             , isPartial = True
+             , syntax = Nothing
+             , function = Just (modname ++ ".mod(%a,%b)", relevantIfNotBothLuaIntegers <> divByZero)
+             , method =  Just ("%a:mod(%b)", relevantIfFstNotNative <> divByZero)
+             }
 
-integerLike :: forall op. IntegerLike op
+divmod :: IntegerLike a => String -> Operator (a, a)
+divmod modname =
+  MkOperator { human = "divmod function"
+             , ref = uncurry divMod
+             , isDual = False
+             , isPartial = True
+             , syntax = Nothing
+             , function = Just (printf "{%s.divmod(%%a,%%b)}" modname, relevantIfNotBothLuaIntegers <> divByZero)
+             , method =  Just ("{%a:divmod(%b)}", relevantIfFstNotNative <> divByZero)
+             }
+
+abs :: forall a. IntegerLike a => String -> Operator a
+abs modname =
+  MkOperator { human = "absolute value"
+             , ref = Prelude.abs @a
+             , isDual = False
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".abs(%a)", relevantIfNotNative)
+             , method =  Just ("%a:abs()", relevantIfNotNative)
+             }
+
+sign :: IntegerLike a => String -> Operator a
+sign modname =
+  MkOperator { human = "signum"
+             , ref = Prelude.signum . toInteger
+             , isDual = False
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".sign(%a)", relevantIfNotNative)
+             , method =  Just ("%a:sign()", relevantIfNotNative)
+             }
+
+
+compare :: IntegerLike a => String -> Operator (a, a)
+compare modname =
+  MkOperator { human = "comparison"
+             , ref = \(a, b) -> case Prelude.compare a b of
+                                  LT -> -1 :: Int
+                                  EQ -> 0
+                                  GT -> 1
+             , isDual = False
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".compare(%a,%b)", relevantIfNotBothLuaIntegers)
+             , method =  Just ("%a:compare(%b)", relevantIfFstNotNative)
+             }
+
+relationalOperators :: IntegerLike a => String -> [ Operator (a, a) ]
+relationalOperators modname = fmap mk' [ ("equality", (==), "==", "eq")
+                                       , ("not equal", (/=), "~=", "neq")
+                                       ] ++
+                              fmap mk [ ("less than", (<), "<", "lt")
+                                      , ("less than or equal", (<=), "<=", "le")
+                                      , ("greater than", (>), ">", "gt")
+                                      , ("greater than or equal", (>=), ">=", "ge")
+                                      ]
+  where mk (human, ref, syntax :: String, method :: String) =
+               MkOperator { human = human
+                          , ref = uncurry ref
+                          , isDual = False
+                          , isPartial = False
+                          , syntax = Just (printf "%%a %s %%b" syntax, relevantIfNotBothLuaIntegers)
+                          , function = Just (printf "%s.%s(%%a, %%b)" modname method, relevantIfNotBothLuaIntegers)
+                          , method =  Just (printf "%%a:%s(%%b)" method, relevantIfFstNotNative)
+                          }
+        mk' (human, ref, syntax :: String, method :: String) =
+               MkOperator { human = human
+                          , ref = uncurry ref
+                          , isDual = False
+                          , isPartial = False
+                          , syntax = Just (printf "%%a %s %%b" syntax, relevantIfNeitherIsNative)
+                          , function = Just (printf "%s.%s(%%a, %%b)" modname method, relevantIfNotBothLuaIntegers)
+                          , method =  Just (printf "%%a:%s(%%b)" method, relevantIfFstNotNative)
+                          }
+
+tostring :: IntegerLike a => String -> Operator a
+tostring modname =
+  MkOperator { human = "convert to decimal representation"
+             , ref = show . toInteger
+             , isDual = False
+             , isPartial = False
+             , syntax = Just ("tostring(%a)", always)
+             , function = Just (modname ++ ".tostring(%a)", relevantIfNotNative)
+             , method =  Just ("%a:tostring()", relevantIfNotNative)
+             }
+
+fromstring :: IntegerLike a => String -> Operator a
+fromstring modname =
+  MkOperator { human = "convert from decimal representation"
+             , ref = show . toInteger
+             , isDual = True
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".fromstring(%b)", always)
+             , method =  Nothing
+             }
+
+tohex :: IntegerLike a => String -> Operator a
+tohex modname =
+  MkOperator { human = "convert to hexadecimal representation"
+             , ref = toHex . toInteger
+             , isDual = False
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".tohex(%a)", relevantIfNotNative)
+             , method =  Just ("%a:tohex()", relevantIfNotNative)
+             }
+
+fromhex :: IntegerLike a => String -> Operator a
+fromhex modname =
+  MkOperator { human = "convert from hexadecimal representation"
+             , ref = toHex . toInteger
+             , isDual = True
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".fromhex(%b)", always)
+             , method =  Nothing
+             }
+
+tobigendian :: IntegerLike a => String -> Operator a
+tobigendian modname =
+  MkOperator { human = "convert to big-endian bytes"
+             , ref = toBeBytes . toInteger
+             , isDual = False
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".tobigendian(%a)", relevantIfNotNative)
+             , method =  Just ("%a:tobigendian()", relevantIfNotNative)
+             }
+
+frombigendian :: IntegerLike a => String -> Operator a
+frombigendian modname =
+  MkOperator { human = "convert from big-endian bytes"
+             , ref = toBeBytes . toInteger
+             , isDual = True
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".frombigendian(%b)", always)
+             , method =  Nothing
+             }
+
+tolittleendian :: IntegerLike a => String -> Operator a
+tolittleendian modname =
+  MkOperator { human = "convert to little-endian bytes"
+             , ref = toLeBytes . toInteger
+             , isDual = False
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".tolittleendian(%a)", relevantIfNotNative)
+             , method =  Just ("%a:tolittleendian()", relevantIfNotNative)
+             }
+
+fromlittleendian :: IntegerLike a => String -> Operator a
+fromlittleendian modname =
+  MkOperator { human = "convert from little-endian bytes"
+             , ref = toLeBytes . toInteger
+             , isDual = True
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".fromlittleendian(%b)", always)
+             , method =  Nothing
+             }
+
+newtype SafeToInteger = MkSafeToInteger (Maybe Integer) deriving ( Show, Eq )
+
+instance Peekable SafeToInteger where
+  safepeek idx = cleanup $ liftLua $ isnil idx >>= \case
+    True -> return $ MkSafeToInteger Nothing
+    False -> MkSafeToInteger . Just <$> peek idx
+
+instance Pushable SafeToInteger where
+  push = undefined
+
+safeToInteger :: Integral a => a -> SafeToInteger
+safeToInteger a = MkSafeToInteger $
+  if minint <= a && a <= maxint then Just (toInteger a) else Nothing
+
+tointeger :: IntegerLike a => String -> Operator a
+tointeger modname =
+  MkOperator { human = "safe conversion to native integer"
+             , ref = safeToInteger
+             , isDual = False
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".tointeger(%a)", relevantIfNotNative)
+             , method =  Just ("%a:tointeger()", relevantIfNotNative)
+             }
+
+frominteger :: IntegerLike a => String -> Operator a
+frominteger modname =
+  MkOperator { human = "convert from native integers"
+             , ref = toInteger
+             , isDual = True
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".frominteger(%b)", relevantIfNative)
+             , method =  Nothing
+             }
+
+mkProp :: (Show c, Arbitrary c)
+       => (c -> Case) -> (c -> IO ()) -> Test.QuickCheck.Property
+mkProp study = flip forAllShrink (filter p <$> shrink) $ suchThat arbitrary p
+  where p = ((== Relevant) . study)
+
+mkPropPartial :: (Show c, Arbitrary c)
+              => (c -> Case) -> ((c, String) -> IO ()) -> Test.QuickCheck.Property
+mkPropPartial study = flip forAllShrink shrink $ suchThatMap arbitrary $ \a ->
+  case study a of
+    Partial msg -> Just (a, msg)
+    _ -> Nothing
+
+mkExpr :: String -> [ (String, String) ] -> String
+mkExpr template rs = T.unpack $ r rs $ T.pack template
+  where r [] s = s
+        r ((from, to):rs) s = r rs $ T.replace (T.pack from) (T.pack to) s
+
+integerLike :: forall a. IntegerLike a
             => RunLuaRun
-            -> Spec op
+            -> Spec a
             -> Hspec.Spec
-integerLike runLua (Spec { relationalOps, binaryOps, partialOps, unaryOps }) = do
-  describe "relational operators" $ do
-    flip mapM_ relationalOps $ \(expr, refl, ref) -> describe (binaryExpr expr "a" "b") $ do
-      it (printf "should %s be reflexive (by reference)" (be refl)) $ properly $ unary $ \a -> do
-        s <- runLua $ do
-          "a" `bind` a
-          return' $ binaryExpr expr "a" "a"
-        s `shouldBe` ref a a
-
-      it (printf "should %s be reflexive (by value)" (be refl)) $ properly $ unary $ \a -> do
-        s <- runLua $ do
-          "a0" `bind` a
-          "a1" `bind` a
-          return' $ binaryExpr expr "a0" "a1"
-        s `shouldBe` ref a a
-
-      it "should adhere to the reference implementation" $ properly $ binary $ \(a, b) -> do
-        s <- runLua $ do
-          "a" `bind` a
-          "b" `bind` b
-          return' $ binaryExpr expr "a" "b"
-        s `shouldBe` ref a b
-
-  describe "binary operators" $ do
-    flip mapM_ binaryOps $ \(expr, comm, MkBin ref) -> describe (binaryExpr expr "a" "b") $ do
-      it "should adhere to the reference implementation" $ properly $ binary $ \(a, b) -> do
-        s <- runLua $ do
-          "a" `bind` a
-          "b" `bind` b
-          return' $ binaryExpr expr "a" "b"
-        s `shouldBe` ref a b
-
-      it "should behave as expected when called with the same operand (by reference)" $ properly $ unary $ \a -> do
-        s <- runLua $ do
-          "a" `bind` a
-          return' $ binaryExpr expr "a" "a"
-        s `shouldBe` ref a a
-
-      it "should behave as expected when called with the same operand (by value)" $ properly $ unary $ \a -> do
-        s <- runLua $ do
-          "a" `bind` a
-          "b" `bind` a
-          return' $ binaryExpr expr "a" "b"
-        s `shouldBe` ref a a
-
-      when comm $ it "should be commutative" $ properly $ binary $ \(a :: op, b :: op) -> do
-        s <- runLua $ do
-          "a" `bind` a
-          "b" `bind` b
-          return' $ printf "(%s) == (%s)" (binaryExpr expr "a" "b") (binaryExpr expr "b" "a")
-        s `shouldBe` True
-
-  describe "partial binary operators" $ do
-    flip mapM_ partialOps $ \(expr, MkBin ref, def, msg) -> describe (binaryExpr expr "a" "b") $ do
-      describe "when defined" $ do
-        it "should adhere to the reference implementation" $ properly $ binary' def $ \(a, b) -> do
+integerLike runLua spec = do
+  flip mapM_ (binary spec) $ \MkOperator { human, ref, isPartial, syntax, function, method } -> do
+    describe human $ do
+      forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+        let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
+        it expr' $ properly $ mkProp study $ \(a, b) -> do
           s <- runLua $ do
             "a" `bind` a
             "b" `bind` b
-            return' $ binaryExpr expr "a" "b"
-          s `shouldBe` ref a b
+            return' expr'
+          s `shouldBe` ref (a, b)
 
-        it "should behave as expected when called with the same operand (by reference)" $ properly $ unary' (\a -> def (a,a)) $ \a -> do
-          s <- runLua $ do
-            "a" `bind` a
-            return' $ binaryExpr expr "a" "a"
-          s `shouldBe` ref a a
-
-        it "should behave as expected when called with the same operand (by value)" $ properly $ unary' (\a -> def (a,a)) $ \a -> do
+        let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
+        it (expr' ++ " (when a == b by value)") $ properly $ mkProp (study . \a -> (a, a)) $ \a -> do
           s <- runLua $ do
             "a" `bind` a
             "b" `bind` a
-            return' $ binaryExpr expr "a" "b"
-          s `shouldBe` ref a a
+            return' expr'
+          s `shouldBe` ref (a, a)
 
-      describe "when not defined" $ do
-        it "should complain" $ properly $ binary' (not . def) $ \(a, b) -> do
-          Just (Exception msg') <- runLua $ do
+        let expr' = mkExpr expr [ ("%a", "a"), ("%b", "a") ]
+        it expr' $ properly $ mkProp (study . \a -> (a, a)) $ \a -> do
+          s <- runLua $ do
             "a" `bind` a
-            "b" `bind` b
-            expectError $ dostring . BSUTF8.fromString $ "return " ++ binaryExpr expr "a" "b"
-          msg' `shouldEndWith` msg
+            return' expr'
+          s `shouldBe` ref (a, a)
 
-  describe "unary operators" $ do
-    flip mapM_ unaryOps $ \(expr, MkUn ref) -> describe (unaryExpr expr "a") $ do
-      it "should adhere to the reference implementation" $ properly $ unary $ \a -> do
-        n <- runLua $ do
-          "a" `bind` a
-          return' $ unaryExpr expr "a"
-        n `shouldBe` ref a
+      when isPartial $ do
+        forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+          let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
+          it (printf "%s should raise the expected error when not defined" expr') $ properly $ mkPropPartial study $ \((a, b), msg) -> do
+            Just (Exception msg') <- runLua $ do
+              "a" `bind` a
+              "b" `bind` b
+              expectError' expr'
+            msg' `shouldEndWith` msg
+
+  flip mapM_ (unary spec) $ \MkOperator { human, ref, isDual, isPartial, syntax, function, method } -> do
+    describe human $ do
+      case isDual of
+        False -> do
+          forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+            let expr' = mkExpr expr [ ("%a", "a") ]
+            it expr' $ properly $ mkProp study $ \a -> do
+              s <- runLua $ do
+                "a" `bind` a
+                return' expr'
+              s `shouldBe` ref a
+        True -> do
+          forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+            let expr' = mkExpr expr [ ("%b", "b") ]
+            it expr' $ properly $ mkProp study $ \a -> do
+              s <- runLua $ do
+                "b" `bind` (ref a)
+                return' expr'
+              s `shouldBe` a
+
+      when isPartial $ do
+        forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+          let expr' = mkExpr expr [ ("%a", "a") ]
+          it (printf "%s should raise the expected error when not defined" expr') $ properly $ mkPropPartial study $ \(a, msg) -> do
+            Just (Exception msg') <- runLua $ do
+              "a" `bind` a
+              expectError' expr'
+            msg' `shouldEndWith` msg

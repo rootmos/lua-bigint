@@ -15,6 +15,7 @@ dependencies:
   - utf8-string >= 1.0.2 && < 2
 
 ghc-options: -Wall -Werror -fno-warn-name-shadowing
+#ghc-options: -Wall -fno-warn-name-shadowing
 
 default-extensions:
   - BangPatterns
