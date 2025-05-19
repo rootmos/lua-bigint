@@ -22,8 +22,8 @@ local function make(abs, sign)
         sign = 0
     end
     local q = {
-        abs = abs,
-        sign = sign,
+        __abs = abs,
+        __sign = sign,
     }
     return setmetatable(q, __mt)
 end
@@ -59,11 +59,11 @@ function __fn:tostring(to)
     end
 
     local sign = ""
-    if self.sign < 0 then
+    if self.__sign < 0 then
         sign = "-"
     end
 
-    return sign .. self.abs:tostring(to)
+    return sign .. self.__abs:tostring(to)
 end
 M.tostring = __fn.tostring
 __mt.__tostring = __fn.tostring
@@ -94,15 +94,15 @@ function M.frominteger(n, base)
 end
 
 function __fn:tointeger()
-    if self.abs > Bignat.maxint then
+    if self.__abs > Bignat.maxint then
         return nil
     end
 
-    local i = self.abs:tointeger()
+    local i = self.__abs:tointeger()
     if i == nil then
         return nil
     else
-        return i * self.sign
+        return i * self.__sign
     end
 end
 M.tointeger = __fn.tointeger
@@ -126,11 +126,11 @@ local function binop(a, b)
     elseif a.base < b.base then
         local as = Arbbase.convert(a:digits(), a.base, b.base)
         as.base = b.base
-        return make(as, a.sign), b
+        return make(as, a.__sign), b
     else
         local bs = Arbbase.convert(b:digits(), b.base, a.base)
         bs.base = a.base
-        return a, make(bs, b.sign)
+        return a, make(bs, b.__sign)
     end
 end
 
@@ -151,21 +151,21 @@ end
 
 function M.add(a, b)
     local a, b = binop(a, b)
-    return add(a.sign, a.abs, b.sign, b.abs)
+    return add(a.__sign, a.__abs, b.__sign, b.__abs)
 end
 __fn.add = M.add
 __mt.__add = M.add
 
 function M.sub(a, b)
     local a, b = binop(a, b)
-    return add(a.sign, a.abs, -b.sign, b.abs)
+    return add(a.__sign, a.__abs, -b.__sign, b.__abs)
 end
 __fn.sub = M.sub
 __mt.__sub = M.sub
 
 function M.mul(a, b)
     local a, b = binop(a, b)
-    return make(a.abs * b.abs, a.sign * b.sign)
+    return make(a.__abs * b.__abs, a.__sign * b.__sign)
 end
 __fn.mul = M.mul
 __mt.__mul = M.mul
@@ -174,10 +174,26 @@ function M.neg(a)
     if not M.is_bigint(a) then
         error("bigint unary operation called with unsuitable value")
     end
-    return make(a.abs, -a.sign)
+    return make(a.__abs, -a.__sign)
 end
 __fn.neg = M.neg
 __mt.__unm = M.neg
+
+function M.abs(a)
+    if not M.is_bigint(a) then
+        error("bigint unary operation called with unsuitable value")
+    end
+    return make(a.__abs, 1)
+end
+__fn.abs = M.abs
+
+function M.sign(a)
+    if not M.is_bigint(a) then
+        error("bigint unary operation called with unsuitable value")
+    end
+    return a.__sign
+end
+__fn.sign = M.sign
 
 function M.quotrem(a, b)
     local a, b = binop(a, b)
@@ -187,11 +203,11 @@ function M.quotrem(a, b)
         return M.zero(base), M.zero(base)
     end
 
-    local q, r = Bignat.quotrem(a.abs, b.abs)
-    if a.sign == b.sign then
-        return make(q, 1), make(r, a.sign)
+    local q, r = Bignat.quotrem(a.__abs, b.__abs)
+    if a.__sign == b.__sign then
+        return make(q, 1), make(r, a.__sign)
     else
-        return make(q, -1), make(r, a.sign)
+        return make(q, -1), make(r, a.__sign)
     end
 end
 __fn.quotrem = M.quotrem
@@ -216,7 +232,7 @@ function M.divmod(a, b)
 
     local q, r = M.quotrem(a, b)
 
-    if r.sign == - b.sign then
+    if r.__sign == - b.__sign then
         return q - 1, r + b
     else
         return q, r
@@ -238,21 +254,21 @@ __fn.mod = M.mod
 
 function M.compare(a, b)
     local a, b = binop(a, b)
-    if a.sign == b.sign then
-        if a.sign == 0 then
+    if a.__sign == b.__sign then
+        if a.__sign == 0 then
             return 0
         end
 
         local a, b = binop(a, b)
-        local cmp = Bignat.compare(a.abs, b.abs)
+        local cmp = Bignat.compare(a.__abs, b.__abs)
         if cmp == 0 then
             return 0
         end
-        if a.sign < 0 then
+        if a.__sign < 0 then
             return -cmp
         end
         return cmp
-    elseif a.sign < b.sign then
+    elseif a.__sign < b.__sign then
         return -1
     else
         return 1

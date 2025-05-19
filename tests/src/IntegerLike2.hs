@@ -190,6 +190,28 @@ divmod modname =
              , method =  Just ("{%a:divmod(%b)}", relevantIfFstNotNative <> divByZero)
              }
 
+abs :: forall a. IntegerLike a => String -> Operator a
+abs modname =
+  MkOperator { human = "absolute value"
+             , ref = Prelude.abs @a
+             , isDual = False
+             , isPartial = True
+             , syntax = Nothing
+             , function = Just (modname ++ ".abs(%a)", relevantIfNotNative)
+             , method =  Just ("%a:abs()", relevantIfNotNative)
+             }
+
+sign :: IntegerLike a => String -> Operator a
+sign modname =
+  MkOperator { human = "signum"
+             , ref = Prelude.signum . toInteger
+             , isDual = False
+             , isPartial = True
+             , syntax = Nothing
+             , function = Just (modname ++ ".sign(%a)", relevantIfNotNative)
+             , method =  Just ("%a:sign()", relevantIfNotNative)
+             }
+
 
 compare :: IntegerLike a => String -> Operator (a, a)
 compare modname =
@@ -257,7 +279,7 @@ instance Pushable SafeToInteger where
 
 safeToInteger :: Integral a => a -> SafeToInteger
 safeToInteger a = MkSafeToInteger $
-  if abs a <= maxint then Just (toInteger a) else Nothing
+  if Prelude.abs a <= maxint then Just (toInteger a) else Nothing
 
 tointeger :: IntegerLike a => String -> Operator a
 tointeger modname =

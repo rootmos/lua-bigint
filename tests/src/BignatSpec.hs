@@ -171,6 +171,7 @@ spec = do
                          ]
                       ++ I2.relationalOperators "N"
               , unary = [ I2.neg "N" ]
+                     ++ [ I2.abs "N", I2.sign "N" ]
                      ++ [ I2.tostring "N", I2.fromstring "N"
                         , I2.tointeger "N", I2.frominteger "N"
                         ]

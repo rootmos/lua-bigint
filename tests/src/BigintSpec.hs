@@ -109,11 +109,11 @@ instance Pushable Operand where
 
 instance Peekable Operand where
   safepeek idx = retrieving "operand" $ do
-    sign <- peekFieldRaw peekIntegral "sign" idx
+    sign <- peekFieldRaw peekIntegral "__sign" idx
 
     (b, i) <- cleanup $ do
       abs <- liftLua $ do
-        _ <- getfield idx "abs"
+        _ <- getfield idx "__abs"
         absindex top
       n <- peekFieldRaw peekIntegral "n" abs
       as <- flip mapM [1..n] $ \i -> do
@@ -175,6 +175,7 @@ spec = do
                          ]
                       ++ I2.relationalOperators "I"
               , unary = [ I2.neg "I" ]
+                     ++ [ I2.abs "I", I2.sign "I" ]
                      ++ [ I2.tostring "I", I2.fromstring "I"
                         , I2.tointeger "I", I2.frominteger "I"
                         ]

@@ -194,6 +194,22 @@ end
 __fn.neg = M.neg
 __mt.__unm = M.neg
 
+function M.abs(a)
+    if not M.is_bignat(a) then
+        error("bignat unary operation called with unsuitable value")
+    end
+    return a
+end
+__fn.abs = M.abs
+
+function M.sign(a)
+    if not M.is_bignat(a) then
+        error("bignat unary operation called with unsuitable value")
+    end
+    return a > 0 and 1 or 0
+end
+__fn.sign = M.sign
+
 function M.compare(a, b)
     local a, b = binop(a, b)
 
