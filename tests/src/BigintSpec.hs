@@ -12,7 +12,7 @@ import Text.Printf
 import Test.Hspec
 import Test.QuickCheck
 
-import HsLua hiding ( Integer, compare )
+import HsLua hiding ( Integer, compare, RelationalOperator(..) )
 import HsLua.Marshalling.Peekers
 
 import Huge
@@ -21,6 +21,8 @@ import LuaBigInt
 --import qualified IntegerLike as I
 import qualified IntegerLike2 as I2
 import Utils
+
+import qualified BignatSpec as Bignat
 
 runLua :: RunLuaRun
 runLua = mkRun $ do
@@ -157,6 +159,20 @@ instance Arbitrary Operand where
 -- TODO should this really be necessary?
 instance I2.IntegerLike Operand where
 
+unexpectedNegativeInteger :: Integral a => a -> I2.Case
+unexpectedNegativeInteger b | b < 0 = I2.Partial "unexpected negative integer"
+unexpectedNegativeInteger _ | otherwise = I2.Relevant
+
+tobignat :: I2.Operator Operand
+tobignat = I2.MkOperator { human = "bignat conversion"
+                         , ref = fromInteger @Bignat.Operand . toInteger @Operand
+                         , isDual = False
+                         , isPartial = True
+                         , syntax = Nothing
+                         , function = Just ("I.tobignat(%a)", I2.relevantIfNotNative <> unexpectedNegativeInteger)
+                         , method = Just ("%a:tobignat()", I2.relevantIfNotNative <> unexpectedNegativeInteger)
+                         }
+
 spec :: Spec
 spec = do
   it "should load" $ do
@@ -166,7 +182,8 @@ spec = do
     b <- runLua $ push a >> peek'
     b `shouldBe` a
 
-  I2.integerLike @Operand runLua $
+
+  describe "integer-like" $ I2.integerLike @Operand runLua $
     I2.MkSpec { binary = [ I2.add "I", I2.sub "I"
                          , I2.mul "I"
                          , I2.quot "I", I2.rem "I", I2.quotrem "I"
@@ -179,4 +196,18 @@ spec = do
                      ++ [ I2.tostring "I", I2.fromstring "I"
                         , I2.tointeger "I", I2.frominteger "I"
                         ]
+              }
+
+  it "should build integers from absolute value and sign" $ properly $ \(a :: Bignat.Operand, s :: Ordering) -> do
+    let s' = case s of { LT -> -1; EQ -> 0; GT -> 1 }
+    b <- runLua $ do
+      "N" `requireG` "bignat"
+      "a" `bind` a
+      "s" `bind` s'
+      return' "I.fromabssign(a, s)"
+    b `shouldBe` (fromInteger @Operand . (* s') . toInteger $ a)
+
+  I2.integerLike @Operand runLua $
+    I2.MkSpec { binary = []
+              , unary = [ tobignat ]
               }

@@ -201,7 +201,7 @@ abs modname =
   MkOperator { human = "absolute value"
              , ref = Prelude.abs @a
              , isDual = False
-             , isPartial = True
+             , isPartial = False
              , syntax = Nothing
              , function = Just (modname ++ ".abs(%a)", relevantIfNotNative)
              , method =  Just ("%a:abs()", relevantIfNotNative)
@@ -212,7 +212,7 @@ sign modname =
   MkOperator { human = "signum"
              , ref = Prelude.signum . toInteger
              , isDual = False
-             , isPartial = True
+             , isPartial = False
              , syntax = Nothing
              , function = Just (modname ++ ".sign(%a)", relevantIfNotNative)
              , method =  Just ("%a:sign()", relevantIfNotNative)
@@ -443,21 +443,31 @@ integerLike runLua spec = do
               expectError' expr'
             msg' `shouldEndWith` msg
 
-  flip mapM_ (unary spec) $ \MkOperator { human, ref, isDual, syntax, function, method } -> do
-    describe human $ case isDual of
-      False -> do
+  flip mapM_ (unary spec) $ \MkOperator { human, ref, isDual, isPartial, syntax, function, method } -> do
+    describe human $ do
+      case isDual of
+        False -> do
+          forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+            let expr' = mkExpr expr [ ("%a", "a") ]
+            it expr' $ properly $ mkProp study $ \a -> do
+              s <- runLua $ do
+                "a" `bind` a
+                return' expr'
+              s `shouldBe` ref a
+        True -> do
+          forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+            let expr' = mkExpr expr [ ("%b", "b") ]
+            it expr' $ properly $ mkProp study $ \a -> do
+              s <- runLua $ do
+                "b" `bind` (ref a)
+                return' expr'
+              s `shouldBe` a
+
+      when isPartial $ do
         forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
           let expr' = mkExpr expr [ ("%a", "a") ]
-          it expr' $ properly $ mkProp study $ \a -> do
-            s <- runLua $ do
+          it (printf "%s should raise the expected error when not defined" expr') $ properly $ mkPropPartial study $ \(a, msg) -> do
+            Just (Exception msg') <- runLua $ do
               "a" `bind` a
-              return' expr'
-            s `shouldBe` ref a
-      True -> do
-        forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
-          let expr' = mkExpr expr [ ("%b", "b") ]
-          it expr' $ properly $ mkProp study $ \a -> do
-            s <- runLua $ do
-              "b" `bind` (ref a)
-              return' expr'
-            s `shouldBe` a
+              expectError' expr'
+            msg' `shouldEndWith` msg

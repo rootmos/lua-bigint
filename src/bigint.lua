@@ -117,6 +117,21 @@ function __fn:tointeger()
 end
 M.tointeger = __fn.tointeger
 
+function M.fromabssign(abs, sign)
+    if math.type(abs) == "integer" then
+        abs = Bignat.frominteger(abs)
+    end
+    return make(abs, sign)
+end
+
+function M:tobignat()
+    if self.__sign < 0 then
+        error("unexpected negative integer")
+    end
+    return self.__abs
+end
+__fn.tobignat = M.tobignat
+
 local function binop(a, b)
     local at, bt = M.is_bigint(a), M.is_bigint(b)
     if at ~= bt then
