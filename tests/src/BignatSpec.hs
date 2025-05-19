@@ -175,6 +175,8 @@ spec = do
                      ++ [ I2.tostring "N", I2.fromstring "N"
                         , I2.tointeger "N", I2.frominteger "N"
                         , I2.tohex "N", I2.fromhex "N"
+                        , I2.tobigendian "N", I2.frombigendian "N"
+                        , I2.tolittleendian "N", I2.fromlittleendian "N"
                         ]
               }
 
@@ -184,30 +186,3 @@ spec = do
         --"a" `bind` a
         --expectError (dostring "N.frominteger(a)")
       --msg `shouldEndWith` "unexpected negative integer"
-
-  --describe "representations" $ do
-    --describe "big-endian" $ do
-      --it "should render big-endian bytestrings" $ properly $ I.unary $ \(a :: Operand) -> do
-        --s <- runLua $ do
-          --"a" `bind` a
-          --return' "a:tobigendian()"
-        --s `shouldBe` (toBeBytes $ toInteger a)
-
-      --it "should parse big-endian bytestrings" $ properly $ \(a :: Operand) -> do
-        --a' <- runLua $ do
-          --"bs" `bind` (toBeBytes $ toInteger a)
-          --return' "N.frombigendian(bs)"
-        --a' `shouldBe` a
-
-    --describe "little-endian" $ do
-      --it "should render little-endian bytestrings" $ properly $ I.unary $ \(a :: Operand) -> do
-        --s <- runLua $ do
-          --"a" `bind` a
-          --return' "a:tolittleendian()"
-        --s `shouldBe` (toLeBytes $ toInteger a)
-
-      --it "should parse little-endian bytestrings" $ properly $ \(a :: Operand) -> do
-        --a' <- runLua $ do
-          --"bs" `bind` (toLeBytes $ toInteger a)
-          --return' "N.fromlittleendian(bs)"
-        --a' `shouldBe` a

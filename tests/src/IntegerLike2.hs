@@ -305,6 +305,50 @@ fromhex modname =
              , method =  Nothing
              }
 
+tobigendian :: IntegerLike a => String -> Operator a
+tobigendian modname =
+  MkOperator { human = "convert to big-endian bytes"
+             , ref = toBeBytes . toInteger
+             , isDual = False
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".tobigendian(%a)", relevantIfNotNative)
+             , method =  Just ("%a:tobigendian()", relevantIfNotNative)
+             }
+
+frombigendian :: IntegerLike a => String -> Operator a
+frombigendian modname =
+  MkOperator { human = "convert from big-endian bytes"
+             , ref = toBeBytes . toInteger
+             , isDual = True
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".frombigendian(%b)", always)
+             , method =  Nothing
+             }
+
+tolittleendian :: IntegerLike a => String -> Operator a
+tolittleendian modname =
+  MkOperator { human = "convert to little-endian bytes"
+             , ref = toLeBytes . toInteger
+             , isDual = False
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".tolittleendian(%a)", relevantIfNotNative)
+             , method =  Just ("%a:tolittleendian()", relevantIfNotNative)
+             }
+
+fromlittleendian :: IntegerLike a => String -> Operator a
+fromlittleendian modname =
+  MkOperator { human = "convert from little-endian bytes"
+             , ref = toLeBytes . toInteger
+             , isDual = True
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (modname ++ ".fromlittleendian(%b)", always)
+             , method =  Nothing
+             }
+
 newtype SafeToInteger = MkSafeToInteger (Maybe Integer) deriving ( Show, Eq )
 
 instance Peekable SafeToInteger where

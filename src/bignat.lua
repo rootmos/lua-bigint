@@ -86,9 +86,10 @@ function M.frombigendian(bs)
     return M.make(q)
 end
 
-function __fn:tobigendian()
+function M:tobigendian()
     return string.reverse(self:tolittleendian())
 end
+__fn.tobigendian = M.tobigendian
 
 function M.fromlittleendian(bs)
     local p = table.pack(string.byte(bs, 1, #bs))
@@ -96,9 +97,10 @@ function M.fromlittleendian(bs)
     return M.make(p)
 end
 
-function __fn:tolittleendian()
+function M:tolittleendian()
     return string.char(table.unpack(Arbbase.convert(self:digits(), self.base, 256)))
 end
+__fn.tolittleendian = M.tolittleendian
 
 local addB, mulB = I.mk_add(M.make), I.mk_mul(M.make)
 
