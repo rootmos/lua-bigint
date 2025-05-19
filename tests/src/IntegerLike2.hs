@@ -361,7 +361,7 @@ instance Pushable SafeToInteger where
 
 safeToInteger :: Integral a => a -> SafeToInteger
 safeToInteger a = MkSafeToInteger $
-  if Prelude.abs a <= maxint then Just (toInteger a) else Nothing
+  if minint <= a && a <= maxint then Just (toInteger a) else Nothing
 
 tointeger :: IntegerLike a => String -> Operator a
 tointeger modname =

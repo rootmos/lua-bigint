@@ -94,8 +94,18 @@ function M.frominteger(n, base)
 end
 
 function __fn:tointeger()
-    if self.__abs > Bignat.maxint then
+    if self.__sign > 0 and self.__abs > Bignat.maxint then
         return nil
+    end
+
+    if self.__sign < 0 then
+        local t = self.__abs:compare(Bignat.maxint + 1)
+        if t > 0 then
+            return nil
+        end
+        if t == 0 then
+            return minint
+        end
     end
 
     local i = self.__abs:tointeger()
