@@ -3,6 +3,8 @@ module Lib where
 import System.Environment ( lookupEnv )
 import System.FilePath ( (</>) )
 
+import Test.QuickCheck
+
 import HsLua hiding ( Integer )
 
 import LuaUtils
@@ -42,3 +44,18 @@ prepare' name modname = stackNeutral $ do
 
 maxBase :: Integer
 maxBase = 2^(case luaBits of { Lua32 -> 15 :: Integer; Lua64 -> 31 })
+
+newtype Base = MkBase Integer
+  deriving ( Eq, Ord, Num )
+
+instance Show Base where
+  show (MkBase b) = show b
+
+instance Peekable Base where
+  safepeek idx = retrieving "Base" $ MkBase <$> peekIntegral idx
+
+instance Pushable Base where
+  push (MkBase b) = pushinteger (fromIntegral b)
+
+instance Arbitrary Base where
+  arbitrary = MkBase <$> chooseInteger (2, maxBase)

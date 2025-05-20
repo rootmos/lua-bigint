@@ -39,8 +39,18 @@ function M.zero(base)
     return make(Bignat.make{base=base or M.default_base}, 0)
 end
 
-__fn.digits = I.coefficients
-M.digits = __fn.digits
+function M:digits()
+    return self.__abs:digits()
+end
+__fn.digits = M.digits
+
+function M:tobase(to)
+    if not M.is_bigint(self) then
+        error("bigint unary operation called with unsuitable value")
+    end
+    return make(self.__abs:tobase(to), self.__sign)
+end
+__fn.tobase = M.tobase
 
 function M.fromstring(s, from, to)
     local sign = 0

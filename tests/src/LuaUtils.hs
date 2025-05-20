@@ -107,7 +107,7 @@ handleStatus ErrRun = throwErrorAsException
 handleStatus e = error $ show e
 
 dostring' :: LuaError e => String -> LuaE e ()
-dostring' s = dostring (BSUTF8.fromString s) >>= handleStatus
+dostring' s = dostringTrace (BSUTF8.fromString s) >>= handleStatus
 
 peek' :: (Peekable a, LuaError e) => LuaE e a
 peek' = ensureStackDiff (-1) $ peek top <* pop 1

@@ -24,8 +24,6 @@ import Utils
 runLua :: RunLuaRun
 runLua = mkRun $ prepare' "N" "bignat"
 
-type Base = Integer
-
 data Operand = OpI (Maybe Base) Integer
              | OpH (Maybe Base) Huge
              | OpL LuaInt
@@ -39,7 +37,7 @@ operandToInteger :: Operand -> Integer
 operandToInteger (OpI _ i) = i
 operandToInteger (OpH _ h) = getHuge h
 operandToInteger (OpL li) = luaIntToInteger li
-operandToInteger (OpO b o i) = (b^o) * i
+operandToInteger (OpO (MkBase b) o i) = (b^o) * i
 
 instance Eq Operand where
   a == b = operandToInteger a == operandToInteger b
@@ -78,15 +76,15 @@ instance Peekable Operand where
       peekIndexRaw i (\idx -> fromMaybe 0 <$> peekNilOr peekIntegral idx) idx
     o :: Integer <- peekFieldRaw peekIntegral "o" idx
     b <- peekFieldRaw peekIntegral "base" idx
-    return $ OpI (Just b) $ (* b^o) $ evalInBase b as
+    return $ OpI (Just . MkBase $ b) $ (* b^o) $ evalInBase b as
 
 instance Pushable Operand where
   push (OpI Nothing i) = dostring' $ printf "return N.fromstring('%s')" (show i)
-  push (OpI (Just b) i) = dostring' $ printf "return N.fromstring('%s', 10, %d)" (show i) b
+  push (OpI (Just (MkBase b)) i) = dostring' $ printf "return N.fromstring('%s', 10, %d)" (show i) b
   push o@(OpH Nothing _) = dostring' $ printf "return N.fromstring('%s')" (show $ operandToInteger o)
-  push o@(OpH (Just b) _) = dostring' $ printf "return N.fromstring('%s', 10, %d)" (show $ operandToInteger o) b
+  push o@(OpH (Just (MkBase b)) _) = dostring' $ printf "return N.fromstring('%s', 10, %d)" (show $ operandToInteger o) b
   push (OpL (LuaInt li)) = pushinteger li
-  push (OpO b o i) = ensureStackDiff 1 $ do
+  push (OpO (MkBase b) o i) = ensureStackDiff 1 $ do
     dostring' "return N.make"
 
     let ds = digitsInBase b i
@@ -118,13 +116,12 @@ instance Arbitrary Operand where
                         , (10, genL)
                         , (20, genO)
                         ]
-    where genBase = chooseInteger (2, maxBase)
-          genBaseM = oneof [ return Nothing, Just <$> genBase ]
+    where genBaseM = oneof [ return Nothing, Just <$> arbitrary ]
           genI = OpI <$> genBaseM <*> (getNonNegative <$> arbitrary)
           genH = OpH <$> genBaseM <*> arbitrary
           genL = OpL <$> getNonNegative <$> arbitrary
           genO = do
-            b <- genBase
+            b <- arbitrary
             o <- getNonNegative <$> arbitrary
             i <- operandToInteger <$> oneof [ genI, genH ]
             return $ OpO b o i
@@ -158,7 +155,7 @@ spec = do
       b <- runLua $ push a >> peek'
       b `shouldBe` a
 
-  describe "integer-like" $ I.integerLike @Operand runLua $
+  describe "integer-like" $ I.runSpec @Operand runLua $
     I.MkSpec { binary = [ I.add "N", I.sub "N"
                         , I.mul "N"
                         , I.quot "N", I.rem "N", I.quotrem "N"
@@ -181,3 +178,5 @@ spec = do
       "a" `bind` a
       expectError' "N.frominteger(a)"
     msg `shouldEndWith` "unexpected negative integer"
+
+  I.run2 runLua (I.tobase @Operand "N")

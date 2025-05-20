@@ -49,6 +49,16 @@ __fn.clone = M.make
 __fn.digits = I.coefficients
 M.digits = __fn.digits
 
+function M:tobase(to)
+    if not M.is_bignat(self) then
+        error("bignat unary operation called with unsuitable value")
+    end
+    local fs = Arbbase.convert(self:digits(), self.base, to)
+    fs.base = to
+    return M.make(fs)
+end
+__fn.tobase = M.tobase
+
 function M.fromstring(s, from, to)
     local from = from or 10
     local to = to or M.default_base
