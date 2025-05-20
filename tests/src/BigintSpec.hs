@@ -24,9 +24,7 @@ import Utils
 import qualified BignatSpec as Bignat
 
 runLua :: RunLuaRun
-runLua = mkRun $ do
-  prepare
-  "I" `requireG` "bigint"
+runLua = mkRun $ prepare' "I" "bigint"
 
 type Base = Integer
 type Sign = Integer
@@ -198,7 +196,7 @@ spec = do
   it "should build integers from absolute value and sign" $ properly $ \(a :: Bignat.Operand, s :: Ordering) -> do
     let s' = case s of { LT -> -1; EQ -> 0; GT -> 1 }
     b <- runLua $ do
-      "N" `requireG` "bignat"
+      dostring' "N = I.N"
       "a" `bind` a
       "s" `bind` s'
       return' "I.fromabssign(a, s)"

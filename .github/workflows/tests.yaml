@@ -25,6 +25,8 @@ jobs:
     env:
       LUA_BITS: ${{ matrix.lua_bits }}
       #QUICKCHECK_VERBOSE: 1
+      #QUICKCHECK_VERBOSE_SHRINKING: 1
+      #QUICKCHECK_NO_SHRINKING: 1
       QUICKCHECK_MAX_SUCCESS: ${{ github.ref_name == 'master' && 1000 || 100 }}
       QUICKCHECK_SIZE: ${{ github.ref_name == 'master' && 200 || 10 }}
     steps:
@@ -35,8 +37,6 @@ jobs:
 
     - name: Check out repository code
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
 
     - uses: actions/cache@v4
       name: Cache Lua dependencies
@@ -77,8 +77,8 @@ jobs:
 
     - name: Prepare Haskell dependencies
       run: |
-          touch tests/lua-bigint.cabal
-          make -C tests deps
+        touch tests/lua-bigint.cabal
+        make -C tests deps
 
     - name: Build tests
       run: make -C tests build
@@ -89,10 +89,19 @@ jobs:
     - name: Create distribution files
       run: ./mk-dist
       env:
-        LUA: ../lua
+        LUA: ${{github.workspace}}/lua
+
+    - name: Run tests against the distribution files
+      run: |
+        cd tests && stack run specs -- -m "/Bignat" -m "/Bigint"
+      env:
+        LUA_BIGINT_DIST: ${{github.workspace}}/dist
 
     - name: Check the examples against the distribution files
-      run: make -C examples RUNNER=../lua LUA_PATH="$PWD/dist/?.lua;$PWD/dist/?/init.lua"
+      run: make -C examples
+      env:
+        RUNNER: ${{github.workspace}}/lua
+        LUA_PATH: "${{github.workspace}}/dist/?.lua;${{github.workspace}}/dist/?/init.lua"
 
     - name: Keep the test artifacts
       uses: actions/upload-artifact@v4

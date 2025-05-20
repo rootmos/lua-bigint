@@ -1,7 +1,9 @@
 local Bignat <const> = require("bignat")
 local I <const> = require("internal")
 
-local M = {}
+local M = {
+    N = Bignat,
+}
 
 if _pantry then
     M.build_info = _pantry("build-info")
