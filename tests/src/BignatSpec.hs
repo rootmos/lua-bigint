@@ -17,14 +17,12 @@ import HsLua.Marshalling.Peekers
 
 import Huge
 import qualified IntegerLike as I
-import LuaBigInt
+import Lib
 import LuaUtils
 import Utils
 
 runLua :: RunLuaRun
-runLua = mkRun $ do
-  prepare
-  "N" `requireG` "bignat"
+runLua = mkRun $ prepare' "N" "bignat"
 
 type Base = Integer
 

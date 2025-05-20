@@ -14,10 +14,12 @@ export QUICKCHECK_SIZE=5
 #export LUA_BITS=32
 export LUA_BITS=64
 
+export LUA_BIGINT_DIST=$K_DIR/dist
+
 gogo() {
-    make tests
+    #make tests
     #cd tests && make build
-    #cd tests && stack run specs -- -m "/Bignat"
+    cd tests && stack run specs -- -m "/Bignat" -m "/Bigint"
     #cd tests && stack run specs -- -m "/Bigint"
     #cd tests && stack run specs -- --match "/Bigint/integer division truncated towards negative infinity/I.div(a,b)/" --seed 819336231
     #cd tests && stack run specs -- --match "/Bigint/greater than or equal/a:ge(b)/" --seed 799366864

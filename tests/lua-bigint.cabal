@@ -27,7 +27,7 @@ executable specs
       Huge
       IntegerLike
       InternalSpec
-      LuaBigInt
+      Lib
       LuaUtils
       LuaUtilsSpec
       PolynomialSpec

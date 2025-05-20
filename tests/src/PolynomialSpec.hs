@@ -11,7 +11,7 @@ import Test.QuickCheck
 import HsLua hiding ( error )
 import HsLua.Marshalling.Peekers
 
-import LuaBigInt
+import Lib
 import LuaUtils
 import Utils
 

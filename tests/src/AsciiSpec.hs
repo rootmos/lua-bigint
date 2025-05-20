@@ -6,9 +6,9 @@ import Text.Printf
 import Test.Hspec
 import Test.QuickCheck
 
-import Utils
-import LuaBigInt
+import Lib
 import LuaUtils
+import Utils
 
 import HsLua hiding ( Integer )
 
