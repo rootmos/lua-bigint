@@ -402,72 +402,108 @@ mkExpr template rs = T.unpack $ r rs $ T.pack template
   where r [] s = s
         r ((from, to):rs) s = r rs $ T.replace (T.pack from) (T.pack to) s
 
-integerLike :: forall a. IntegerLike a
-            => RunLuaRun
-            -> Spec a
-            -> Hspec.Spec
-integerLike runLua spec = do
-  flip mapM_ (binary spec) $ \MkOperator { human, ref, isPartial, syntax, function, method } -> do
-    describe human $ do
-      forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
-        let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
-        it expr' $ properly $ mkProp study $ \(a, b) -> do
-          s <- runLua $ do
-            "a" `bind` a
-            "b" `bind` b
-            return' expr'
-          s `shouldBe` ref (a, b)
+runSpec :: forall a. IntegerLike a
+        => RunLuaRun
+        -> Spec a
+        -> Hspec.Spec
+runSpec runLua spec = do
+  forM_ (binary spec) (runaa runLua)
+  forM_ (unary spec) (run1 runLua)
 
-        let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
-        it (expr' ++ " (when a == b by value)") $ properly $ mkProp (study . \a -> (a, a)) $ \a -> do
-          s <- runLua $ do
-            "a" `bind` a
-            "b" `bind` a
-            return' expr'
-          s `shouldBe` ref (a, a)
-
-        let expr' = mkExpr expr [ ("%a", "a"), ("%b", "a") ]
-        it expr' $ properly $ mkProp (study . \a -> (a, a)) $ \a -> do
-          s <- runLua $ do
-            "a" `bind` a
-            return' expr'
-          s `shouldBe` ref (a, a)
-
-      when isPartial $ do
-        forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
-          let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
-          it (printf "%s should raise the expected error when not defined" expr') $ properly $ mkPropPartial study $ \((a, b), msg) -> do
-            Just (Exception msg') <- runLua $ do
-              "a" `bind` a
-              "b" `bind` b
-              expectError' expr'
-            msg' `shouldEndWith` msg
-
-  flip mapM_ (unary spec) $ \MkOperator { human, ref, isDual, isPartial, syntax, function, method } -> do
-    describe human $ do
-      case isDual of
-        False -> do
-          forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
-            let expr' = mkExpr expr [ ("%a", "a") ]
-            it expr' $ properly $ mkProp study $ \a -> do
-              s <- runLua $ do
-                "a" `bind` a
-                return' expr'
-              s `shouldBe` ref a
-        True -> do
-          forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
-            let expr' = mkExpr expr [ ("%b", "b") ]
-            it expr' $ properly $ mkProp study $ \a -> do
-              s <- runLua $ do
-                "b" `bind` (ref a)
-                return' expr'
-              s `shouldBe` a
-
-      when isPartial $ do
+run1 :: (Eq a, Show a, Peekable a, Pushable a, Arbitrary a)
+     => RunLuaRun
+     -> Operator a
+     -> Hspec.Spec
+run1 runLua (MkOperator { human, ref, isDual, isPartial, syntax, function, method }) = do
+  describe human $ do
+    case isDual of
+      False -> do
         forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
           let expr' = mkExpr expr [ ("%a", "a") ]
-          it (printf "%s should raise the expected error when not defined" expr') $ properly $ mkPropPartial study $ \(a, msg) -> do
-            Just (Exception msg') <- runLua $ do
+          it expr' $ properly $ mkProp study $ \a -> do
+            s <- runLua $ do
               "a" `bind` a
-              expectError' expr'
-            msg' `shouldEndWith` msg
+              return' expr'
+            s `shouldBe` ref a
+      True -> do
+        forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+          let expr' = mkExpr expr [ ("%b", "b") ]
+          it expr' $ properly $ mkProp study $ \a -> do
+            s <- runLua $ do
+              "b" `bind` (ref a)
+              return' expr'
+            s `shouldBe` a
+
+    when isPartial $ do
+      forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+        let expr' = mkExpr expr [ ("%a", "a") ]
+        it (printf "%s should raise the expected error when not defined" expr') $ properly $ mkPropPartial study $ \(a, msg) -> do
+          Just (Exception msg') <- runLua $ do
+            "a" `bind` a
+            expectError' expr'
+          msg' `shouldEndWith` msg
+
+run2 :: (Pushable a, Show a, Arbitrary a, Pushable b, Show b, Arbitrary b)
+     => RunLuaRun
+     -> Operator (a, b)
+     -> Hspec.Spec
+run2 runLua (MkOperator { human, ref, isPartial, syntax, function, method }) = do
+  describe human $ do
+    forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+      let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
+      it expr' $ properly $ mkProp study $ \(a, b) -> do
+        s <- runLua $ do
+          "a" `bind` a
+          "b" `bind` b
+          return' expr'
+        s `shouldBe` ref (a, b)
+
+    when isPartial $ do
+      forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+        let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
+        it (printf "%s should raise the expected error when not defined" expr') $ properly $ mkPropPartial study $ \((a, b), msg) -> do
+          Just (Exception msg') <- runLua $ do
+            "a" `bind` a
+            "b" `bind` b
+            expectError' expr'
+          msg' `shouldEndWith` msg
+
+runaa :: (Pushable a, Show a, Arbitrary a)
+      => RunLuaRun
+      -> Operator (a, a)
+      -> Hspec.Spec
+runaa runLua (MkOperator { human, ref, isPartial, syntax, function, method }) = do
+  describe human $ do
+    forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+      let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
+      it expr' $ properly $ mkProp study $ \(a, b) -> do
+        s <- runLua $ do
+          "a" `bind` a
+          "b" `bind` b
+          return' expr'
+        s `shouldBe` ref (a, b)
+
+      let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
+      it (expr' ++ " (when a == b by value)") $ properly $ mkProp (study . \a -> (a, a)) $ \a -> do
+        s <- runLua $ do
+          "a" `bind` a
+          "b" `bind` a
+          return' expr'
+        s `shouldBe` ref (a, a)
+
+      let expr' = mkExpr expr [ ("%a", "a"), ("%b", "a") ]
+      it expr' $ properly $ mkProp (study . \a -> (a, a)) $ \a -> do
+        s <- runLua $ do
+          "a" `bind` a
+          return' expr'
+        s `shouldBe` ref (a, a)
+
+    when isPartial $ do
+      forM_ (catMaybes [ syntax, function, method ]) $ \(expr, study) -> do
+        let expr' = mkExpr expr [ ("%a", "a"), ("%b", "b") ]
+        it (printf "%s should raise the expected error when not defined" expr') $ properly $ mkPropPartial study $ \((a, b), msg) -> do
+          Just (Exception msg') <- runLua $ do
+            "a" `bind` a
+            "b" `bind` b
+            expectError' expr'
+          msg' `shouldEndWith` msg

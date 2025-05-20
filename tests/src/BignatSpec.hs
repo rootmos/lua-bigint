@@ -24,7 +24,20 @@ import Utils
 runLua :: RunLuaRun
 runLua = mkRun $ prepare' "N" "bignat"
 
-type Base = Integer
+newtype Base = MkBase Integer
+  deriving ( Eq, Ord, Num )
+
+instance Show Base where
+  show (MkBase b) = show b
+
+instance Peekable Base where
+  safepeek idx = retrieving "Base" $ MkBase <$> peekIntegral idx
+
+instance Pushable Base where
+  push (MkBase b) = pushinteger (fromIntegral b)
+
+instance Arbitrary Base where
+  arbitrary = MkBase <$> chooseInteger (2, maxBase)
 
 data Operand = OpI (Maybe Base) Integer
              | OpH (Maybe Base) Huge
@@ -39,7 +52,7 @@ operandToInteger :: Operand -> Integer
 operandToInteger (OpI _ i) = i
 operandToInteger (OpH _ h) = getHuge h
 operandToInteger (OpL li) = luaIntToInteger li
-operandToInteger (OpO b o i) = (b^o) * i
+operandToInteger (OpO (MkBase b) o i) = (b^o) * i
 
 instance Eq Operand where
   a == b = operandToInteger a == operandToInteger b
@@ -78,15 +91,15 @@ instance Peekable Operand where
       peekIndexRaw i (\idx -> fromMaybe 0 <$> peekNilOr peekIntegral idx) idx
     o :: Integer <- peekFieldRaw peekIntegral "o" idx
     b <- peekFieldRaw peekIntegral "base" idx
-    return $ OpI (Just b) $ (* b^o) $ evalInBase b as
+    return $ OpI (Just . MkBase $ b) $ (* b^o) $ evalInBase b as
 
 instance Pushable Operand where
   push (OpI Nothing i) = dostring' $ printf "return N.fromstring('%s')" (show i)
-  push (OpI (Just b) i) = dostring' $ printf "return N.fromstring('%s', 10, %d)" (show i) b
+  push (OpI (Just (MkBase b)) i) = dostring' $ printf "return N.fromstring('%s', 10, %d)" (show i) b
   push o@(OpH Nothing _) = dostring' $ printf "return N.fromstring('%s')" (show $ operandToInteger o)
-  push o@(OpH (Just b) _) = dostring' $ printf "return N.fromstring('%s', 10, %d)" (show $ operandToInteger o) b
+  push o@(OpH (Just (MkBase b)) _) = dostring' $ printf "return N.fromstring('%s', 10, %d)" (show $ operandToInteger o) b
   push (OpL (LuaInt li)) = pushinteger li
-  push (OpO b o i) = ensureStackDiff 1 $ do
+  push (OpO (MkBase b) o i) = ensureStackDiff 1 $ do
     dostring' "return N.make"
 
     let ds = digitsInBase b i
@@ -118,7 +131,7 @@ instance Arbitrary Operand where
                         , (10, genL)
                         , (20, genO)
                         ]
-    where genBase = chooseInteger (2, maxBase)
+    where genBase = arbitrary
           genBaseM = oneof [ return Nothing, Just <$> genBase ]
           genI = OpI <$> genBaseM <*> (getNonNegative <$> arbitrary)
           genH = OpH <$> genBaseM <*> arbitrary
@@ -144,6 +157,17 @@ instance I.IsLuaNative Operand where
 
 instance I.IntegerLike Operand where
 
+base :: I.IntegerLike a => I.Operator (a, Base)
+base =
+  I.MkOperator { human = "convert to digits in base"
+               , ref = \(a, MkBase b) -> let ds = digitsInBase b (toInteger a) in (ds, length ds)
+               , isDual = False
+               , isPartial = False
+               , syntax = Nothing
+               , function = Just ("{N.tobase(%a,%b):digits()}", I.relevantIfFstNotNative)
+               , method = Just ("{%a:tobase(%b):digits()}", I.relevantIfFstNotNative)
+               }
+
 spec :: Spec
 spec = do
   it "should have the expected max_base" $ do
@@ -158,7 +182,7 @@ spec = do
       b <- runLua $ push a >> peek'
       b `shouldBe` a
 
-  describe "integer-like" $ I.integerLike @Operand runLua $
+  describe "integer-like" $ I.runSpec @Operand runLua $
     I.MkSpec { binary = [ I.add "N", I.sub "N"
                         , I.mul "N"
                         , I.quot "N", I.rem "N", I.quotrem "N"
@@ -181,3 +205,5 @@ spec = do
       "a" `bind` a
       expectError' "N.frominteger(a)"
     msg `shouldEndWith` "unexpected negative integer"
+
+  I.run2 runLua (base @Operand)

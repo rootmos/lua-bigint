@@ -163,7 +163,7 @@ tobignat :: I.Operator Operand
 tobignat = I.MkOperator { human = "bignat conversion"
                         , ref = fromInteger @Bignat.Operand . toInteger @Operand
                         , isDual = False
-                        , isPartial = True
+                        , isPartial = False
                         , syntax = Nothing
                         , function = Just ("I.tobignat(%a)", I.relevantIfNotNative <> unexpectedNegativeInteger)
                         , method = Just ("%a:tobignat()", I.relevantIfNotNative <> unexpectedNegativeInteger)
@@ -178,7 +178,7 @@ spec = do
     b <- runLua $ push a >> peek'
     b `shouldBe` a
 
-  describe "integer-like" $ I.integerLike @Operand runLua $
+  describe "integer-like" $ I.runSpec @Operand runLua $
     I.MkSpec { binary = [ I.add "I", I.sub "I"
                         , I.mul "I"
                         , I.quot "I", I.rem "I", I.quotrem "I"
@@ -202,7 +202,4 @@ spec = do
       return' "I.fromabssign(a, s)"
     b `shouldBe` (fromInteger @Operand . (* s') . toInteger $ a)
 
-  I.integerLike @Operand runLua $
-    I.MkSpec { binary = []
-             , unary = [ tobignat ]
-             }
+  I.run1 @Operand runLua tobignat
