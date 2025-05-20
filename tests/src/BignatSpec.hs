@@ -24,21 +24,6 @@ import Utils
 runLua :: RunLuaRun
 runLua = mkRun $ prepare' "N" "bignat"
 
-newtype Base = MkBase Integer
-  deriving ( Eq, Ord, Num )
-
-instance Show Base where
-  show (MkBase b) = show b
-
-instance Peekable Base where
-  safepeek idx = retrieving "Base" $ MkBase <$> peekIntegral idx
-
-instance Pushable Base where
-  push (MkBase b) = pushinteger (fromIntegral b)
-
-instance Arbitrary Base where
-  arbitrary = MkBase <$> chooseInteger (2, maxBase)
-
 data Operand = OpI (Maybe Base) Integer
              | OpH (Maybe Base) Huge
              | OpL LuaInt
@@ -131,13 +116,12 @@ instance Arbitrary Operand where
                         , (10, genL)
                         , (20, genO)
                         ]
-    where genBase = arbitrary
-          genBaseM = oneof [ return Nothing, Just <$> genBase ]
+    where genBaseM = oneof [ return Nothing, Just <$> arbitrary ]
           genI = OpI <$> genBaseM <*> (getNonNegative <$> arbitrary)
           genH = OpH <$> genBaseM <*> arbitrary
           genL = OpL <$> getNonNegative <$> arbitrary
           genO = do
-            b <- genBase
+            b <- arbitrary
             o <- getNonNegative <$> arbitrary
             i <- operandToInteger <$> oneof [ genI, genH ]
             return $ OpO b o i
@@ -156,17 +140,6 @@ instance I.IsLuaNative Operand where
   isLuaNative _ = False
 
 instance I.IntegerLike Operand where
-
-base :: I.IntegerLike a => I.Operator (a, Base)
-base =
-  I.MkOperator { human = "convert to digits in base"
-               , ref = \(a, MkBase b) -> let ds = digitsInBase b (toInteger a) in (ds, length ds)
-               , isDual = False
-               , isPartial = False
-               , syntax = Nothing
-               , function = Just ("{N.tobase(%a,%b):digits()}", I.relevantIfFstNotNative)
-               , method = Just ("{%a:tobase(%b):digits()}", I.relevantIfFstNotNative)
-               }
 
 spec :: Spec
 spec = do
@@ -206,4 +179,4 @@ spec = do
       expectError' "N.frominteger(a)"
     msg `shouldEndWith` "unexpected negative integer"
 
-  I.run2 runLua (base @Operand)
+  I.run2 runLua (I.tobase @Operand "N")

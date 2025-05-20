@@ -16,6 +16,7 @@ import qualified Test.Hspec as Hspec
 
 import HsLua hiding ( Integer, compare, RelationalOperator (..), ref, method )
 
+import Lib
 import LuaUtils
 import Utils
 
@@ -383,6 +384,17 @@ frominteger modname =
              , syntax = Nothing
              , function = Just (modname ++ ".frominteger(%b)", relevantIfNative)
              , method =  Nothing
+             }
+
+tobase :: IntegerLike a => String -> Operator (a, Base)
+tobase modname =
+  MkOperator { human = "convert to digits in base"
+             , ref = \(a, MkBase b) -> let ds = digitsInBase b (Prelude.abs $ toInteger a) in (ds, length ds)
+             , isDual = False
+             , isPartial = False
+             , syntax = Nothing
+             , function = Just (printf "{%s.tobase(%%a,%%b):digits()}" modname, relevantIfFstNotNative)
+             , method = Just ("{%a:tobase(%b):digits()}", relevantIfFstNotNative)
              }
 
 mkProp :: (Show c, Arbitrary c)

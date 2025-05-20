@@ -26,7 +26,6 @@ import qualified BignatSpec as Bignat
 runLua :: RunLuaRun
 runLua = mkRun $ prepare' "I" "bigint"
 
-type Base = Integer
 type Sign = Integer
 
 data Operand = OpI (Maybe Base) Integer
@@ -42,7 +41,7 @@ operandToInteger :: Operand -> Integer
 operandToInteger (OpI _ i) = i
 operandToInteger (OpH _ sign h) = (* sign) $ getHuge h
 operandToInteger (OpL li) = luaIntToInteger li
-operandToInteger (OpO b o i) = (b^o) * i
+operandToInteger (OpO (MkBase b) o i) = (b^o) * i
 
 instance Eq Operand where
   a == b = operandToInteger a == operandToInteger b
@@ -73,11 +72,11 @@ instance Integral Operand where
 
 instance Pushable Operand where
   push (OpI Nothing i) = dostring' $ printf "return I.fromstring('%s')" (show i)
-  push (OpI (Just b) i) = dostring' $ printf "return I.fromstring('%s', 10, %d)" (show i) b
+  push (OpI (Just (MkBase b)) i) = dostring' $ printf "return I.fromstring('%s', 10, %d)" (show i) b
   push o@(OpH Nothing _ _) = dostring' $ printf "return I.fromstring('%s')" (show $ operandToInteger o)
-  push o@(OpH (Just b) _ _) = dostring' $ printf "return I.fromstring('%s', 10, %d)" (show $ operandToInteger o) b
+  push o@(OpH (Just (MkBase b)) _ _) = dostring' $ printf "return I.fromstring('%s', 10, %d)" (show $ operandToInteger o) b
   push (OpL (LuaInt li)) = pushinteger li
-  push (OpO b o i) = ensureStackDiff 1 $ do
+  push (OpO (MkBase b) o i) = ensureStackDiff 1 $ do
     dostring' "return I.make"
 
     let ds = digitsInBase b (abs i)
@@ -121,7 +120,7 @@ instance Peekable Operand where
       b <- peekFieldRaw peekIntegral "base" abs
       return (b, (* sign) . (* b^o) $ evalInBase b as)
 
-    return $ OpI (Just b) i
+    return $ OpI (Just . MkBase $ b) i
 
 instance I.IsLuaNative Operand where
   isLuaNative (OpL _) = True
@@ -133,13 +132,12 @@ instance Arbitrary Operand where
                         , (10, genL)
                         , (20, genO)
                         ]
-    where genBase = chooseInteger (2, maxBase)
-          genBaseM = oneof [ return Nothing, Just <$> genBase ]
+    where genBaseM = arbitrary
           genI = OpI <$> genBaseM <*> arbitrary
           genH = OpH <$> genBaseM <*> elements [ 1, -1 ] <*> arbitrary
           genL = OpL <$> arbitrary
           genO = do
-            b <- genBase
+            b <- arbitrary
             o <- getNonNegative <$> arbitrary
             i <- operandToInteger <$> oneof [ genI ]
             return $ OpO b o i
@@ -203,3 +201,5 @@ spec = do
     b `shouldBe` (fromInteger @Operand . (* s') . toInteger $ a)
 
   I.run1 @Operand runLua tobignat
+
+  I.run2 runLua (I.tobase @Operand "I")
