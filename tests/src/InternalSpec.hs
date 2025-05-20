@@ -8,7 +8,7 @@ import Test.QuickCheck
 
 import HsLua
 
-import LuaBigInt
+import Lib
 import LuaUtils
 import Utils
 

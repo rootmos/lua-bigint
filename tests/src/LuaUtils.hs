@@ -54,7 +54,8 @@ requireG g modname = stackNeutral $ require modname >> setglobal g
 
 extendLuaPath :: LuaError e => FilePath -> LuaE e ()
 extendLuaPath dir = stackNeutral $ do
-  openpackage
+  t <- getglobal "package"
+  unless (t == TypeTable) $ throwTypeMismatchError "table" top
 
   t <- getfield top "path"
   unless (t == TypeString) $ throwTypeMismatchError "string" top

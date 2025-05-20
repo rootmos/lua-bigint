@@ -8,7 +8,7 @@ import Test.QuickCheck
 
 import HsLua hiding ( Integer )
 
-import LuaBigInt
+import Lib
 import LuaUtils
 import Utils
 import Huge

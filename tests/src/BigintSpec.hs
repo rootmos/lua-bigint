@@ -16,9 +16,9 @@ import HsLua hiding ( Integer, compare, RelationalOperator(..) )
 import HsLua.Marshalling.Peekers
 
 import Huge
-import LuaUtils
-import LuaBigInt
 import qualified IntegerLike as I
+import Lib
+import LuaUtils
 import Utils
 
 import qualified BignatSpec as Bignat

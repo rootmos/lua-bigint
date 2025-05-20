@@ -1,4 +1,4 @@
-module LuaBigInt where
+module Lib where
 
 import System.Environment ( lookupEnv )
 
@@ -19,8 +19,8 @@ prepare = stackNeutral $ do
   openstring >> setglobal "string"
   opentable >> setglobal "table"
 
-  src <- liftIO pickLuaSource
-  extendLuaPath src
+  openpackage >> setglobal "package"
+  liftIO pickLuaSource >>= extendLuaPath
 
 maxBase :: Integer
 maxBase = 2^(case luaBits of { Lua32 -> 15 :: Integer; Lua64 -> 31 })

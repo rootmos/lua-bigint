@@ -17,7 +17,7 @@ import HsLua.Marshalling.Peekers
 
 import Huge
 import qualified IntegerLike as I
-import LuaBigInt
+import Lib
 import LuaUtils
 import Utils
 
