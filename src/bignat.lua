@@ -2,6 +2,8 @@ local Ascii <const> = require("ascii")
 local Arbbase <const> = require("arbbase")
 local I <const> = require("internal")
 
+--- An arbitrary precision natural number abstraction
+-- @class bignat
 local M = {}
 
 if _pantry then
@@ -22,6 +24,8 @@ local __mt <const> = {
     __index = __fn,
 }
 
+--- Type predicate
+-- @treturn bool true if x is a bignat otherwise false
 function M.is_bignat(x)
     return getmetatable(x) == __mt
 end
@@ -184,6 +188,10 @@ local function binop(a, b)
     end
 end
 
+---
+-- @tparam bignat a first operand
+-- @tparam bignat b second operand
+-- @treturn bignat sum of operands
 function M.add(a, b)
     local a, b = binop(a, b)
     return addB(a, b, a.base)

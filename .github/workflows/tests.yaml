@@ -3,6 +3,8 @@ on:
   push:
     ignore-tags:
       - "releases/**"
+    branches-ignore:
+      - docs
   workflow_dispatch:
 
 jobs:

@@ -1,6 +1,8 @@
 local Bignat <const> = require("bignat")
 local I <const> = require("internal")
 
+--- An arbitrary precision integer abstraction
+-- @class bigint
 local M = {
     N = Bignat,
 }
@@ -83,6 +85,8 @@ __mt.__tostring = __fn.tostring
 local maxint <const> = Bignat.maxint:tointeger()
 local minint <const> = -maxint-1
 
+---
+-- @treturn bigint
 function M.frominteger(n, base)
     assert(math.type(n) == "integer")
 
@@ -136,6 +140,8 @@ function M.fromabssign(abs, sign)
     return make(abs, sign)
 end
 
+--- Convert non-negative integer to a bignat if possible
+-- @treturn bignat
 function M:tobignat()
     if self.__sign < 0 then
         error("unexpected negative integer")

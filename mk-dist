@@ -7,6 +7,16 @@ ROOT=${ROOT-$SCRIPT_DIR}
 TOOLS=${TOOLS-$SCRIPT_DIR/tools}
 SRC=${SRC-$SCRIPT_DIR/src}
 
+while getopts "lL-" OPT; do
+    case $OPT in
+        l) LINES=1 ;;
+        L) LINES=0 ;;
+        -) break ;;
+        ?) exit 2 ;;
+    esac
+done
+shift $((OPTIND-1))
+
 OUTPUT_DIR=${1-$ROOT/dist}
 
 mkdir -p "$OUTPUT_DIR"
@@ -15,7 +25,15 @@ env ROOT="$ROOT" "$TOOLS/build-info" -l -o "$SRC/build-info.lua"
 
 OPTs=()
 
-if env --chdir="$SRC" "${LUA-lua}" -l "B=build-info" -e "os.exit(B.version_prerelease and 0 or 1)"; then
+if ! [[ -v LINES ]]; then
+    if env --chdir="$SRC" "${LUA-lua}" -l "B=build-info" -e "os.exit(B.version_prerelease and 0 or 1)"; then
+        LINES=1
+    else
+        LINES=0
+    fi
+fi
+
+if [ "$LINES" = 1 ]; then
     OPTs+=("--with-line-numbers")
 fi
 
